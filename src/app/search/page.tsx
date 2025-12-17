@@ -7,6 +7,9 @@ import { ArrowLeft, Database, Sparkles, Layers, Loader2 } from 'lucide-react';
 import { SearchForm } from '@/components/search-form';
 import { useAppContext } from '@/context/AppContext';
 import { Logo } from '@/components/logo';
+import { AnswerCard } from '@/components/answer-card';
+import type { Question } from '@/types';
+import { detectLanguage } from '@/lib/language';
 
 type SearchMode = 'database' | 'ai' | 'hybrid';
 
@@ -33,8 +36,61 @@ const modeConfig = {
 
 export default function SearchPage() {
   const [mode, setMode] = useState<SearchMode>('database');
-  const { isLoading: areQuestionsLoading } = useAppContext();
+  const [activeQuestion, setActiveQuestion] = useState<Question | null>(null);
+  const [initialLang, setInitialLang] = useState<'en' | 'hi'>('en');
+  
+  const { isLoading: areQuestionsLoading, findBestMatch } = useAppContext();
   const CurrentModeIcon = modeConfig[mode].icon;
+
+  const handleSearch = (query: string) => {
+    const result = findBestMatch(query);
+    if (result) {
+      setActiveQuestion(result.question);
+      setInitialLang(detectLanguage(query));
+    } else {
+      setActiveQuestion(null);
+    }
+  };
+
+  const handleBackToSearch = () => {
+    setActiveQuestion(null);
+  };
+
+  if (activeQuestion) {
+    return (
+      <div className="flex flex-col min-h-screen bg-secondary/50">
+        <header className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm p-4 border-b">
+          <div className="container mx-auto flex justify-between items-center">
+            <Button variant="ghost" onClick={handleBackToSearch}>
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to Search
+            </Button>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Mode:</span>
+              <span className="font-semibold text-sm py-1 px-2.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                Database
+              </span>
+            </div>
+          </div>
+        </header>
+
+        <main className="flex-grow py-8 md:py-12 px-4">
+          <AnswerCard question={activeQuestion} initialLang={initialLang} />
+        </main>
+
+        <footer className="sticky bottom-0 z-10 bg-background/80 backdrop-blur-sm p-4 border-t">
+          <div className="container mx-auto max-w-2xl">
+            <p className="text-sm font-semibold text-center mb-2">Ask another question</p>
+            <SearchForm
+              onSearch={handleSearch}
+              initialQuery={activeQuestion[`question_${initialLang}`]}
+              isFixed={true}
+            />
+          </div>
+        </footer>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col min-h-screen bg-background p-4 sm:p-6 lg:p-8">
@@ -80,7 +136,7 @@ export default function SearchPage() {
                 <p className="text-muted-foreground max-w-md mb-8">
                     {modeConfig[mode].description}
                 </p>
-                <SearchForm className="w-full max-w-2xl shadow-lg" />
+                <SearchForm onSearch={handleSearch} className="w-full max-w-2xl shadow-lg" />
             </>
         )}
       </main>

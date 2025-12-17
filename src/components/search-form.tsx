@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { Mic, Search, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,10 +8,10 @@ import { Card } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { useAppContext } from '@/context/AppContext';
 import { useSpeechRecognition } from '@/hooks/use-speech-recognition';
-import { detectLanguage } from '@/lib/language';
 
 interface SearchFormProps {
   initialQuery?: string;
+  onSearch?: (query: string) => void;
   onSearchStart?: () => void;
   onSearchEnd?: () => void;
   className?: string;
@@ -21,6 +20,7 @@ interface SearchFormProps {
 
 export function SearchForm({
   initialQuery = '',
+  onSearch,
   onSearchStart,
   onSearchEnd,
   className,
@@ -28,9 +28,8 @@ export function SearchForm({
 }: SearchFormProps) {
   const [query, setQuery] = useState(initialQuery);
   const [isSearching, setIsSearching] = useState(false);
-  const router = useRouter();
   const { toast } = useToast();
-  const { findBestMatch, isLoading: areQuestionsLoading } = useAppContext();
+  const { isLoading: areQuestionsLoading } = useAppContext();
   const {
     transcript,
     isListening,
@@ -44,28 +43,24 @@ export function SearchForm({
     }
   }, [transcript]);
 
+  useEffect(() => {
+    setQuery(initialQuery);
+  }, [initialQuery]);
+
   const handleSearch = () => {
     if (!query.trim() || isSearching) return;
 
     setIsSearching(true);
     onSearchStart?.();
 
-    const result = findBestMatch(query);
-
-    if (result) {
-      const lang = detectLanguage(query);
-      const url = `/answer/${result.question.id}?lang=${lang}`;
-      if (isFixed) {
-        router.replace(url);
-      } else {
-        router.push(url);
-      }
+    if (onSearch) {
+      onSearch(query);
     } else {
-      toast({
-        title: 'No Match Found',
-        description: "We couldn't find a relevant question. Please try rephrasing.",
-        variant: 'destructive',
-      });
+        toast({
+            title: 'No search handler configured',
+            description: 'The search action is not implemented.',
+            variant: 'destructive',
+        });
     }
 
     setIsSearching(false);
