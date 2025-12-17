@@ -64,22 +64,20 @@ export default function SearchPage() {
     <div className="flex flex-col min-h-screen bg-background text-foreground font-body">
        <header className="sticky top-0 z-20 bg-background/80 backdrop-blur-sm border-b">
         <div className="container mx-auto px-4 py-3 flex justify-between items-center">
+          <div className="flex items-center gap-2">
             {activeQuestion ? (
-                 <Button variant="ghost" onClick={handleBackToSearch}>
-                    <ArrowLeft className="mr-2 h-4 w-4" />
-                    Back to Search
+                 <Button variant="ghost" size="icon" onClick={handleBackToSearch}>
+                    <ArrowLeft className="h-5 w-5" />
                 </Button>
             ) : (
-                <Button variant="ghost" asChild>
+                <Button variant="ghost" size="icon" asChild>
                     <Link href="/">
-                        <ArrowLeft className="mr-2 h-4 w-4" />
-                        Back to Home
+                        <ArrowLeft className="h-5 w-5" />
                     </Link>
                 </Button>
             )}
-            <div className="absolute left-1/2 -translate-x-1/2">
-                <Logo />
-            </div>
+            <Logo />
+          </div>
             <div className="flex items-center gap-2 p-1 bg-secondary rounded-full">
               <Button
                 variant={mode === 'database' ? 'default' : 'ghost'}
