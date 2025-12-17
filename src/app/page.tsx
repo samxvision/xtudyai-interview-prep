@@ -35,7 +35,7 @@ const categories = [
     description: 'Surface prep, application, and holiday testing.',
     questions: '80+ Questions',
     href: '/search?category=Coating',
-    Icon: () => <div className="h-10 w-10 flex items-center justify-center rounded-lg bg-green-100"><svg width="20" height="20" viewBox="0.0 0.0 20.0 20.0" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="none"><path d="M4.31641 15.6836C2.93512 14.3023 2.57812 12.1602 3.42773 10.5L9.5 0L15.5723 10.5C16.4219 12.1602 16.0648 14.3023 14.6836 15.6836C13.3023 17.0648 11.1602 17.4219 9.5 16.5723L9.5 16.5723C8.83984 17.4219 7.69766 17.7793 6.31641 17.0648C5.65625 16.7078 5.09961 16.2051 4.31641 15.6836Z" fill="#10B981" fill-opacity="1" strokeLinecap="round" strokeLinejoin="round" strokeWidth="0"/><path d="M10 20C12.7614 20 15 17.7614 15 15C15 12.2386 12.7614 10 10 10C7.23858 10 5 12.2386 5 15C5 17.7614 7.23858 20 10 20Z" fill="#10B981" fill-opacity="1" strokeLinecap="round" strokeLinejoin="round" strokeWidth="0"/></svg></div>,
+    Icon: () => <div className="h-10 w-10 flex items-center justify-center rounded-lg bg-green-100"><svg width="20" height="20" viewBox="0.0 0.0 20.0 20.0" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="none"><path d="M4.31641 15.6836C2.93512 14.3023 2.57812 12.1602 3.42773 10.5L9.5 0L15.5723 10.5C16.4219 12.1602 16.0648 14.3023 14.6836 15.6836C13.3023 17.0648 11.1602 17.4219 9.5 16.5723L9.5 16.5723C8.83984 17.4219 7.69766 17.7793 6.31641 17.0648C5.65625 16.7078 5.09961 16.2051 4.31641 15.6836Z" fill="#10B981" fillOpacity="1" strokeLinecap="round" strokeLinejoin="round" strokeWidth="0"/><path d="M10 20C12.7614 20 15 17.7614 15 15C15 12.2386 12.7614 10 10 10C7.23858 10 5 12.2386 5 15C5 17.7614 7.23858 20 10 20Z" fill="#10B981" fillOpacity="1" strokeLinecap="round" strokeLinejoin="round" strokeWidth="0"/></svg></div>,
     glowColor: 'bg-green-500/10',
   },
 ];
@@ -154,3 +154,5 @@ export default function Home() {
     </div>
   );
 }
+
+    
