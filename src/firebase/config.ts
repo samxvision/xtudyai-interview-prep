@@ -1,8 +1,11 @@
+// Your web app's Firebase configuration
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 export const firebaseConfig = {
-  "projectId": "studio-8834937510-cf495",
-  "appId": "1:782363832038:web:a90abce6a587756ce1d527",
-  "apiKey": "AIzaSyDlwky3-HDY6pVOJBYVeTP6n3Ss53XEoRo",
-  "authDomain": "studio-8834937510-cf495.firebaseapp.com",
-  "measurementId": "",
-  "messagingSenderId": "782363832038"
+  apiKey: "AIzaSyDODFWb-uGQ3HzGmy3OM1a1jNYnHE7PT_M",
+  authDomain: "xtudyai-interview-d4429.firebaseapp.com",
+  projectId: "xtudyai-interview-d4429",
+  storageBucket: "xtudyai-interview-d4429.appspot.com",
+  messagingSenderId: "806786197612",
+  appId: "1:806786197612:web:c571dadaf1f8126418d049",
+  measurementId: "G-CRETD0FLMY"
 };
