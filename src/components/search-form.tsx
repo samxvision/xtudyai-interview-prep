@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -16,6 +17,7 @@ interface SearchFormProps {
   onSearchEnd?: () => void;
   className?: string;
   isFixed?: boolean;
+  isSearching?: boolean;
 }
 
 export function SearchForm({
@@ -25,9 +27,9 @@ export function SearchForm({
   onSearchEnd,
   className,
   isFixed = false,
+  isSearching = false,
 }: SearchFormProps) {
   const [query, setQuery] = useState(initialQuery);
-  const [isSearching, setIsSearching] = useState(false);
   const { toast } = useToast();
   const { isLoading: areQuestionsLoading } = useAppContext();
   const {
@@ -50,7 +52,6 @@ export function SearchForm({
   const handleSearch = () => {
     if (!query.trim() || isSearching) return;
 
-    setIsSearching(true);
     onSearchStart?.();
 
     if (onSearch) {
@@ -62,8 +63,6 @@ export function SearchForm({
             variant: 'destructive',
         });
     }
-
-    setIsSearching(false);
     onSearchEnd?.();
   };
 
@@ -79,6 +78,8 @@ export function SearchForm({
     startListening('en-US'); // Can be toggled to 'hi-IN'
   };
 
+  const isDisabled = isSearching || areQuestionsLoading;
+
   return (
     <Card className={className}>
       <div className="flex w-full items-center space-x-2 p-2">
@@ -90,19 +91,19 @@ export function SearchForm({
           onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
           className="flex-grow text-base"
           aria-label="Search question"
-          disabled={isSearching || areQuestionsLoading}
+          disabled={isDisabled}
         />
         <Button
           variant="secondary"
           size="icon"
           onClick={handleVoiceSearch}
-          disabled={isSearching || areQuestionsLoading}
+          disabled={isDisabled}
           className={`${isListening ? 'bg-red-500 hover:bg-red-600 text-white animate-pulse' : 'bg-primary/20 hover:bg-primary/30'}`}
           aria-label="Search with voice"
         >
           <Mic className="h-5 w-5" />
         </Button>
-        <Button onClick={handleSearch} disabled={isSearching || !query.trim() || areQuestionsLoading} className="bg-foreground hover:bg-foreground/90">
+        <Button onClick={handleSearch} disabled={isDisabled || !query.trim()} className="bg-foreground hover:bg-foreground/90">
           {isSearching ? (
             <Loader2 className="h-5 w-5 animate-spin" />
           ) : (
