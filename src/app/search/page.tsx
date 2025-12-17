@@ -56,42 +56,6 @@ export default function SearchPage() {
     setActiveQuestion(null);
   };
 
-  if (activeQuestion) {
-    return (
-      <div className="flex flex-col min-h-screen bg-secondary/50">
-        <header className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm p-4 border-b">
-          <div className="container mx-auto flex justify-between items-center">
-            <Button variant="ghost" onClick={handleBackToSearch}>
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Search
-            </Button>
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">Mode:</span>
-              <span className="font-semibold text-sm py-1 px-2.5 rounded-full bg-primary/10 text-primary border border-primary/20">
-                Database
-              </span>
-            </div>
-          </div>
-        </header>
-
-        <main className="flex-grow py-8 md:py-12 px-4">
-          <AnswerCard question={activeQuestion} initialLang={initialLang} />
-        </main>
-
-        <footer className="sticky bottom-0 z-10 bg-background/80 backdrop-blur-sm p-4 border-t">
-          <div className="container mx-auto max-w-2xl">
-            <p className="text-sm font-semibold text-center mb-2">Ask another question</p>
-            <SearchForm
-              onSearch={handleSearch}
-              initialQuery={activeQuestion[`question_${initialLang}`]}
-              isFixed={true}
-            />
-          </div>
-        </footer>
-      </div>
-    );
-  }
-
   return (
     <div className="flex flex-col min-h-screen bg-background p-4 sm:p-6 lg:p-8">
       <header className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-8">
@@ -121,25 +85,54 @@ export default function SearchPage() {
         </div>
       </header>
 
-      <main className="flex-grow flex flex-col items-center justify-center text-center">
+      <main className="flex-grow flex flex-col items-center justify-center">
         {areQuestionsLoading ? (
-            <div className="flex flex-col items-center gap-4">
-                <Loader2 className="h-12 w-12 animate-spin text-primary" />
-                <p className="text-muted-foreground">Preparing the knowledge base...</p>
-            </div>
-        ) : (
-            <>
-                <div className={`mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-primary/10`}>
-                    <CurrentModeIcon className={`h-10 w-10 ${modeConfig[mode].color}`} />
+          <div className="flex flex-col items-center gap-4">
+            <Loader2 className="h-12 w-12 animate-spin text-primary" />
+            <p className="text-muted-foreground">Preparing the knowledge base...</p>
+          </div>
+        ) : activeQuestion ? (
+          <div className="w-full">
+            <header className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm p-4 -mx-4 -mt-8 mb-4 border-b">
+                <div className="container mx-auto flex justify-between items-center">
+                    <Button variant="ghost" onClick={handleBackToSearch}>
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Back to Search
+                    </Button>
+                    <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">Mode:</span>
+                    <span className="font-semibold text-sm py-1 px-2.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                        Database
+                    </span>
+                    </div>
                 </div>
-                <h1 className="font-headline text-3xl sm:text-4xl font-bold mb-2">{modeConfig[mode].title}</h1>
-                <p className="text-muted-foreground max-w-md mb-8">
-                    {modeConfig[mode].description}
-                </p>
-                <SearchForm onSearch={handleSearch} className="w-full max-w-2xl shadow-lg" />
-            </>
+            </header>
+            <AnswerCard question={activeQuestion} initialLang={initialLang} />
+          </div>
+        ) : (
+          <div className="flex flex-col items-center text-center">
+            <div className={`mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-primary/10`}>
+                <CurrentModeIcon className={`h-10 w-10 ${modeConfig[mode].color}`} />
+            </div>
+            <h1 className="font-headline text-3xl sm:text-4xl font-bold mb-2">{modeConfig[mode].title}</h1>
+            <p className="text-muted-foreground max-w-md mb-8">
+                {modeConfig[mode].description}
+            </p>
+          </div>
         )}
       </main>
+
+      {!areQuestionsLoading && (
+        <footer className="sticky bottom-0 z-10 bg-transparent py-4">
+          <div className="container mx-auto max-w-2xl">
+            <SearchForm
+              onSearch={handleSearch}
+              initialQuery={activeQuestion ? activeQuestion[`question_${initialLang}`] : ''}
+              className="shadow-lg"
+            />
+          </div>
+        </footer>
+      )}
     </div>
   );
 }
