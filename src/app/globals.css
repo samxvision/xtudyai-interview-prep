@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -10,7 +11,7 @@
     --card-foreground: 224 71% 4%;
     --popover: 0 0% 100%;
     --popover-foreground: 224 71% 4%;
-    --primary: 221 83% 53%;
+    --primary: 34 90% 55%;
     --primary-foreground: 0 0% 100%;
     --secondary: 220 13% 91%;
     --secondary-foreground: 224 71% 4%;
@@ -46,7 +47,7 @@
     --card-foreground: 220 20% 98%;
     --popover: 224 71% 4%;
     --popover-foreground: 220 20% 98%;
-    --primary: 217 91% 60%;
+    --primary: 34 90% 55%;
     --primary-foreground: 0 0% 100%;
     --secondary: 220 13% 18%;
     --secondary-foreground: 220 20% 98%;
@@ -83,3 +84,5 @@
     @apply bg-background text-foreground;
   }
 }
+
+    
