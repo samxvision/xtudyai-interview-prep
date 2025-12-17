@@ -1,0 +1,146 @@
+{
+  "entities": {
+    "Question": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Question",
+      "type": "object",
+      "description": "Represents a question and its associated data for the XtudyAI interview preparation application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the question."
+        },
+        "question_en": {
+          "type": "string",
+          "description": "The question text in English."
+        },
+        "question_hi": {
+          "type": "string",
+          "description": "The question text in Hindi (Hinglish)."
+        },
+        "normalized_en": {
+          "type": "string",
+          "description": "The normalized version of the question in English (lowercase, punctuation removed) for matching."
+        },
+        "normalized_hi": {
+          "type": "string",
+          "description": "The normalized version of the question in Hindi (Hinglish) for matching."
+        },
+        "keywords_en": {
+          "type": "array",
+          "description": "An array of keywords associated with the question in English.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "keywords_hi": {
+          "type": "array",
+          "description": "An array of keywords associated with the question in Hindi (Hinglish).",
+          "items": {
+            "type": "string"
+          }
+        },
+        "shortAnswer_en": {
+          "type": "string",
+          "description": "A short, concise answer to the question in English."
+        },
+        "shortAnswer_hi": {
+          "type": "string",
+          "description": "A short, concise answer to the question in Hindi (Hinglish)."
+        },
+        "longAnswer_en": {
+          "type": "string",
+          "description": "A detailed, comprehensive answer to the question in English."
+        },
+        "longAnswer_hi": {
+          "type": "string",
+          "description": "A detailed, comprehensive answer to the question in Hindi (Hinglish)."
+        },
+        "summaryPoints_en": {
+          "type": "array",
+          "description": "An array of key takeaway points summarizing the answer in English.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "summaryPoints_hi": {
+          "type": "array",
+          "description": "An array of key takeaway points summarizing the answer in Hindi (Hinglish).",
+          "items": {
+            "type": "string"
+          }
+        },
+        "category": {
+          "type": "string",
+          "description": "The category the question belongs to (e.g., Welding, NDT, Piping)."
+        },
+        "difficulty": {
+          "type": "string",
+          "description": "The difficulty level of the question (easy, medium, hard)."
+        },
+        "tags": {
+          "type": "array",
+          "description": "An array of tags associated with the question.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "source": {
+          "type": "string",
+          "description": "The source of the question (e.g., textbook, website)."
+        },
+        "viewCount": {
+          "type": "number",
+          "description": "The number of times the question has been viewed."
+        }
+      },
+      "required": [
+        "id",
+        "question_en",
+        "question_hi",
+        "normalized_en",
+        "normalized_hi",
+        "keywords_en",
+        "keywords_hi",
+        "shortAnswer_en",
+        "shortAnswer_hi",
+        "longAnswer_en",
+        "longAnswer_hi",
+        "summaryPoints_en",
+        "summaryPoints_hi",
+        "category",
+        "difficulty",
+        "tags",
+        "source",
+        "viewCount"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/questions/{questionId}",
+        "definition": {
+          "entityName": "Question",
+          "schema": {
+            "$ref": "#/backend/entities/Question"
+          },
+          "description": "Stores interview questions and their metadata. The `questionId` is the unique identifier for each question.",
+          "params": [
+            {
+              "name": "questionId",
+              "description": "The unique identifier for the question."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to store interview questions and answers for the XtudyAI application. A single `questions` collection stores all question documents. This design prioritizes simplicity for the defined app requirements. Since all questions share the same security requirements (public read access), structural segregation is not needed. Authorization Independence isn't a concern as there are no complex user-based permissions or relationships to manage beyond public read access as indicated by the firebase rules."
+  }
+}
