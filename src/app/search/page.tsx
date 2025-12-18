@@ -2,7 +2,7 @@
 "use client";
 
 import Link from 'next/link';
-import { useState, useEffect, useCallback, useTransition } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Database, Sparkles, Layers, Loader2 } from 'lucide-react';
 import { SearchForm } from '@/components/search-form';
@@ -15,7 +15,7 @@ import { generateAiAnswer, GenerateAiAnswerOutput } from '@/ai/flows/generate-ai
 import { useToast } from '@/hooks/use-toast';
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { useFirestore } from '@/firebase';
-import { collection, serverTimestamp } from 'firebase/firestore';
+import { collection } from 'firebase/firestore';
 import { normalizeText } from '@/lib/matching';
 
 type SearchMode = 'database' | 'ai' | 'hybrid';
@@ -71,13 +71,10 @@ export default function SearchPage() {
             difficulty: 'medium',
             tags: ['AI-Learned'],
             source: source,
-            viewCount: 1,
+            viewCount: 0,
         };
-        // This is a non-blocking call
         const newDocPromise = addDocumentNonBlocking(questionsCollection, newQuestionDoc);
-        console.log("Started saving new question to database.");
-
-        // We can optionally wait for it to get the ID and add it to the local state
+        
         newDocPromise.then(docRef => {
             if (docRef) {
                 const newQuestionWithId: Question = { ...newQuestionDoc, id: docRef.id };
@@ -136,7 +133,6 @@ export default function SearchPage() {
         if (dbResult) {
             setActiveQuestion(dbResult.question);
         } else {
-            // Rule: Show message and learn in background
             toast({ title: "Data not found.", description: "Please search after some time." });
             // Background learning
             generateAiAnswer({ question: query, language: detectedLang }).then(aiResult => {
@@ -147,26 +143,25 @@ export default function SearchPage() {
         }
         setIsLoading(false);
     } else if (mode === 'ai') {
-        // Rule: Parallel execution
-        const aiTask = performAiSearch(query, detectedLang);
+        // Task A: AI Task (await to show result to user)
+        const aiResult = await performAiSearch(query, detectedLang);
         
-        // Firestore task in parallel (non-blocking)
-        (async () => {
-            const dbResult = findBestMatch(query);
-            if (!dbResult) {
-                const aiResult = await aiTask; // Wait for the AI task to complete
-                if (aiResult) {
+        // Task B: Firestore Task (in background, non-blocking)
+        if (aiResult) {
+             (async () => {
+                const dbResult = findBestMatch(query);
+                if (!dbResult) {
                     saveNewQuestion(query, detectedLang, aiResult, 'ai-generated');
                 }
-            }
-        })();
+            })();
+        }
 
     } else if (mode === 'hybrid') {
         const dbResult = findBestMatch(query);
-        if (dbResult) { // Rule: If strong match exists
+        if (dbResult) {
             setActiveQuestion(dbResult.question);
             setIsLoading(false);
-        } else { // Rule: If no match, use AI and learn
+        } else { 
             const aiResult = await performAiSearch(query, detectedLang);
             if(aiResult) {
                 // Background learning
@@ -177,7 +172,7 @@ export default function SearchPage() {
   };
 
 
-  const isPageLoading = areQuestionsLoading || isLoading;
+  const isPageLoading = areQuestionsLoading;
 
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground font-body">
@@ -221,12 +216,18 @@ export default function SearchPage() {
       </header>
 
       <main className="flex-grow flex flex-col items-center justify-center container mx-auto px-4 pt-8 pb-32">
-        {isPageLoading ? (
+        {isPageLoading && !activeQuestion ? (
           <div className="flex flex-col items-center gap-4 text-center">
             <Loader2 className="h-12 w-12 animate-spin text-primary" />
-            <h2 className="text-xl font-semibold">{isLoading ? 'Consulting AI Expert...' : 'Preparing knowledge base...'}</h2>
+            <h2 className="text-xl font-semibold">Preparing knowledge base...</h2>
             <p className="text-muted-foreground">Please wait a moment.</p>
           </div>
+        ) : isLoading ? (
+             <div className="flex flex-col items-center gap-4 text-center">
+                <Loader2 className="h-12 w-12 animate-spin text-primary" />
+                <h2 className="text-xl font-semibold">Consulting AI Expert...</h2>
+                <p className="text-muted-foreground">Please wait a moment.</p>
+            </div>
         ) : activeQuestion ? (
           <div className="w-full max-w-4xl">
             <AnswerCard question={activeQuestion} initialLang={initialLang} />
@@ -261,5 +262,3 @@ export default function SearchPage() {
     </div>
   );
 }
-
-    
