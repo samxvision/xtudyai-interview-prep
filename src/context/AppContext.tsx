@@ -4,7 +4,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import type { Question } from '@/types';
 import { initializeFirebase } from '@/firebase';
-import { getFirestore, collection, onSnapshot, QuerySnapshot, DocumentData } from 'firebase/firestore';
+import { getFirestore, collection, getDocs, QuerySnapshot, DocumentData, onSnapshot } from 'firebase/firestore';
 
 interface AppContextType {
   questions: Question[];
@@ -20,31 +20,46 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [areQuestionsLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    setIsLoading(true);
+    const fetchQuestions = async () => {
+        setIsLoading(true);
+        try {
+            const { firestore } = initializeFirebase();
+            const questionsCollection = collection(firestore, 'questions');
+            const snapshot = await getDocs(questionsCollection);
+            
+            if (snapshot.empty) {
+                console.log('No questions found in Firestore. Setting up a listener for future additions.');
+                setQuestions([]);
+            } else {
+                const fetchedQuestions = snapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data() as Omit<Question, 'id'>
+                }));
+                setQuestions(fetchedQuestions);
+            }
+        } catch (error) {
+            console.error("Error fetching initial questions from Firestore:", error);
+            setQuestions([]);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    fetchQuestions();
+
+    // Set up a real-time listener to catch questions added *after* the initial load.
     const { firestore } = initializeFirebase();
     const questionsCollection = collection(firestore, 'questions');
-    
-    const unsubscribe = onSnapshot(
-      questionsCollection, 
-      (snapshot: QuerySnapshot<DocumentData>) => {
-        if (snapshot.empty) {
-          console.log('No questions found in Firestore. Listening for updates.');
-          setQuestions([]);
-        } else {
-          const fetchedQuestions = snapshot.docs.map(doc => ({
+    const unsubscribe = onSnapshot(questionsCollection, (snapshot: QuerySnapshot<DocumentData>) => {
+        const newQuestions = snapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data() as Omit<Question, 'id'>
           }));
-          setQuestions(fetchedQuestions);
-        }
-        setIsLoading(false);
-      },
-      (error) => {
-        console.error("Error fetching questions from Firestore:", error);
-        setQuestions([]);
-        setIsLoading(false);
-      }
-    );
+        // This keeps the local state in sync with the database without a full refetch
+        setQuestions(newQuestions);
+    }, (error) => {
+        console.error("Error with real-time question listener:", error);
+    });
 
     // Cleanup subscription on unmount
     return () => unsubscribe();
