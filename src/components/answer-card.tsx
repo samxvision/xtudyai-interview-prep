@@ -117,7 +117,7 @@ export function AnswerCard({ question, initialLang }: AnswerCardProps) {
             <AccordionTrigger className="text-sm font-semibold uppercase text-muted-foreground">
               Detailed Explanation
             </AccordionTrigger>
-            <AccordionContent className="prose prose-lg dark:prose-invert max-w-none pt-4 text-foreground/80">
+            <AccordionContent className="prose-lg dark:prose-invert max-w-none pt-4 text-foreground/80">
               <div className="text-lg leading-relaxed">
                 {renderMarkdown(question[`longAnswer_${lang}`])}
               </div>
