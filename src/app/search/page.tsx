@@ -2,7 +2,7 @@
 "use client";
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Database, Sparkles, Layers, Loader2 } from 'lucide-react';
 import { SearchForm } from '@/components/search-form';
@@ -135,17 +135,11 @@ export default function SearchPage() {
        <header className="sticky top-0 z-20 bg-background/80 backdrop-blur-sm border-b">
         <div className="container mx-auto px-4 py-3 flex justify-between items-center">
           <div className="flex items-center gap-2">
-            {activeQuestion ? (
-                 <Button variant="ghost" size="icon" onClick={handleBackToSearch}>
+            <Button variant="ghost" size="icon" asChild>
+                <Link href="/">
                     <ArrowLeft className="h-5 w-5" />
-                </Button>
-            ) : (
-                <Button variant="ghost" size="icon" asChild>
-                    <Link href="/">
-                        <ArrowLeft className="h-5 w-5" />
-                    </Link>
-                </Button>
-            )}
+                </Link>
+            </Button>
              <Logo />
           </div>
             <div className="flex items-center gap-1 p-1 bg-secondary rounded-full">

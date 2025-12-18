@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { Question } from '@/types';
 import {
   Card,
@@ -28,17 +28,26 @@ interface AnswerCardProps {
 
 // Simple markdown to HTML renderer
 const renderMarkdown = (text: string) => {
-  const boldRegex = /\*\*(.*?)\*\*/g;
-  const html = text.replace(boldRegex, '<strong>$1</strong>');
-  // Since the original code splits by newline, we'll do the same and wrap in paragraphs.
-  return html.split('\n').map((para, i) => (
-    <p key={i} dangerouslySetInnerHTML={{ __html: para }} />
-  ));
-};
+    if (!text) return [];
+    // Process bold first
+    let processedText = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    
+    // Then split into paragraphs
+    const paragraphs = processedText.split('\n').filter(p => p.trim() !== '');
+  
+    return paragraphs.map((para, i) => (
+      <p key={i} className="mb-4 last:mb-0" dangerouslySetInnerHTML={{ __html: para }} />
+    ));
+  };
 
 
 export function AnswerCard({ question, initialLang }: AnswerCardProps) {
   const [lang, setLang] = useState<'en' | 'hi'>(initialLang);
+
+  useEffect(() => {
+    setLang(initialLang);
+  }, [initialLang, question]);
+
 
   const toggleLanguage = () => {
     setLang((prevLang) => (prevLang === 'en' ? 'hi' : 'en'));
@@ -94,7 +103,7 @@ export function AnswerCard({ question, initialLang }: AnswerCardProps) {
             Key Takeaways
           </h3>
           <ul className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3">
-            {question[`summaryPoints_${lang}`].map((point, index) => (
+            {question[`summaryPoints_${lang}`] && question[`summaryPoints_${lang}`].map((point, index) => (
               <li key={index} className="flex items-start gap-3">
                 <CheckCircle className="w-5 h-5 text-green-500 mt-1 shrink-0" />
                 <span className="text-lg">{point}</span>
