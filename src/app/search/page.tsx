@@ -51,9 +51,9 @@ export default function SearchPage() {
   const CurrentModeIcon = modeConfig[mode].icon;
 
   const handleSearch = async (query: string) => {
+    setActiveQuestion(null);
     const detectedLang = detectLanguage(query);
     setInitialLang(detectedLang);
-    setActiveQuestion(null);
 
     if (mode === 'database') {
       const result = findBestMatch(query);
