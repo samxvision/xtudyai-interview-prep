@@ -12,6 +12,7 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
+import { googleAI } from '@genkit-ai/google-genai';
 
 const GenerateAiAnswerInputSchema = z.object({
   question: z.string().describe('The user\'s question.'),
@@ -39,6 +40,7 @@ const prompt = ai.definePrompt({
   name: 'generateAiAnswerPrompt',
   input: { schema: GenerateAiAnswerInputSchema },
   output: { schema: GenerateAiAnswerOutputSchema },
+  model: googleAI.model('gemini-pro'),
   prompt: `You are an expert in Oil and Gas QA/QC interview questions. The user has asked a question in {{language}}.
 Your task is to provide a comprehensive and structured answer in BOTH English and Hindi (Hinglish).
 
