@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from 'react';
@@ -18,11 +19,23 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import { Bookmark, Share, ThumbsUp, ThumbsDown, CheckCircle } from 'lucide-react';
+import React from 'react';
 
 interface AnswerCardProps {
   question: Question;
   initialLang: 'en' | 'hi';
 }
+
+// Simple markdown to HTML renderer
+const renderMarkdown = (text: string) => {
+  const boldRegex = /\*\*(.*?)\*\*/g;
+  const html = text.replace(boldRegex, '<strong>$1</strong>');
+  // Since the original code splits by newline, we'll do the same and wrap in paragraphs.
+  return html.split('\n').map((para, i) => (
+    <p key={i} dangerouslySetInnerHTML={{ __html: para }} />
+  ));
+};
+
 
 export function AnswerCard({ question, initialLang }: AnswerCardProps) {
   const [lang, setLang] = useState<'en' | 'hi'>(initialLang);
@@ -84,19 +97,21 @@ export function AnswerCard({ question, initialLang }: AnswerCardProps) {
             {question[`summaryPoints_${lang}`].map((point, index) => (
               <li key={index} className="flex items-start gap-3">
                 <CheckCircle className="w-5 h-5 text-green-500 mt-1 shrink-0" />
-                <span>{point}</span>
+                <span className="text-lg">{point}</span>
               </li>
             ))}
           </ul>
         </div>
 
-        <Accordion type="single" collapsible>
+        <Accordion type="single" collapsible defaultValue="item-1">
           <AccordionItem value="item-1">
             <AccordionTrigger className="text-sm font-semibold uppercase text-muted-foreground">
               Detailed Explanation
             </AccordionTrigger>
             <AccordionContent className="prose prose-lg dark:prose-invert max-w-none pt-4 text-foreground/80">
-              {question[`longAnswer_${lang}`].split('\n').map((para, i) => <p key={i}>{para}</p>)}
+              <div className="text-lg leading-relaxed">
+                {renderMarkdown(question[`longAnswer_${lang}`])}
+              </div>
             </AccordionContent>
           </AccordionItem>
         </Accordion>
