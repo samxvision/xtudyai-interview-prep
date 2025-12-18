@@ -2,7 +2,7 @@
 "use client";
 
 import Link from 'next/link';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useTransition } from 'react';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Database, Sparkles, Layers, Loader2 } from 'lucide-react';
 import { SearchForm } from '@/components/search-form';
@@ -11,7 +11,7 @@ import { Logo } from '@/components/logo';
 import { AnswerCard } from '@/components/answer-card';
 import type { Question } from '@/types';
 import { detectLanguage } from '@/lib/language';
-import { generateAiAnswer } from '@/ai/flows/generate-ai-answer';
+import { generateAiAnswer, GenerateAiAnswerOutput } from '@/ai/flows/generate-ai-answer';
 import { useToast } from '@/hooks/use-toast';
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { useFirestore } from '@/firebase';
@@ -48,111 +48,136 @@ export default function SearchPage() {
   const [mode, setMode] = useState<SearchMode>('database');
   const [activeQuestion, setActiveQuestion] = useState<Question | null>(null);
   const [initialLang, setInitialLang] = useState<'en' | 'hi'>('en');
-  const [isAiSearching, setIsAiSearching] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   
-  const { isLoading: areQuestionsLoading, findBestMatch } = useAppContext();
+  const { areQuestionsLoading, findBestMatch, addLearnedQuestion } = useAppContext();
   const { toast } = useToast();
   const CurrentModeIcon = modeConfig[mode].icon;
   const firestore = useFirestore();
 
-  const saveNewQuestion = useCallback(async (query: string, language: 'en' | 'hi', aiResponse: Omit<Question, 'id' | 'question_en' | 'question_hi' | 'normalized_en' | 'normalized_hi' | 'keywords_en' | 'keywords_hi' | 'category' | 'difficulty' | 'tags' | 'source' | 'viewCount' >) => {
+  const saveNewQuestion = useCallback(async (query: string, language: 'en' | 'hi', aiResponse: GenerateAiAnswerOutput, source: 'ai-generated' | 'hybrid-learning' | 'expert-database') => {
     if (!firestore) return;
     try {
         const questionsCollection = collection(firestore, 'questions');
         const newQuestionDoc: Omit<Question, 'id'> = {
             ...aiResponse,
-            question_en: language === 'en' ? query : '(AI Generated Answer)', // We need a way to get the English version if asked in Hindi
-            question_hi: language === 'hi' ? query : '(एआई जनरेटेड उत्तर)', // And vice versa
+            question_en: language === 'en' ? query : '(AI Generated Answer)',
+            question_hi: language === 'hi' ? query : '(एआई जनरेटेड उत्तर)',
             normalized_en: normalizeText(language === 'en' ? query : aiResponse.shortAnswer_en),
             normalized_hi: normalizeText(language === 'hi' ? query : aiResponse.shortAnswer_hi),
-            keywords_en: [], // AI doesn't generate these yet
-            keywords_hi: [], // AI doesn't generate these yet
+            keywords_en: [],
+            keywords_hi: [],
             category: 'AI Added',
             difficulty: 'medium',
             tags: ['AI-Learned'],
-            source: 'AI Self-Learning',
+            source: source,
             viewCount: 1,
-            // @ts-ignore - serverTimestamp is not in the type but is valid
-            createdAt: serverTimestamp(),
         };
-        await addDocumentNonBlocking(questionsCollection, newQuestionDoc);
-        console.log("New question saved to database.");
+        // This is a non-blocking call
+        const newDocPromise = addDocumentNonBlocking(questionsCollection, newQuestionDoc);
+        console.log("Started saving new question to database.");
+
+        // We can optionally wait for it to get the ID and add it to the local state
+        newDocPromise.then(docRef => {
+            if (docRef) {
+                const newQuestionWithId: Question = { ...newQuestionDoc, id: docRef.id };
+                addLearnedQuestion(newQuestionWithId);
+                console.log("New question saved and added to local context:", docRef.id);
+            }
+        });
+
     } catch (error) {
         console.error("Failed to save new question:", error);
     }
-  }, [firestore]);
+  }, [firestore, addLearnedQuestion]);
+
+  const performAiSearch = useCallback(async (query: string, language: 'en' | 'hi') => {
+      setIsLoading(true);
+      setActiveQuestion(null);
+      try {
+          const aiResult = await generateAiAnswer({ question: query, language: language });
+          const aiQuestion: Question = {
+              ...aiResult,
+              id: `ai-${Date.now()}`,
+              question_en: language === 'en' ? query : aiResult.shortAnswer_en,
+              question_hi: language === 'hi' ? query : aiResult.shortAnswer_hi,
+              normalized_en: normalizeText(language === 'en' ? query : aiResult.shortAnswer_en),
+              normalized_hi: normalizeText(language === 'hi' ? query : aiResult.shortAnswer_hi),
+              keywords_en: [],
+              keywords_hi: [],
+              category: 'AI Generated',
+              difficulty: 'medium',
+              tags: ['AI'],
+              source: 'ai-generated',
+              viewCount: 0
+          };
+          setInitialLang(language);
+          setActiveQuestion(aiQuestion);
+          return aiResult; // Return the raw AI result for saving
+      } catch (error) {
+          console.error("AI search failed:", error);
+          toast({ variant: "destructive", title: "AI Search Failed", description: "Could not get a response from the AI expert." });
+          return null;
+      } finally {
+          setIsLoading(false);
+      }
+  }, [toast]);
 
 
   const handleSearch = async (query: string) => {
     setActiveQuestion(null);
+    setIsLoading(true);
+
     const detectedLang = detectLanguage(query);
     setInitialLang(detectedLang);
 
-    const performAiSearch = async (isNewQuestion: boolean) => {
-        setIsAiSearching(true);
-        try {
-            if (isNewQuestion) {
-                 toast({ title: "No database match.", description: "Consulting AI expert to learn..." });
-            }
-            const aiResult = await generateAiAnswer({ question: query, language: detectedLang });
-            const aiQuestion: Question = {
-                ...aiResult,
-                id: `ai-${Date.now()}`,
-                question_en: detectedLang === 'en' ? query : '(AI Generated Answer)',
-                question_hi: detectedLang === 'hi' ? query : '(एआई जनरेटेड उत्तर)',
-                normalized_en: '',
-                normalized_hi: '',
-                keywords_en: [],
-                keywords_hi: [],
-                category: 'AI Generated',
-                difficulty: 'medium',
-                tags: ['AI'],
-                source: 'AI Expert',
-                viewCount: 0
-            };
-            setActiveQuestion(aiQuestion);
-            
-            // Save the new question if it's not a duplicate
-            if (isNewQuestion) {
-                saveNewQuestion(query, detectedLang, aiResult);
-            }
-
-        } catch (error) {
-            console.error("AI search failed:", error);
-            toast({ variant: "destructive", title: "AI Search Failed", description: "Could not get a response from the AI expert." });
-        } finally {
-            setIsAiSearching(false);
-        }
-    }
-
-
-    const dbResult = findBestMatch(query);
-
     if (mode === 'database') {
-      if (dbResult) {
-        setActiveQuestion(dbResult.question);
-      } else {
-        toast({ title: "No match found", description: "Learning this question for the future."});
-        performAiSearch(true); // Learn in the background, but don't show user AI result in this mode
-        setActiveQuestion(null); // Keep the page empty
-      }
-    } else if (mode === 'ai') {
-        performAiSearch(!dbResult); // If no dbResult, it's a new question
-    } else if (mode === 'hybrid') {
+        const dbResult = findBestMatch(query);
         if (dbResult) {
             setActiveQuestion(dbResult.question);
         } else {
-            performAiSearch(true); // No match, so it's a new question to be learned
+            // Rule: Show message and learn in background
+            toast({ title: "Data not found.", description: "Please search after some time." });
+            // Background learning
+            generateAiAnswer({ question: query, language: detectedLang }).then(aiResult => {
+                if (aiResult) {
+                    saveNewQuestion(query, detectedLang, aiResult, 'expert-database');
+                }
+            });
+        }
+        setIsLoading(false);
+    } else if (mode === 'ai') {
+        // Rule: Parallel execution
+        const aiTask = performAiSearch(query, detectedLang);
+        
+        // Firestore task in parallel (non-blocking)
+        (async () => {
+            const dbResult = findBestMatch(query);
+            if (!dbResult) {
+                const aiResult = await aiTask; // Wait for the AI task to complete
+                if (aiResult) {
+                    saveNewQuestion(query, detectedLang, aiResult, 'ai-generated');
+                }
+            }
+        })();
+
+    } else if (mode === 'hybrid') {
+        const dbResult = findBestMatch(query);
+        if (dbResult) { // Rule: If strong match exists
+            setActiveQuestion(dbResult.question);
+            setIsLoading(false);
+        } else { // Rule: If no match, use AI and learn
+            const aiResult = await performAiSearch(query, detectedLang);
+            if(aiResult) {
+                // Background learning
+                saveNewQuestion(query, detectedLang, aiResult, 'hybrid-learning');
+            }
         }
     }
   };
 
 
-  const handleBackToSearch = () => {
-    setActiveQuestion(null);
-  };
-
-  const isPageLoading = areQuestionsLoading || isAiSearching;
+  const isPageLoading = areQuestionsLoading || isLoading;
 
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground font-body">
@@ -199,7 +224,7 @@ export default function SearchPage() {
         {isPageLoading ? (
           <div className="flex flex-col items-center gap-4 text-center">
             <Loader2 className="h-12 w-12 animate-spin text-primary" />
-            <h2 className="text-xl font-semibold">{isAiSearching ? 'Consulting AI Expert...' : 'Preparing knowledge base...'}</h2>
+            <h2 className="text-xl font-semibold">{isLoading ? 'Consulting AI Expert...' : 'Preparing knowledge base...'}</h2>
             <p className="text-muted-foreground">Please wait a moment.</p>
           </div>
         ) : activeQuestion ? (
@@ -226,7 +251,7 @@ export default function SearchPage() {
           <div className="container mx-auto max-w-2xl px-4">
             <SearchForm
               onSearch={handleSearch}
-              isSearching={isAiSearching}
+              isSearching={isLoading}
               initialQuery={activeQuestion ? activeQuestion[`question_${initialLang}`] : ''}
               className="shadow-2xl shadow-primary/10"
             />
@@ -236,3 +261,5 @@ export default function SearchPage() {
     </div>
   );
 }
+
+    

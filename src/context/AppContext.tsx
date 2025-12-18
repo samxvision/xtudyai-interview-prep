@@ -1,3 +1,4 @@
+
 "use client";
 
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
@@ -10,6 +11,7 @@ interface AppContextType {
   isLoading: boolean;
   getQuestionById: (id: string) => Question | undefined;
   findBestMatch: (query: string) => { question: Question; score: number } | null;
+  addLearnedQuestion: (question: Question) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -34,6 +36,13 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     },
     [questions]
   );
+  
+  const addLearnedQuestion = useCallback((question: Question) => {
+    // Avoid adding duplicates
+    if (!questions.some(q => q.id === question.id)) {
+      setQuestions(prevQuestions => [...prevQuestions, question]);
+    }
+  }, [questions]);
 
   const findBestMatch = (query: string) => {
     if (isLoading || questions.length === 0) return null;
@@ -45,6 +54,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     isLoading,
     getQuestionById,
     findBestMatch,
+    addLearnedQuestion,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
@@ -57,3 +67,5 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+
+    
