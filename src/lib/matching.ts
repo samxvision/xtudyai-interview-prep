@@ -6,7 +6,8 @@ import { detectLanguage } from './language';
 /**
  * Normalizes text by converting to lowercase, removing punctuation, and trimming whitespace.
  */
-const normalizeText = (text: string): string => {
+export const normalizeText = (text: string): string => {
+  if (!text) return '';
   return text
     .toLowerCase()
     .replace(/[?!.,।]/g, '') // Remove common punctuation for both English and Hindi
@@ -125,6 +126,8 @@ export const findBestMatch = (
 
   for (const question of questions) {
     const normalizedQuestion = queryLang === 'hi' ? question.normalized_hi : question.normalized_en;
+    if(!normalizedQuestion) continue;
+    
     const keywords = queryLang === 'hi' ? question.keywords_hi : question.keywords_en;
 
     const exactMatchScore = calculateExactMatchScore(normalizedQuery, normalizedQuestion);

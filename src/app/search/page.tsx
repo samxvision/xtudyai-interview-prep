@@ -2,7 +2,7 @@
 "use client";
 
 import Link from 'next/link';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Database, Sparkles, Layers, Loader2 } from 'lucide-react';
 import { SearchForm } from '@/components/search-form';
@@ -13,6 +13,10 @@ import type { Question } from '@/types';
 import { detectLanguage } from '@/lib/language';
 import { generateAiAnswer } from '@/ai/flows/generate-ai-answer';
 import { useToast } from '@/hooks/use-toast';
+import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { useFirestore } from '@/firebase';
+import { collection, serverTimestamp } from 'firebase/firestore';
+import { normalizeText } from '@/lib/matching';
 
 type SearchMode = 'database' | 'ai' | 'hybrid';
 
@@ -49,22 +53,47 @@ export default function SearchPage() {
   const { isLoading: areQuestionsLoading, findBestMatch } = useAppContext();
   const { toast } = useToast();
   const CurrentModeIcon = modeConfig[mode].icon;
+  const firestore = useFirestore();
+
+  const saveNewQuestion = useCallback(async (query: string, language: 'en' | 'hi', aiResponse: Omit<Question, 'id' | 'question_en' | 'question_hi' | 'normalized_en' | 'normalized_hi' | 'keywords_en' | 'keywords_hi' | 'category' | 'difficulty' | 'tags' | 'source' | 'viewCount' >) => {
+    if (!firestore) return;
+    try {
+        const questionsCollection = collection(firestore, 'questions');
+        const newQuestionDoc: Omit<Question, 'id'> = {
+            ...aiResponse,
+            question_en: language === 'en' ? query : '(AI Generated Answer)', // We need a way to get the English version if asked in Hindi
+            question_hi: language === 'hi' ? query : '(एआई जनरेटेड उत्तर)', // And vice versa
+            normalized_en: normalizeText(language === 'en' ? query : aiResponse.shortAnswer_en),
+            normalized_hi: normalizeText(language === 'hi' ? query : aiResponse.shortAnswer_hi),
+            keywords_en: [], // AI doesn't generate these yet
+            keywords_hi: [], // AI doesn't generate these yet
+            category: 'AI Added',
+            difficulty: 'medium',
+            tags: ['AI-Learned'],
+            source: 'AI Self-Learning',
+            viewCount: 1,
+            // @ts-ignore - serverTimestamp is not in the type but is valid
+            createdAt: serverTimestamp(),
+        };
+        await addDocumentNonBlocking(questionsCollection, newQuestionDoc);
+        console.log("New question saved to database.");
+    } catch (error) {
+        console.error("Failed to save new question:", error);
+    }
+  }, [firestore]);
+
 
   const handleSearch = async (query: string) => {
     setActiveQuestion(null);
     const detectedLang = detectLanguage(query);
     setInitialLang(detectedLang);
 
-    if (mode === 'database') {
-      const result = findBestMatch(query);
-      if (result) {
-        setActiveQuestion(result.question);
-      } else {
-        toast({ title: "No match found", description: "No relevant question found in the database."});
-      }
-    } else if (mode === 'ai') {
+    const performAiSearch = async (isNewQuestion: boolean) => {
         setIsAiSearching(true);
         try {
+            if (isNewQuestion) {
+                 toast({ title: "No database match.", description: "Consulting AI expert to learn..." });
+            }
             const aiResult = await generateAiAnswer({ question: query, language: detectedLang });
             const aiQuestion: Question = {
                 ...aiResult,
@@ -82,43 +111,38 @@ export default function SearchPage() {
                 viewCount: 0
             };
             setActiveQuestion(aiQuestion);
+            
+            // Save the new question if it's not a duplicate
+            if (isNewQuestion) {
+                saveNewQuestion(query, detectedLang, aiResult);
+            }
+
         } catch (error) {
             console.error("AI search failed:", error);
             toast({ variant: "destructive", title: "AI Search Failed", description: "Could not get a response from the AI expert." });
         } finally {
             setIsAiSearching(false);
         }
+    }
+
+
+    const dbResult = findBestMatch(query);
+
+    if (mode === 'database') {
+      if (dbResult) {
+        setActiveQuestion(dbResult.question);
+      } else {
+        toast({ title: "No match found", description: "Learning this question for the future."});
+        performAiSearch(true); // Learn in the background, but don't show user AI result in this mode
+        setActiveQuestion(null); // Keep the page empty
+      }
+    } else if (mode === 'ai') {
+        performAiSearch(!dbResult); // If no dbResult, it's a new question
     } else if (mode === 'hybrid') {
-        const dbResult = findBestMatch(query);
         if (dbResult) {
             setActiveQuestion(dbResult.question);
         } else {
-            setIsAiSearching(true);
-            try {
-                toast({ title: "No database match.", description: "Consulting AI expert..." });
-                const aiResult = await generateAiAnswer({ question: query, language: detectedLang });
-                const aiQuestion: Question = {
-                    ...aiResult,
-                    id: `ai-${Date.now()}`,
-                    question_en: detectedLang === 'en' ? query : '(AI Generated Answer)',
-                    question_hi: detectedLang === 'hi' ? query : '(एआई जनरेटेड उत्तर)',
-                    normalized_en: '',
-                    normalized_hi: '',
-                    keywords_en: [],
-                    keywords_hi: [],
-                    category: 'AI Generated',
-                    difficulty: 'medium',
-                    tags: ['AI', 'Hybrid'],
-                    source: 'AI Expert',
-                    viewCount: 0
-                };
-                setActiveQuestion(aiQuestion);
-            } catch (error) {
-                 console.error("AI search failed:", error);
-                 toast({ variant: "destructive", title: "AI Search Failed", description: "Could not get a response from the AI expert." });
-            } finally {
-                setIsAiSearching(false);
-            }
+            performAiSearch(true); // No match, so it's a new question to be learned
         }
     }
   };
