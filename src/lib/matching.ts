@@ -4,16 +4,17 @@ import { detectLanguage } from './language';
 // --- Helper Functions ---
 
 /**
- * Normalizes text by converting to lowercase, removing punctuation, and trimming whitespace.
+ * Normalizes text by converting to lowercase, removing punctuation, specific filler words, and trimming whitespace.
  */
 export const normalizeText = (text: string): string => {
   if (!text) return '';
   return text
     .toLowerCase()
-    .replace(/[?!.,।]/g, '') // Remove common punctuation for both English and Hindi
-    .replace(/\s+/g, ' ') // Collapse multiple spaces
+    .replace(/[^\w\s]/g, '') // remove punctuation
+    .replace(/\s+/g, ' ') // collapse multiple spaces
     .trim();
 };
+
 
 /**
  * Calculates the Levenshtein distance between two strings.
@@ -148,7 +149,8 @@ export const findBestMatch = (
     }
   }
 
-  if (bestMatch && bestMatch.score > 50) {
+  // Stricter threshold for a "strong match"
+  if (bestMatch && bestMatch.score > 200) { 
     return bestMatch;
   }
 

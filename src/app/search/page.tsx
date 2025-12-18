@@ -2,7 +2,7 @@
 "use client";
 
 import Link from 'next/link';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useTransition } from 'react';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Database, Sparkles, Layers, Loader2 } from 'lucide-react';
 import { SearchForm } from '@/components/search-form';
@@ -16,7 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { useFirestore } from '@/firebase';
 import { collection } from 'firebase/firestore';
-import { normalizeText } from '@/lib/matching';
+import { normalizeText, findBestMatch } from '@/lib/matching';
 
 type SearchMode = 'database' | 'ai' | 'hybrid';
 
@@ -49,14 +49,24 @@ export default function SearchPage() {
   const [activeQuestion, setActiveQuestion] = useState<Question | null>(null);
   const [initialLang, setInitialLang] = useState<'en' | 'hi'>('en');
   const [isLoading, setIsLoading] = useState(false);
-  
-  const { areQuestionsLoading, findBestMatch, addLearnedQuestion } = useAppContext();
+  const [uiMessage, setUiMessage] = useState<string | null>(null);
+
+  const { areQuestionsLoading, questions, addLearnedQuestion } = useAppContext();
   const { toast } = useToast();
   const CurrentModeIcon = modeConfig[mode].icon;
   const firestore = useFirestore();
+  const [isPending, startTransition] = useTransition();
 
   const saveNewQuestion = useCallback(async (query: string, language: 'en' | 'hi', aiResponse: GenerateAiAnswerOutput, source: 'ai-generated' | 'hybrid-learning' | 'expert-database') => {
     if (!firestore) return;
+
+    // Check for duplicates before saving
+    const existingMatch = findBestMatch(query, questions);
+    if (existingMatch && existingMatch.score > 950) { // Very high score means it's likely a duplicate
+      console.log("Duplicate question detected, not saving to Firestore.");
+      return;
+    }
+
     try {
         const questionsCollection = collection(firestore, 'questions');
         const newQuestionDoc: Omit<Question, 'id'> = {
@@ -86,11 +96,12 @@ export default function SearchPage() {
     } catch (error) {
         console.error("Failed to save new question:", error);
     }
-  }, [firestore, addLearnedQuestion]);
+  }, [firestore, addLearnedQuestion, questions]);
 
   const performAiSearch = useCallback(async (query: string, language: 'en' | 'hi') => {
       setIsLoading(true);
       setActiveQuestion(null);
+      setUiMessage(null);
       try {
           const aiResult = await generateAiAnswer({ question: query, language: language });
           const aiQuestion: Question = {
@@ -110,10 +121,11 @@ export default function SearchPage() {
           };
           setInitialLang(language);
           setActiveQuestion(aiQuestion);
-          return aiResult; // Return the raw AI result for saving
+          return aiResult; 
       } catch (error) {
           console.error("AI search failed:", error);
           toast({ variant: "destructive", title: "AI Search Failed", description: "Could not get a response from the AI expert." });
+          setUiMessage("AI failed to respond. Please try again.");
           return null;
       } finally {
           setIsLoading(false);
@@ -123,49 +135,53 @@ export default function SearchPage() {
 
   const handleSearch = async (query: string) => {
     setActiveQuestion(null);
+    setUiMessage(null);
     setIsLoading(true);
 
     const detectedLang = detectLanguage(query);
     setInitialLang(detectedLang);
 
     if (mode === 'database') {
-        const dbResult = findBestMatch(query);
+        const dbResult = findBestMatch(query, questions);
         if (dbResult) {
             setActiveQuestion(dbResult.question);
         } else {
-            toast({ title: "Data not found.", description: "Please search after some time." });
-            // Background learning
-            generateAiAnswer({ question: query, language: detectedLang }).then(aiResult => {
-                if (aiResult) {
-                    saveNewQuestion(query, detectedLang, aiResult, 'expert-database');
-                }
+            setUiMessage("Data not found. Please search after some time.");
+            // Background Learning
+            startTransition(() => {
+                generateAiAnswer({ question: query, language: detectedLang }).then(aiResult => {
+                    if (aiResult) {
+                        saveNewQuestion(query, detectedLang, aiResult, 'expert-database');
+                    }
+                });
             });
         }
         setIsLoading(false);
+
     } else if (mode === 'ai') {
         // Task A: AI Task (await to show result to user)
         const aiResult = await performAiSearch(query, detectedLang);
         
         // Task B: Firestore Task (in background, non-blocking)
         if (aiResult) {
-             (async () => {
-                const dbResult = findBestMatch(query);
-                if (!dbResult) {
-                    saveNewQuestion(query, detectedLang, aiResult, 'ai-generated');
-                }
-            })();
+             startTransition(() => {
+                saveNewQuestion(query, detectedLang, aiResult, 'ai-generated');
+            });
         }
 
     } else if (mode === 'hybrid') {
-        const dbResult = findBestMatch(query);
-        if (dbResult) {
+        const dbResult = findBestMatch(query, questions);
+        // Use a stricter threshold for "strong match" in hybrid mode
+        if (dbResult && dbResult.score > 200) {
             setActiveQuestion(dbResult.question);
             setIsLoading(false);
         } else { 
             const aiResult = await performAiSearch(query, detectedLang);
             if(aiResult) {
                 // Background learning
-                saveNewQuestion(query, detectedLang, aiResult, 'hybrid-learning');
+                startTransition(() => {
+                    saveNewQuestion(query, detectedLang, aiResult, 'hybrid-learning');
+                });
             }
         }
     }
@@ -225,7 +241,7 @@ export default function SearchPage() {
         ) : isLoading ? (
              <div className="flex flex-col items-center gap-4 text-center">
                 <Loader2 className="h-12 w-12 animate-spin text-primary" />
-                <h2 className="text-xl font-semibold">Consulting AI Expert...</h2>
+                <h2 className="text-xl font-semibold">Consulting Expert...</h2>
                 <p className="text-muted-foreground">Please wait a moment.</p>
             </div>
         ) : activeQuestion ? (
@@ -234,15 +250,24 @@ export default function SearchPage() {
           </div>
         ) : (
           <div className="flex flex-col items-center text-center max-w-lg">
-            <div className={`mb-6 flex h-24 w-24 items-center justify-center rounded-full ${modeConfig[mode].bgColor}`}>
-                <div className={`flex h-16 w-16 items-center justify-center rounded-full bg-card`}>
-                    <CurrentModeIcon className={`h-10 w-10 ${modeConfig[mode].color}`} />
+             {uiMessage ? (
+                <div className="flex flex-col items-center gap-4 text-center">
+                    <h2 className="text-xl font-semibold">Result</h2>
+                    <p className="text-muted-foreground">{uiMessage}</p>
                 </div>
-            </div>
-            <h1 className="font-headline text-3xl sm:text-4xl font-bold mb-3">{modeConfig[mode].title}</h1>
-            <p className="text-muted-foreground mb-8">
-                {modeConfig[mode].description}
-            </p>
+             ) : (
+                <>
+                    <div className={`mb-6 flex h-24 w-24 items-center justify-center rounded-full ${modeConfig[mode].bgColor}`}>
+                        <div className={`flex h-16 w-16 items-center justify-center rounded-full bg-card`}>
+                            <CurrentModeIcon className={`h-10 w-10 ${modeConfig[mode].color}`} />
+                        </div>
+                    </div>
+                    <h1 className="font-headline text-3xl sm:text-4xl font-bold mb-3">{modeConfig[mode].title}</h1>
+                    <p className="text-muted-foreground mb-8">
+                        {modeConfig[mode].description}
+                    </p>
+                </>
+             )}
           </div>
         )}
       </main>
@@ -252,7 +277,7 @@ export default function SearchPage() {
           <div className="container mx-auto max-w-2xl px-4">
             <SearchForm
               onSearch={handleSearch}
-              isSearching={isLoading}
+              isSearching={isLoading || isPending}
               initialQuery={activeQuestion ? activeQuestion[`question_${initialLang}`] : ''}
               className="shadow-2xl shadow-primary/10"
             />

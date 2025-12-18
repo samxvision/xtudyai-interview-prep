@@ -3,14 +3,13 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import type { Question } from '@/types';
-import { fetchQuestions } from '@/lib/data';
-import { findBestMatch as findBestMatchAlgorithm } from '@/lib/matching';
+import { initializeFirebase } from '@/firebase';
+import { getFirestore, collection, onSnapshot, QuerySnapshot, DocumentData } from 'firebase/firestore';
 
 interface AppContextType {
   questions: Question[];
-  isLoading: boolean;
+  areQuestionsLoading: boolean;
   getQuestionById: (id: string) => Question | undefined;
-  findBestMatch: (query: string) => { question: Question; score: number } | null;
   addLearnedQuestion: (question: Question) => void;
 }
 
@@ -18,16 +17,37 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [questions, setQuestions] = useState<Question[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [areQuestionsLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const loadQuestions = async () => {
-      setIsLoading(true);
-      const fetchedQuestions = await fetchQuestions();
-      setQuestions(fetchedQuestions);
-      setIsLoading(false);
-    };
-    loadQuestions();
+    setIsLoading(true);
+    const { firestore } = initializeFirebase();
+    const questionsCollection = collection(firestore, 'questions');
+    
+    const unsubscribe = onSnapshot(
+      questionsCollection, 
+      (snapshot: QuerySnapshot<DocumentData>) => {
+        if (snapshot.empty) {
+          console.log('No questions found in Firestore. Listening for updates.');
+          setQuestions([]);
+        } else {
+          const fetchedQuestions = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data() as Omit<Question, 'id'>
+          }));
+          setQuestions(fetchedQuestions);
+        }
+        setIsLoading(false);
+      },
+      (error) => {
+        console.error("Error fetching questions from Firestore:", error);
+        setQuestions([]);
+        setIsLoading(false);
+      }
+    );
+
+    // Cleanup subscription on unmount
+    return () => unsubscribe();
   }, []);
 
   const getQuestionById = useCallback(
@@ -38,22 +58,20 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   );
   
   const addLearnedQuestion = useCallback((question: Question) => {
-    // Avoid adding duplicates
+    // This is now handled by the real-time listener, but we can keep it
+    // for optimistic updates if needed, though it might cause race conditions.
+    // For now, we'll let the listener handle state updates.
     if (!questions.some(q => q.id === question.id)) {
-      setQuestions(prevQuestions => [...prevQuestions, question]);
+        // Optimistically add to local state to make it searchable immediately
+        setQuestions(prevQuestions => [...prevQuestions, question]);
     }
   }, [questions]);
 
-  const findBestMatch = (query: string) => {
-    if (isLoading || questions.length === 0) return null;
-    return findBestMatchAlgorithm(query, questions);
-  };
 
   const value = {
     questions,
-    isLoading,
+    areQuestionsLoading,
     getQuestionById,
-    findBestMatch,
     addLearnedQuestion,
   };
 
@@ -67,5 +85,3 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
-
-    
