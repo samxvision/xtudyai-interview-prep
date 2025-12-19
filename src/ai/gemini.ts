@@ -1,6 +1,6 @@
 'use server';
 
-import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from "@google/generative-ai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const API_KEY = process.env.GEMINI_API_KEY;
 
@@ -10,39 +10,9 @@ if (!API_KEY) {
 
 const genAI = new GoogleGenerativeAI(API_KEY);
 
-const model = genAI.getGenerativeModel({
-  model: "gemini-1.5-flash",
-});
-
-const generationConfig = {
-  temperature: 0.9,
-  topK: 1,
-  topP: 1,
-  maxOutputTokens: 2048,
-};
-
-const safetySettings = [
-  {
-    category: HarmCategory.HARM_CATEGORY_HARASSMENT,
-    threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-  },
-  {
-    category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-    threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-  },
-  {
-    category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-    threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-  },
-  {
-    category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-    threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-  },
-];
-
 /**
  * Generates a structured answer using the Gemini API.
- * This replaces the previous Genkit flow.
+ * This function now uses the recommended gemini-1.5-pro model.
  */
 export async function generateAiAnswer(input: { question: string, language: 'en' | 'hi' }) {
   try {
@@ -65,11 +35,15 @@ Generate a JSON object with the following fields:
 5.  "summaryPoints_en": An array of 3-5 key takeaway bullet points in English.
 6.  "summaryPoints_hi": An array of 3-5 key takeaway bullet points in Hindi (Hinglish).
 
-Provide a factual, professional, and clear response suitable for someone preparing for a technical interview. The response should be a valid JSON object.
+Provide a factual, professional, and clear response suitable for someone preparing for a technical interview. The response must be a valid JSON object.
 `;
 
+    const model = genAI.getGenerativeModel({
+        model: "gemini-1.5-pro", // ✅ FIXED MODEL as per instructions
+    });
+
     const result = await model.generateContent(prompt);
-    const response = result.response;
+    const response = await result.response;
     const text = response.text();
     
     // Clean the response to ensure it's valid JSON
