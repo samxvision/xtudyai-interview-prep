@@ -11,9 +11,8 @@
  */
 
 import { ai } from '@/ai/genkit';
-import { z } from 'genkit';
+import { z, generate } from 'genkit';
 import { googleAI } from '@genkit-ai/google-genai';
-import { generate } from 'genkit/generate';
 
 const GenerateAiAnswerInputSchema = z.object({
   question: z.string().describe('The user\'s question.'),
