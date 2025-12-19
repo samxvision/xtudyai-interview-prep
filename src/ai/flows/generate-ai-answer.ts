@@ -57,7 +57,7 @@ Please generate the following fields:
 Provide a factual, professional, and clear response suitable for someone preparing for a technical interview.`,
 });
 
-// A list of candidate models to try in order.
+// A list of candidate models to try in order. The free Gemini API tier provides access to gemini-1.5-flash.
 const candidateModels = [
   googleAI.model('gemini-1.5-flash'),
   googleAI.model('gemini-pro'),
@@ -77,7 +77,7 @@ const generateAiAnswerFlow = ai.defineFlow(
       try {
         const { output } = await ai.generate({
           model: model,
-          prompt: promptTemplate.prompt, // Pass the raw prompt string
+          prompt: promptTemplate,
           input: input,
           output: { schema: GenerateAiAnswerOutputSchema },
         });
