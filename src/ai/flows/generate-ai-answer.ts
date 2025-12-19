@@ -36,11 +36,11 @@ export async function generateAiAnswer(input: GenerateAiAnswerInput): Promise<Ge
   return generateAiAnswerFlow(input);
 }
 
-const prompt = ai.definePrompt({
+// Define the base prompt without a specific model.
+const promptTemplate = ai.definePrompt({
   name: 'generateAiAnswerPrompt',
   input: { schema: GenerateAiAnswerInputSchema },
   output: { schema: GenerateAiAnswerOutputSchema },
-  model: googleAI.model('gemini-1.5-flash'),
   prompt: `You are an expert in Oil and Gas QA/QC interview questions. The user has asked a question in {{language}}.
 Your task is to provide a comprehensive and structured answer in BOTH English and Hindi (Hinglish).
 
@@ -57,6 +57,12 @@ Please generate the following fields:
 Provide a factual, professional, and clear response suitable for someone preparing for a technical interview.`,
 });
 
+// A list of candidate models to try in order.
+const candidateModels = [
+  googleAI.model('gemini-1.5-flash'),
+  googleAI.model('gemini-pro'),
+];
+
 const generateAiAnswerFlow = ai.defineFlow(
   {
     name: 'generateAiAnswerFlow',
@@ -64,7 +70,28 @@ const generateAiAnswerFlow = ai.defineFlow(
     outputSchema: GenerateAiAnswerOutputSchema,
   },
   async (input) => {
-    const { output } = await prompt(input);
-    return output!;
+    let lastError: any = null;
+
+    // Iterate through the candidate models and try to get a response.
+    for (const model of candidateModels) {
+      try {
+        const { output } = await ai.generate({
+          model: model,
+          prompt: promptTemplate.prompt,
+          input: input,
+          output: { schema: GenerateAiAnswerOutputSchema },
+        });
+        
+        if (output) {
+          return output; // Success, return the output immediately.
+        }
+      } catch (error) {
+        console.warn(`Model ${model.name} failed. Trying next model. Error:`, error);
+        lastError = error; // Store the last error encountered.
+      }
+    }
+
+    // If all models failed, throw the last error.
+    throw new Error(`All AI models failed to respond. Last error: ${lastError?.message || 'Unknown error'}`);
   }
 );
