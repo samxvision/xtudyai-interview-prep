@@ -223,7 +223,7 @@ class EnhancedQuestionMatcher {
     return Math.max(...scores, 0);
   }
 
-  findBestMatch(userQuery: string, documents: Question[], threshold = 50) {
+  findBestMatch(userQuery: string, documents: Question[], threshold = 60) {
     const acronymResult = searchAcronymInDB(userQuery);
     if (acronymResult && userQuery.trim().split(/\s+/).length <= 3) {
       return [{
@@ -253,7 +253,7 @@ class EnhancedQuestionMatcher {
 const matcher = new EnhancedQuestionMatcher();
 
 export const findBestMatch = (userQuery: string, questions: Question[]) => {
-    return matcher.findBestMatch(userQuery, questions, 50);
+    return matcher.findBestMatch(userQuery, questions, 60);
 };
 
 export const normalizeText = (text: string): string => {

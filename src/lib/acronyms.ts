@@ -161,13 +161,21 @@ export const OilGasAcronyms: Record<string, AcronymData> = {
     category: "testing",
     related: ["NDT"]
   },
+
+  "DPT": {
+    full: "Dye Penetrant Test",
+    full_hi: "डाई पेनेट्रेंट टेस्ट",
+    variations: ["dye penetrant", "dpt test", "dye testing", "penetrant testing"],
+    category: "testing",
+    related: ["PT", "LPT", "NDT", "DP"]
+  },
   
   "PT": {
     full: "Penetrant Testing",
     full_hi: "पेनेट्रेंट टेस्टिंग",
     variations: ["penetrant test", "dye penetrant", "liquid penetrant"],
     category: "testing",
-    related: ["LPT", "DP", "NDT"]
+    related: ["LPT", "DP", "NDT", "DPT"]
   },
   
   "LPT": {
@@ -175,7 +183,7 @@ export const OilGasAcronyms: Record<string, AcronymData> = {
     full_hi: "लिक्विड पेनेट्रेंट टेस्टिंग",
     variations: ["liquid penetrant", "lpt test", "penetrant testing"],
     category: "testing",
-    related: ["PT", "DP", "NDT"]
+    related: ["PT", "DP", "NDT", "DPT"]
   },
   
   "DP": {
@@ -183,7 +191,7 @@ export const OilGasAcronyms: Record<string, AcronymData> = {
     full_hi: "डाई पेनेट्रेंट टेस्ट",
     variations: ["dye penetrant", "dp test", "dye testing"],
     category: "testing",
-    related: ["PT", "LPT", "NDT"]
+    related: ["PT", "LPT", "NDT", "DPT"]
   },
   
   "MT": {
