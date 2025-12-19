@@ -3,10 +3,10 @@
 
 import React, { useState, useEffect, useTransition } from 'react';
 import { Search, Loader2, CheckCircle, AlertCircle, HelpCircle, Tag, ArrowLeft, BookOpen, Layers, Database, Sparkles, Bookmark, Share, ThumbsUp, ThumbsDown } from 'lucide-react';
-import { OilGasAcronyms, AcronymData } from '@/lib/acronyms';
+import { AcronymData } from '@/lib/acronyms';
 import { findBestMatch, normalizeText } from '@/lib/matching';
 import { useAppContext } from '@/context/AppContext';
-import { generateAiAnswer, GenerateAiAnswerOutput } from '@/ai/flows/generate-ai-answer';
+import { generateAiAnswer } from '@/ai/gemini';
 import type { Question } from '@/types';
 import { useFirestore } from '@/firebase';
 import { collection } from 'firebase/firestore';
@@ -15,12 +15,6 @@ import { detectLanguage } from '@/lib/language';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/logo';
 import Link from 'next/link';
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from '@/components/ui/accordion';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { AnswerCard } from '@/components/answer-card';
@@ -82,7 +76,6 @@ export default function SmartQuestionSearch() {
     const detectedLang = detectLanguage(query);
     setUiLanguage(detectedLang);
 
-    // Using a timeout to give the UI time to show the loader, even for fast searches
     setTimeout(() => {
         const matches = findBestMatch(query, questions);
         const bestMatch = matches.length > 0 ? matches[0] : null;
@@ -98,7 +91,6 @@ export default function SmartQuestionSearch() {
                 setResult(bestMatch as QuestionResult);
             } else {
                 setResult({ notFound: true });
-                // Optional: Trigger AI in background to learn
                 startTransition(() => {
                     generateAiAnswer({ question: query, language: detectedLang }).then(aiResponse => {
                         if (aiResponse) {
@@ -124,6 +116,8 @@ export default function SmartQuestionSearch() {
   const performAiSearch = async (query: string, language: 'en' | 'hi') => {
     try {
       const aiResult = await generateAiAnswer({ question: query, language: language });
+      if (!aiResult) throw new Error("AI did not return a valid result.");
+      
       const aiQuestion: Question = {
         ...aiResult,
         id: `ai-${Date.now()}`,
@@ -151,7 +145,7 @@ export default function SmartQuestionSearch() {
     }
   };
   
-  const saveNewQuestion = async (query: string, language: 'en' | 'hi', aiResponse: GenerateAiAnswerOutput, source: 'ai-generated' | 'hybrid-learning' | 'expert-database') => {
+  const saveNewQuestion = async (query: string, language: 'en' | 'hi', aiResponse: any, source: 'ai-generated' | 'hybrid-learning' | 'expert-database') => {
     if (!firestore) return;
 
     const existingMatches = findBestMatch(query, questions);
@@ -282,11 +276,8 @@ export default function SmartQuestionSearch() {
                 </CardHeader>
                 <CardContent>
                     <h2 className="text-2xl font-bold text-foreground mb-2">
-                        {result.data.full}
-                    </h2>
-                    <p className="text-lg text-muted-foreground">
                         {uiLanguage === 'hi' ? result.data.full_hi : result.data.full}
-                    </p>
+                    </h2>
                 </CardContent>
                 <CardFooter>
                     <Badge variant="outline" className={getCategoryBadgeColor(result.data.category)}>
