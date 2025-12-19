@@ -17,7 +17,7 @@ const genAI = new GoogleGenerativeAI(API_KEY);
 export async function generateAiAnswer(prompt: string) {
   try {
     const model = genAI.getGenerativeModel({
-      model: "models/gemini-1.5-pro-latest", // ✅ FIXED MODEL
+      model: "gemini-pro",
     });
 
     const result = await model.generateContent(prompt);
