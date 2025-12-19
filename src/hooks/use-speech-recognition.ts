@@ -36,27 +36,34 @@ export const useSpeechRecognition = (): SpeechRecognitionHook => {
     recognition.interimResults = true;
 
     recognition.onstart = () => {
-      // Don't reset transcript here, keep the last final transcript
+      // Reset the final transcript for the new listening session
+      finalTranscriptRef.current = '';
     };
 
     recognition.onresult = (event) => {
       let interimTranscript = '';
       
-      // Iterate through all results from the current recognition
+      // The final transcript is now managed by the ref within the onstart/onresult scope
+      let currentFinal = finalTranscriptRef.current;
+
+      // Iterate through all results from the current recognition session
       for (let i = event.resultIndex; i < event.results.length; ++i) {
+        const transcriptSegment = event.results[i][0].transcript;
         if (event.results[i].isFinal) {
-          // Append final transcript segment, add a space if there's existing content
-          const finalSegment = event.results[i][0].transcript;
-          finalTranscriptRef.current += (finalTranscriptRef.current ? ' ' : '') + finalSegment;
+          // Append final segments, ensuring a space is added between them.
+          currentFinal += (currentFinal ? ' ' : '') + transcriptSegment;
         } else {
           // Collect the latest interim transcript
-          interimTranscript += event.results[i][0].transcript;
+          interimTranscript += transcriptSegment;
         }
       }
       
+      // Update the ref with the latest concatenated final transcript
+      finalTranscriptRef.current = currentFinal;
+
       // Update the display text by combining the stable final transcript
       // with the fluctuating interim part.
-      setTranscript((finalTranscriptRef.current + ' ' + interimTranscript).trim());
+      setTranscript((currentFinal + ' ' + interimTranscript).trim());
     };
 
     recognition.onerror = (event) => {
