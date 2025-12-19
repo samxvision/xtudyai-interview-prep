@@ -77,7 +77,7 @@ const generateAiAnswerFlow = ai.defineFlow(
       try {
         const { output } = await ai.generate({
           model: model,
-          prompt: promptTemplate, // Pass the entire prompt object
+          prompt: promptTemplate.prompt, // Pass the raw prompt string
           input: input,
           output: { schema: GenerateAiAnswerOutputSchema },
         });
