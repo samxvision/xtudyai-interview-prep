@@ -58,6 +58,13 @@ const modeConfig = {
   },
 };
 
+const exampleQuestions = [
+    "What is the difference between WPS and PQR?",
+    "Explain undercut acceptance criteria",
+    "Tell me about Radiography Testing",
+    "What are the different types of NDT?",
+];
+
 export default function SmartQuestionSearch() {
   const [query, setQuery] = useState('');
   const [result, setResult] = useState<SearchResult>(null);
@@ -95,10 +102,11 @@ export default function SmartQuestionSearch() {
     }
   }, [speechError, toast]);
 
-  const handleSearch = useCallback(async (searchQuery = query) => {
+  const handleSearch = useCallback(async (searchQuery: string) => {
     const finalQuery = searchQuery.trim();
     if (!finalQuery) return;
 
+    setQuery(finalQuery);
     setLoading(true);
     setResult(null);
 
@@ -373,15 +381,19 @@ export default function SmartQuestionSearch() {
           {/* Examples */}
           {!result && !loading && (
             <div className="pt-8 text-center">
-              <div className="inline-block bg-slate-200 p-4 rounded-full">
-                <Mic className="h-8 w-8 text-slate-600" />
-              </div>
-              <h2 className="mt-4 text-xl font-semibold text-slate-700">
-                Ask me anything
-              </h2>
-              <p className="text-slate-500 mt-1">
-                Press and hold the mic to start speaking.
-              </p>
+                <h2 className="text-lg font-semibold text-slate-600 mb-4">Try asking</h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-lg mx-auto">
+                    {exampleQuestions.map((q, i) => (
+                        <Button
+                            key={i}
+                            variant="outline"
+                            className="justify-start h-auto py-3 text-left font-normal bg-white"
+                            onClick={() => handleSearch(q)}
+                        >
+                           <p className="text-slate-700">"{q}"</p>
+                        </Button>
+                    ))}
+                </div>
             </div>
           )}
 
@@ -414,13 +426,13 @@ export default function SmartQuestionSearch() {
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+              onKeyPress={(e) => e.key === 'Enter' && handleSearch(query)}
               placeholder={isListening ? 'Listening...' : (uiLanguage === 'hi' ? 'सवाल या Acronym सर्च करें...' : 'Search questions or acronyms...')}
               className="w-full h-14 px-4 pr-16 bg-slate-100 border-slate-200 border rounded-lg text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500 text-base"
             />
             <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center">
               <Button
-                onClick={() => handleSearch()}
+                onClick={() => handleSearch(query)}
                 disabled={loading || isPending || !query.trim()}
                 className="p-2 h-10 w-10 bg-slate-800 hover:bg-slate-900 disabled:bg-slate-400 rounded-lg transition"
               >
