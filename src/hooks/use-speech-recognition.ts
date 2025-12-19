@@ -31,15 +31,22 @@ export const useSpeechRecognition = (): SpeechRecognitionHook => {
     }
 
     const recognition = new SpeechRecognition();
-    recognition.continuous = true; // Keep listening even after a pause
-    recognition.interimResults = true; // Get results as the user speaks
+    recognition.continuous = true;
+    recognition.interimResults = true;
 
     recognition.onresult = (event) => {
       let finalTranscript = '';
+      let interimTranscript = '';
+
       for (let i = 0; i < event.results.length; ++i) {
-        finalTranscript += event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          finalTranscript += event.results[i][0].transcript;
+        } else {
+          interimTranscript += event.results[i][0].transcript;
+        }
       }
-      setTranscript(finalTranscript);
+      // By reconstructing the full transcript each time, we avoid duplication.
+      setTranscript(finalTranscript + interimTranscript);
     };
 
     recognition.onerror = (event) => {
