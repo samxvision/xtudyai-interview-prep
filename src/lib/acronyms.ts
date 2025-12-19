@@ -1,4 +1,3 @@
-
 // ============================================
 // COMPREHENSIVE OIL & GAS ACRONYMS DATABASE
 // 200+ Industry Terms with Variations

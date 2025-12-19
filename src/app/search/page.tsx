@@ -1,8 +1,7 @@
-
 "use client";
 
 import Link from 'next/link';
-import { useState, useEffect, useCallback, useTransition } from 'react';
+import { useState, useEffect, useCallback, useTransition, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Database, Sparkles, Layers, Loader2 } from 'lucide-react';
 import { SearchForm } from '@/components/search-form';
@@ -16,8 +15,8 @@ import { useToast } from '@/hooks/use-toast';
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { useFirestore } from '@/firebase';
 import { collection } from 'firebase/firestore';
-import { normalizeText, findBestMatch } from '@/lib/matching';
-import { searchAcronym, getRelatedAcronyms, AcronymMatch } from '@/lib/acronyms';
+import { findBestMatch, normalizeText } from '@/lib/matching';
+import { AcronymMatch } from '@/lib/acronyms';
 
 type SearchMode = 'database' | 'ai' | 'hybrid';
 
@@ -60,11 +59,12 @@ export default function SearchPage() {
 
   const saveNewQuestion = useCallback(async (query: string, language: 'en' | 'hi', aiResponse: GenerateAiAnswerOutput, source: 'ai-generated' | 'hybrid-learning' | 'expert-database') => {
     if (!firestore) return;
-
-    // Check for duplicates before saving
-    const existingMatch = findBestMatch(query, questions);
-    if (existingMatch && existingMatch.score > 950) { // Very high score means it's likely a duplicate
-      console.log("Duplicate question detected, not saving to Firestore.");
+    
+    // Use the advanced matcher to check for duplicates before saving
+    const existingMatches = findBestMatch(query, questions);
+    const hasGoodMatch = existingMatches.some(m => m.type === 'question' && m.score > 90);
+    if (hasGoodMatch) {
+      console.log("Duplicate question detected with high confidence, not saving to Firestore.");
       return;
     }
 
@@ -133,18 +133,15 @@ export default function SearchPage() {
       }
   }, [toast]);
 
-  const createAcronymQuestion = (match: AcronymMatch, lang: 'en' | 'hi'): Question => {
-    const related = getRelatedAcronyms(match.acronym);
-    const longAnswer = `Category: ${match.category}. Related terms: ${related.map(r => r.acronym).join(', ')}`;
-    
+  const createAcronymQuestion = (match: AcronymMatch): Question => {
     return {
         id: `acronym-${match.acronym}`,
         question_en: `What is ${match.acronym}?`,
         question_hi: `${match.acronym} क्या है?`,
         shortAnswer_en: match.full,
         shortAnswer_hi: match.full_hi,
-        longAnswer_en: longAnswer,
-        longAnswer_hi: longAnswer,
+        longAnswer_en: `Category: ${match.category}.`,
+        longAnswer_hi: `श्रेणी: ${match.category}.`,
         summaryPoints_en: match.variations,
         summaryPoints_hi: match.variations,
         category: match.category,
@@ -154,8 +151,8 @@ export default function SearchPage() {
         viewCount: 0,
         normalized_en: normalizeText(match.acronym),
         normalized_hi: normalizeText(match.acronym),
-        keywords_en: [],
-        keywords_hi: [],
+        keywords_en: [match.acronym.toLowerCase()],
+        keywords_hi: [match.acronym.toLowerCase()],
     };
   };
 
@@ -167,22 +164,21 @@ export default function SearchPage() {
     const detectedLang = detectLanguage(query);
     setInitialLang(detectedLang);
     
-    // Acronym search first
-    const acronymMatch = searchAcronym(query);
-    if (acronymMatch) {
-        const acronymQuestion = createAcronymQuestion(acronymMatch, detectedLang);
+    const results = findBestMatch(query, questions);
+    const bestResult = results.length > 0 ? results[0] : null;
+
+    if (bestResult?.type === 'acronym') {
+        const acronymQuestion = createAcronymQuestion(bestResult.data);
         setActiveQuestion(acronymQuestion);
         setIsLoading(false);
         return;
     }
 
     if (mode === 'database') {
-        const dbResult = findBestMatch(query, questions);
-        if (dbResult) {
-            setActiveQuestion(dbResult.question);
+        if (bestResult?.type === 'question') {
+            setActiveQuestion(bestResult.document);
         } else {
             setUiMessage("Data not found. Please search after some time.");
-            // Background Learning
             startTransition(() => {
                 generateAiAnswer({ question: query, language: detectedLang }).then(aiResult => {
                     if (aiResult) {
@@ -194,10 +190,7 @@ export default function SearchPage() {
         setIsLoading(false);
 
     } else if (mode === 'ai') {
-        // Task A: AI Task (await to show result to user)
         const aiResult = await performAiSearch(query, detectedLang);
-        
-        // Task B: Firestore Task (in background, non-blocking)
         if (aiResult) {
              startTransition(() => {
                 saveNewQuestion(query, detectedLang, aiResult, 'ai-generated');
@@ -205,15 +198,12 @@ export default function SearchPage() {
         }
 
     } else if (mode === 'hybrid') {
-        const dbResult = findBestMatch(query, questions);
-        // Use a stricter threshold for "strong match" in hybrid mode
-        if (dbResult && dbResult.score > 200) {
-            setActiveQuestion(dbResult.question);
+        if (bestResult?.type === 'question' && bestResult.score > 70) { // Stricter threshold for hybrid
+            setActiveQuestion(bestResult.document);
             setIsLoading(false);
         } else { 
             const aiResult = await performAiSearch(query, detectedLang);
             if(aiResult) {
-                // Background learning
                 startTransition(() => {
                     saveNewQuestion(query, detectedLang, aiResult, 'hybrid-learning');
                 });
