@@ -5,12 +5,7 @@ import { Search, Loader2, AlertCircle, Tag, ArrowLeft, Database, Sparkles, Layer
 import { AcronymData } from '@/lib/acronyms';
 import { findBestMatch, normalizeText } from '@/lib/matching';
 import { useAppContext } from '@/context/AppContext';
-import { generateAiAnswer } from '@/ai/gemini';
 import type { Question } from '@/types';
-import { useFirestore } from '@/firebase';
-import { collection } from 'firebase/firestore';
-import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
-import { detectLanguage } from '@/lib/language';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/logo';
 import Link from 'next/link';
@@ -72,8 +67,7 @@ export default function SmartQuestionSearch() {
   const [uiLanguage, setUiLanguage] = useState<'en' | 'hi'>('hi');
   const [mode, setMode] = useState<SearchMode>('database');
 
-  const { questions, areQuestionsLoading, addLearnedQuestion } = useAppContext();
-  const firestore = useFirestore();
+  const { questions, areQuestionsLoading } = useAppContext();
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
 
@@ -109,10 +103,7 @@ export default function SmartQuestionSearch() {
     setQuery(finalQuery);
     setLoading(true);
     setResult(null);
-
-    const detectedLang = detectLanguage(finalQuery);
-    setUiLanguage(detectedLang);
-
+    
     // Using a small timeout to allow UI to update to loading state
     setTimeout(async () => {
       try {
@@ -124,27 +115,10 @@ export default function SmartQuestionSearch() {
           return;
         }
 
-        if (mode === 'database') {
-          if (bestMatch && bestMatch.type === 'question') {
-            setResult(bestMatch as QuestionResult);
-          } else {
-            setResult({ notFound: true });
-            startTransition(() => {
-              generateAiAnswer(finalQuery).then(aiResponse => {
-                if (aiResponse) {
-                  saveNewQuestion(finalQuery, detectedLang, aiResponse, 'expert-database');
-                }
-              }).catch(console.error);
-            });
-          }
-        } else if (mode === 'ai') {
-          await performAiSearch(finalQuery, detectedLang);
-        } else if (mode === 'hybrid') {
-          if (bestMatch && bestMatch.type === 'question' && bestMatch.score > 70) {
-            setResult(bestMatch as QuestionResult);
-          } else {
-            await performAiSearch(finalQuery, detectedLang);
-          }
+        if (bestMatch && bestMatch.type === 'question') {
+          setResult(bestMatch as QuestionResult);
+        } else {
+          setResult({ notFound: true });
         }
       } catch (error) {
         console.error("Search failed:", error);
@@ -153,82 +127,7 @@ export default function SmartQuestionSearch() {
         setLoading(false);
       }
     }, 300);
-  }, [query, questions, mode, addLearnedQuestion, firestore]);
-
-  const performAiSearch = async (currentQuery: string, language: 'en' | 'hi') => {
-    try {
-      const aiResponse = await generateAiAnswer(
-        `Based on the question "${currentQuery}", provide a comprehensive answer for a QA/QC professional in the Oil & Gas industry. The response must be structured as a JSON object with the following fields: shortAnswer_en, shortAnswer_hi, longAnswer_en, longAnswer_hi, summaryPoints_en, and summaryPoints_hi.`
-      );
-      
-      const aiResult = JSON.parse(aiResponse);
-      
-      const aiQuestion: Question = {
-        ...aiResult,
-        id: `ai-${Date.now()}`,
-        question_en: language === 'en' ? currentQuery : '(AI Generated Answer)',
-        question_hi: language === 'hi' ? currentQuery : '(एआई जनरेटेड उत्तर)',
-        normalized_en: normalizeText(language === 'en' ? currentQuery : aiResult.shortAnswer_en),
-        normalized_hi: normalizeText(language === 'hi' ? currentQuery : aiResult.shortAnswer_hi),
-        keywords_en: [],
-        keywords_hi: [],
-        category: 'AI Generated',
-        difficulty: 'medium',
-        tags: ['AI'],
-        source: 'ai-generated',
-        viewCount: 0
-      };
-      setResult({ type: 'question', document: aiQuestion, score: 100, intent: ['what'] });
-      
-      startTransition(() => {
-          saveNewQuestion(currentQuery, language, aiResponse, 'ai-generated');
-      });
-
-    } catch (error) {
-      console.error("AI search failed:", error);
-      setResult({ notFound: true });
-    }
-  };
-  
-  const saveNewQuestion = async (currentQuery: string, language: 'en' | 'hi', aiResponse: any, source: 'ai-generated' | 'hybrid-learning' | 'expert-database') => {
-    if (!firestore) return;
-
-    const existingMatches = findBestMatch(currentQuery, questions);
-    const hasGoodMatch = existingMatches.some(m => m.type === 'question' && m.score > 95);
-    if (hasGoodMatch) {
-      console.log("Duplicate question detected with high confidence, not saving.");
-      return;
-    }
-
-    try {
-      const questionsCollection = collection(firestore, 'questions');
-      const responseData = JSON.parse(aiResponse);
-      const newQuestionDoc: Omit<Question, 'id'> = {
-        ...responseData,
-        question_en: language === 'en' ? currentQuery : '(AI Generated Answer)',
-        question_hi: language === 'hi' ? currentQuery : '(एआई जनरेटेड उत्तर)',
-        normalized_en: normalizeText(language === 'en' ? currentQuery : responseData.shortAnswer_en),
-        normalized_hi: normalizeText(language === 'hi' ? currentQuery : responseData.shortAnswer_hi),
-        keywords_en: [],
-        keywords_hi: [],
-        category: 'AI Added',
-        difficulty: 'medium',
-        tags: ['AI-Learned'],
-        source: source,
-        viewCount: 0,
-      };
-      const newDocPromise = addDocumentNonBlocking(questionsCollection, newQuestionDoc);
-
-      newDocPromise.then(docRef => {
-        if (docRef) {
-          const newQuestionWithId: Question = { ...newQuestionDoc, id: docRef.id };
-          addLearnedQuestion(newQuestionWithId);
-        }
-      });
-    } catch (error) {
-      console.error("Failed to save new question:", error);
-    }
-  };
+  }, [query, questions, mode]);
 
   const getCategoryBadgeColor = (category?: string) => {
     const colors: { [key: string]: string } = {
@@ -260,7 +159,7 @@ export default function SmartQuestionSearch() {
       });
       return;
     }
-    const lang = detectLanguage(query) === 'hi' ? 'hi-IN' : 'en-US';
+    const lang = 'en-US';
     startListening(lang);
   };
   
@@ -369,12 +268,9 @@ export default function SmartQuestionSearch() {
               </h3>
               <p className="text-slate-500 mb-4">
                 {uiLanguage === 'hi' 
-                  ? 'कृपया अपने सवाल को दोबारा लिखें या AI मोड का उपयोग करें।'
-                  : 'Please rephrase your question or try AI mode.'}
+                  ? 'कृपया अपने सवाल को दोबारा लिखें या कोई दूसरा सवाल पूछें।'
+                  : 'Please rephrase your question or ask something else.'}
               </p>
-              <Button disabled>
-                  <Sparkles className="mr-2 h-4 w-4" /> Try AI Mode
-              </Button>
             </div>
           )}
 
