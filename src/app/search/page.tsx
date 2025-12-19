@@ -360,7 +360,12 @@ export default function SmartQuestionSearch() {
       </main>
 
        {/* Search Box Footer */}
-       <footer className="p-4 bg-white border-t border-slate-200">
+       <footer className="p-4 bg-white border-t border-slate-200 space-y-4">
+          <div className="flex justify-center">
+            <Button variant="ghost" size="icon" className="text-white bg-green-500 hover:bg-green-600 h-20 w-20 rounded-full shadow-lg">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-10 w-10"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+            </Button>
+          </div>
           <div className="relative">
             <input
               type="text"
@@ -368,13 +373,13 @@ export default function SmartQuestionSearch() {
               onChange={(e) => setQuery(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
               placeholder={uiLanguage === 'hi' ? 'सवाल या Acronym सर्च करें...' : 'Search questions or acronyms...'}
-              className="w-full h-14 px-4 pr-28 bg-slate-100 border-slate-200 border rounded-lg text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500 text-base"
+              className="w-full h-14 px-4 pr-16 bg-slate-100 border-slate-200 border rounded-lg text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500 text-base"
             />
-            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-2">
+            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center">
               <Button
                 onClick={handleSearch}
                 disabled={loading || isPending}
-                className="p-2 h-9 w-9 bg-slate-800 hover:bg-slate-900 disabled:bg-slate-400 rounded-lg transition"
+                className="p-2 h-10 w-10 bg-slate-800 hover:bg-slate-900 disabled:bg-slate-400 rounded-lg transition"
               >
                 {loading || isPending ? (
                   <Loader2 className="w-5 h-5 text-white animate-spin" />
@@ -382,14 +387,10 @@ export default function SmartQuestionSearch() {
                   <Search className="w-5 h-5 text-white" />
                 )}
               </Button>
-              <Button variant="ghost" size="icon" className="text-white bg-green-500 hover:bg-green-600 h-10 w-10 rounded-lg">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
-              </Button>
             </div>
           </div>
        </footer>
     </div>
   );
 }
-
-    
+ 
