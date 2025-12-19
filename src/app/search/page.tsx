@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useEffect, useTransition } from 'react';
-import { Search, Loader2, CheckCircle, AlertCircle, HelpCircle, Tag, ArrowLeft, BookOpen, Layers, Database, Sparkles, Bookmark, Share, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { Search, Loader2, CheckCircle, AlertCircle, HelpCircle, Tag, ArrowLeft, BookOpen, Layers, Database, Sparkles, Bookmark, Share, ThumbsUp, ThumbsDown, Lock } from 'lucide-react';
 import { AcronymData } from '@/lib/acronyms';
 import { findBestMatch, normalizeText } from '@/lib/matching';
 import { useAppContext } from '@/context/AppContext';
@@ -92,7 +92,7 @@ export default function SmartQuestionSearch() {
             } else {
                 setResult({ notFound: true });
                 startTransition(() => {
-                    generateAiAnswer({ question: query, language: detectedLang }).then(aiResponse => {
+                    generateAiAnswer(query).then(aiResponse => {
                         if (aiResponse) {
                             saveNewQuestion(query, detectedLang, aiResponse, 'expert-database');
                         }
@@ -115,16 +115,16 @@ export default function SmartQuestionSearch() {
 
   const performAiSearch = async (query: string, language: 'en' | 'hi') => {
     try {
-      const aiResult = await generateAiAnswer({ question: query, language: language });
+      const aiResult = await generateAiAnswer(query);
       if (!aiResult) throw new Error("AI did not return a valid result.");
       
       const aiQuestion: Question = {
-        ...aiResult,
+        ...(JSON.parse(aiResult)),
         id: `ai-${Date.now()}`,
         question_en: language === 'en' ? query : '(AI Generated Answer)',
         question_hi: language === 'hi' ? query : '(एआई जनरेटेड उत्तर)',
-        normalized_en: normalizeText(language === 'en' ? query : aiResult.shortAnswer_en),
-        normalized_hi: normalizeText(language === 'hi' ? query : aiResult.shortAnswer_hi),
+        normalized_en: normalizeText(language === 'en' ? query : (JSON.parse(aiResult)).shortAnswer_en),
+        normalized_hi: normalizeText(language === 'hi' ? query : (JSON.parse(aiResult)).shortAnswer_hi),
         keywords_en: [],
         keywords_hi: [],
         category: 'AI Generated',
@@ -157,12 +157,13 @@ export default function SmartQuestionSearch() {
 
     try {
       const questionsCollection = collection(firestore, 'questions');
+      const responseData = JSON.parse(aiResponse);
       const newQuestionDoc: Omit<Question, 'id'> = {
-        ...aiResponse,
+        ...responseData,
         question_en: language === 'en' ? query : '(AI Generated Answer)',
         question_hi: language === 'hi' ? query : '(एआई जनरेटेड उत्तर)',
-        normalized_en: normalizeText(language === 'en' ? query : aiResponse.shortAnswer_en),
-        normalized_hi: normalizeText(language === 'hi' ? query : aiResponse.shortAnswer_hi),
+        normalized_en: normalizeText(language === 'en' ? query : responseData.shortAnswer_en),
+        normalized_hi: normalizeText(language === 'hi' ? query : responseData.shortAnswer_hi),
         keywords_en: [],
         keywords_hi: [],
         category: 'AI Added',
@@ -239,20 +240,20 @@ export default function SmartQuestionSearch() {
                 <Database className="mr-2 h-4 w-4" /> Database
               </Button>
               <Button
-                 variant={mode === 'ai' ? 'default' : 'ghost'}
+                 variant={'ghost'}
                  size="sm"
-                 onClick={() => setMode('ai')}
-                 className={`rounded-full px-3 text-sm h-8 ${mode === 'ai' ? 'bg-orange-500 text-white' : 'text-slate-600'}`}
+                 disabled={true}
+                 className={`rounded-full px-3 text-sm h-8 text-slate-400 cursor-not-allowed`}
               >
-                <Sparkles className="mr-2 h-4 w-4" /> AI
+                <Sparkles className="mr-2 h-4 w-4" /> AI <Lock className="ml-1 h-3 w-3"/>
               </Button>
                <Button
-                 variant={mode === 'hybrid' ? 'default' : 'ghost'}
+                 variant={'ghost'}
                  size="sm"
-                 onClick={() => setMode('hybrid')}
-                 className={`rounded-full px-3 text-sm h-8 ${mode === 'hybrid' ? 'bg-orange-500 text-white' : 'text-slate-600'}`}
+                 disabled={true}
+                 className={`rounded-full px-3 text-sm h-8 text-slate-400 cursor-not-allowed`}
               >
-                <Layers className="mr-2 h-4 w-4" /> Hybrid
+                <Layers className="mr-2 h-4 w-4" /> Hybrid <Lock className="ml-1 h-3 w-3"/>
               </Button>
             </div>
         </div>
@@ -305,7 +306,7 @@ export default function SmartQuestionSearch() {
                   ? 'कृपया अपने सवाल को दोबारा लिखें या AI मोड का उपयोग करें।'
                   : 'Please rephrase your question or try AI mode.'}
               </p>
-              <Button onClick={() => setMode('ai')}>
+              <Button disabled>
                   <Sparkles className="mr-2 h-4 w-4" /> Try AI Mode
               </Button>
             </div>
