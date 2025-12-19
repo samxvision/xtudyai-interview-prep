@@ -17,6 +17,7 @@ import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { useFirestore } from '@/firebase';
 import { collection } from 'firebase/firestore';
 import { normalizeText, findBestMatch } from '@/lib/matching';
+import { searchAcronym, getRelatedAcronyms, AcronymMatch } from '@/lib/acronyms';
 
 type SearchMode = 'database' | 'ai' | 'hybrid';
 
@@ -132,6 +133,31 @@ export default function SearchPage() {
       }
   }, [toast]);
 
+  const createAcronymQuestion = (match: AcronymMatch, lang: 'en' | 'hi'): Question => {
+    const related = getRelatedAcronyms(match.acronym);
+    const longAnswer = `Category: ${match.category}. Related terms: ${related.map(r => r.acronym).join(', ')}`;
+    
+    return {
+        id: `acronym-${match.acronym}`,
+        question_en: `What is ${match.acronym}?`,
+        question_hi: `${match.acronym} क्या है?`,
+        shortAnswer_en: match.full,
+        shortAnswer_hi: match.full_hi,
+        longAnswer_en: longAnswer,
+        longAnswer_hi: longAnswer,
+        summaryPoints_en: match.variations,
+        summaryPoints_hi: match.variations,
+        category: match.category,
+        difficulty: 'easy',
+        tags: ['acronym', match.category],
+        source: 'acronym-db',
+        viewCount: 0,
+        normalized_en: normalizeText(match.acronym),
+        normalized_hi: normalizeText(match.acronym),
+        keywords_en: [],
+        keywords_hi: [],
+    };
+  };
 
   const handleSearch = async (query: string) => {
     setActiveQuestion(null);
@@ -140,6 +166,15 @@ export default function SearchPage() {
 
     const detectedLang = detectLanguage(query);
     setInitialLang(detectedLang);
+    
+    // Acronym search first
+    const acronymMatch = searchAcronym(query);
+    if (acronymMatch) {
+        const acronymQuestion = createAcronymQuestion(acronymMatch, detectedLang);
+        setActiveQuestion(acronymQuestion);
+        setIsLoading(false);
+        return;
+    }
 
     if (mode === 'database') {
         const dbResult = findBestMatch(query, questions);
