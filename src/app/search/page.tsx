@@ -1,8 +1,7 @@
-
 "use client";
 
-import React, { useState, useEffect, useTransition } from 'react';
-import { Search, Loader2, CheckCircle, AlertCircle, HelpCircle, Tag, ArrowLeft, BookOpen, Layers, Database, Sparkles, Bookmark, Share, ThumbsUp, ThumbsDown, Lock } from 'lucide-react';
+import React, { useState, useEffect, useTransition, useCallback } from 'react';
+import { Search, Loader2, AlertCircle, Tag, ArrowLeft, Database, Sparkles, Layers, Lock, Mic } from 'lucide-react';
 import { AcronymData } from '@/lib/acronyms';
 import { findBestMatch, normalizeText } from '@/lib/matching';
 import { useAppContext } from '@/context/AppContext';
@@ -18,6 +17,8 @@ import Link from 'next/link';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { AnswerCard } from '@/components/answer-card';
+import { useSpeechRecognition } from '@/hooks/use-speech-recognition';
+import { useToast } from '@/hooks/use-toast';
 
 type SearchMode = 'database' | 'ai' | 'hybrid';
 type AcronymResult = {
@@ -67,56 +68,89 @@ export default function SmartQuestionSearch() {
   const { questions, areQuestionsLoading, addLearnedQuestion } = useAppContext();
   const firestore = useFirestore();
   const [isPending, startTransition] = useTransition();
+  const { toast } = useToast();
 
-  const handleSearch = async () => {
-    if (!query.trim()) return;
+  const {
+    transcript,
+    isListening,
+    startListening,
+    stopListening,
+    isSupported: isSpeechSupported,
+    error: speechError,
+  } = useSpeechRecognition();
+
+  useEffect(() => {
+    if (transcript) {
+      setQuery(transcript);
+    }
+  }, [transcript]);
+
+  useEffect(() => {
+    if (speechError) {
+      toast({
+        title: "Voice Error",
+        description: speechError,
+        variant: "destructive",
+      });
+    }
+  }, [speechError, toast]);
+
+  const handleSearch = useCallback(async (searchQuery = query) => {
+    const finalQuery = searchQuery.trim();
+    if (!finalQuery) return;
+
     setLoading(true);
     setResult(null);
 
-    const detectedLang = detectLanguage(query);
+    const detectedLang = detectLanguage(finalQuery);
     setUiLanguage(detectedLang);
 
+    // Using a small timeout to allow UI to update to loading state
     setTimeout(async () => {
-        const matches = findBestMatch(query, questions);
+      try {
+        const matches = findBestMatch(finalQuery, questions);
         const bestMatch = matches.length > 0 ? matches[0] : null;
 
         if (bestMatch?.type === 'acronym') {
-            setResult(bestMatch as AcronymResult);
-            setLoading(false);
-            return;
+          setResult(bestMatch as AcronymResult);
+          return;
         }
 
         if (mode === 'database') {
-            if (bestMatch && bestMatch.type === 'question') {
-                setResult(bestMatch as QuestionResult);
-            } else {
-                setResult({ notFound: true });
-                startTransition(() => {
-                    generateAiAnswer(query).then(aiResponse => {
-                        if (aiResponse) {
-                            saveNewQuestion(query, detectedLang, aiResponse, 'expert-database');
-                        }
-                    });
-                });
-            }
-            setLoading(false);
+          if (bestMatch && bestMatch.type === 'question') {
+            setResult(bestMatch as QuestionResult);
+          } else {
+            setResult({ notFound: true });
+            startTransition(() => {
+              generateAiAnswer(finalQuery).then(aiResponse => {
+                if (aiResponse) {
+                  saveNewQuestion(finalQuery, detectedLang, aiResponse, 'expert-database');
+                }
+              }).catch(console.error);
+            });
+          }
         } else if (mode === 'ai') {
-            await performAiSearch(query, detectedLang).finally(() => setLoading(false));
+          await performAiSearch(finalQuery, detectedLang);
         } else if (mode === 'hybrid') {
-            if (bestMatch && bestMatch.type === 'question' && bestMatch.score > 70) {
-                setResult(bestMatch as QuestionResult);
-                setLoading(false);
-            } else {
-                await performAiSearch(query, detectedLang).finally(() => setLoading(false));
-            }
+          if (bestMatch && bestMatch.type === 'question' && bestMatch.score > 70) {
+            setResult(bestMatch as QuestionResult);
+          } else {
+            await performAiSearch(finalQuery, detectedLang);
+          }
         }
+      } catch (error) {
+        console.error("Search failed:", error);
+        setResult({ notFound: true });
+      } finally {
+        setLoading(false);
+      }
     }, 300);
-  };
+  }, [query, questions, mode, addLearnedQuestion, firestore]);
 
-  const performAiSearch = async (query: string, language: 'en' | 'hi') => {
+  const performAiSearch = async (currentQuery: string, language: 'en' | 'hi') => {
     try {
       const aiResponse = await generateAiAnswer(
-        `Based on the question "${query}", provide a comprehensive answer for a QA/QC professional in the Oil & Gas industry. The response must be structured as a JSON object with the following fields: shortAnswer_en, shortAnswer_hi, longAnswer_en, longAnswer_hi, summaryPoints_en, and summaryPoints_hi.`
+        `Based on the question "${currentQuery}", provide a comprehensive answer for a QA/QC professional in the Oil & Gas industry. The response must be structured as a JSON object with the following fields: shortAnswer_en, shortAnswer_hi, longAnswer_en, longAnswer_hi, summaryPoints_en, and summaryPoints_hi.`
       );
       
       const aiResult = JSON.parse(aiResponse);
@@ -124,10 +158,10 @@ export default function SmartQuestionSearch() {
       const aiQuestion: Question = {
         ...aiResult,
         id: `ai-${Date.now()}`,
-        question_en: language === 'en' ? query : '(AI Generated Answer)',
-        question_hi: language === 'hi' ? query : '(एआई जनरेटेड उत्तर)',
-        normalized_en: normalizeText(language === 'en' ? query : aiResult.shortAnswer_en),
-        normalized_hi: normalizeText(language === 'hi' ? query : aiResult.shortAnswer_hi),
+        question_en: language === 'en' ? currentQuery : '(AI Generated Answer)',
+        question_hi: language === 'hi' ? currentQuery : '(एआई जनरेटेड उत्तर)',
+        normalized_en: normalizeText(language === 'en' ? currentQuery : aiResult.shortAnswer_en),
+        normalized_hi: normalizeText(language === 'hi' ? currentQuery : aiResult.shortAnswer_hi),
         keywords_en: [],
         keywords_hi: [],
         category: 'AI Generated',
@@ -139,7 +173,7 @@ export default function SmartQuestionSearch() {
       setResult({ type: 'question', document: aiQuestion, score: 100, intent: ['what'] });
       
       startTransition(() => {
-          saveNewQuestion(query, language, aiResponse, 'ai-generated');
+          saveNewQuestion(currentQuery, language, aiResponse, 'ai-generated');
       });
 
     } catch (error) {
@@ -148,10 +182,10 @@ export default function SmartQuestionSearch() {
     }
   };
   
-  const saveNewQuestion = async (query: string, language: 'en' | 'hi', aiResponse: any, source: 'ai-generated' | 'hybrid-learning' | 'expert-database') => {
+  const saveNewQuestion = async (currentQuery: string, language: 'en' | 'hi', aiResponse: any, source: 'ai-generated' | 'hybrid-learning' | 'expert-database') => {
     if (!firestore) return;
 
-    const existingMatches = findBestMatch(query, questions);
+    const existingMatches = findBestMatch(currentQuery, questions);
     const hasGoodMatch = existingMatches.some(m => m.type === 'question' && m.score > 95);
     if (hasGoodMatch) {
       console.log("Duplicate question detected with high confidence, not saving.");
@@ -163,10 +197,10 @@ export default function SmartQuestionSearch() {
       const responseData = JSON.parse(aiResponse);
       const newQuestionDoc: Omit<Question, 'id'> = {
         ...responseData,
-        question_en: language === 'en' ? query : '(AI Generated Answer)',
-        question_hi: language === 'hi' ? query : '(एआई जनरेटेड उत्तर)',
-        normalized_en: normalizeText(language === 'en' ? query : responseData.shortAnswer_en),
-        normalized_hi: normalizeText(language === 'hi' ? query : responseData.shortAnswer_hi),
+        question_en: language === 'en' ? currentQuery : '(AI Generated Answer)',
+        question_hi: language === 'hi' ? currentQuery : '(एआई जनरेटेड उत्तर)',
+        normalized_en: normalizeText(language === 'en' ? currentQuery : responseData.shortAnswer_en),
+        normalized_hi: normalizeText(language === 'hi' ? currentQuery : responseData.shortAnswer_hi),
         keywords_en: [],
         keywords_hi: [],
         category: 'AI Added',
@@ -207,6 +241,27 @@ export default function SmartQuestionSearch() {
 
     };
     return category ? (colors[category.toLowerCase()] || 'bg-slate-500/20 text-slate-400 border-slate-500/30') : 'bg-slate-500/20 text-slate-400 border-slate-500/30';
+  };
+
+  const handleMicPress = () => {
+    if (!isSpeechSupported) {
+      toast({
+        title: "Not Supported",
+        description: "Your browser does not support voice recognition.",
+        variant: "destructive"
+      });
+      return;
+    }
+    const lang = detectLanguage(query) === 'hi' ? 'hi-IN' : 'en-US';
+    startListening(lang);
+  };
+  
+  const handleMicRelease = () => {
+    stopListening();
+    // Use a timeout to ensure the final transcript is set before searching
+    setTimeout(() => {
+        handleSearch(transcript || query);
+    }, 100);
   };
   
   if (areQuestionsLoading) {
@@ -317,36 +372,16 @@ export default function SmartQuestionSearch() {
 
           {/* Examples */}
           {!result && !loading && (
-            <div className="mt-8">
-              <p className="text-slate-500 text-sm mb-3 text-center font-medium">Try these examples:</p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <div className="text-xs text-slate-500 font-semibold uppercase px-2">Acronyms</div>
-                  {['WPS', 'what is NDT', 'PQR kya hai'].map(ex => (
-                    <button
-                      key={ex}
-                      onClick={() => {setQuery(ex); handleSearch();}}
-                      className="w-full px-4 py-3 bg-white hover:bg-slate-100 border border-slate-200 text-left text-slate-700 rounded-lg text-sm transition flex items-center gap-2"
-                    >
-                      <Tag className="w-4 h-4 text-orange-500" />
-                      <span>{ex}</span>
-                    </button>
-                  ))}
-                </div>
-                <div className="space-y-2">
-                  <div className="text-xs text-slate-500 font-semibold uppercase px-2">Questions</div>
-                  {['heat exchanger kya hai', 'serration area', 'what is flange'].map(ex => (
-                    <button
-                      key={ex}
-                      onClick={() => {setQuery(ex); handleSearch();}}
-                      className="w-full px-4 py-3 bg-white hover:bg-slate-100 border border-slate-200 text-left text-slate-700 rounded-lg text-sm transition flex items-center gap-2"
-                    >
-                      <HelpCircle className="w-4 h-4 text-blue-500" />
-                      <span>{ex}</span>
-                    </button>
-                  ))}
-                </div>
+            <div className="pt-8 text-center">
+              <div className="inline-block bg-slate-200 p-4 rounded-full">
+                <Mic className="h-8 w-8 text-slate-600" />
               </div>
+              <h2 className="mt-4 text-xl font-semibold text-slate-700">
+                Ask me anything
+              </h2>
+              <p className="text-slate-500 mt-1">
+                Press and hold the mic to start speaking.
+              </p>
             </div>
           )}
 
@@ -360,10 +395,18 @@ export default function SmartQuestionSearch() {
       </main>
 
        {/* Search Box Footer */}
-       <footer className="p-4 bg-white border-t border-slate-200 space-y-4">
+       <footer className="p-4 bg-white border-t border-slate-200 space-y-4 sticky bottom-0">
           <div className="flex justify-center">
-            <Button variant="ghost" size="icon" className="text-white bg-green-500 hover:bg-green-600 h-20 w-20 rounded-full shadow-lg">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-10 w-10"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+            <Button 
+                variant="ghost" 
+                size="icon" 
+                className={`text-white h-20 w-20 rounded-full shadow-lg transition-transform duration-200 ease-in-out ${isListening ? 'bg-red-500 scale-110' : 'bg-green-500 hover:bg-green-600'}`}
+                onMouseDown={handleMicPress}
+                onMouseUp={handleMicRelease}
+                onTouchStart={handleMicPress}
+                onTouchEnd={handleMicRelease}
+            >
+                <Mic className="h-10 w-10" />
             </Button>
           </div>
           <div className="relative">
@@ -372,13 +415,13 @@ export default function SmartQuestionSearch() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-              placeholder={uiLanguage === 'hi' ? 'सवाल या Acronym सर्च करें...' : 'Search questions or acronyms...'}
+              placeholder={isListening ? 'Listening...' : (uiLanguage === 'hi' ? 'सवाल या Acronym सर्च करें...' : 'Search questions or acronyms...')}
               className="w-full h-14 px-4 pr-16 bg-slate-100 border-slate-200 border rounded-lg text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500 text-base"
             />
             <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center">
               <Button
-                onClick={handleSearch}
-                disabled={loading || isPending}
+                onClick={() => handleSearch()}
+                disabled={loading || isPending || !query.trim()}
                 className="p-2 h-10 w-10 bg-slate-800 hover:bg-slate-900 disabled:bg-slate-400 rounded-lg transition"
               >
                 {loading || isPending ? (
@@ -393,4 +436,3 @@ export default function SmartQuestionSearch() {
     </div>
   );
 }
- 

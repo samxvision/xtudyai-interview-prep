@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 
 type SpeechRecognitionHook = {
   isListening: boolean;
@@ -30,16 +30,26 @@ export const useSpeechRecognition = (): SpeechRecognitionHook => {
     }
 
     const recognition = new SpeechRecognition();
-    recognition.continuous = false;
-    recognition.interimResults = false;
+    recognition.continuous = true; // Keep listening even after a pause
+    recognition.interimResults = true; // Get results as the user speaks
 
     recognition.onresult = (event) => {
-      const currentTranscript = event.results[0][0].transcript;
-      setTranscript(currentTranscript);
+      let finalTranscript = '';
+      let interimTranscript = '';
+      for (let i = 0; i < event.results.length; ++i) {
+        if (event.results[i].isFinal) {
+          finalTranscript += event.results[i][0].transcript;
+        } else {
+          interimTranscript += event.results[i][0].transcript;
+        }
+      }
+      setTranscript(finalTranscript + interimTranscript);
     };
 
     recognition.onerror = (event) => {
-      setError(event.error);
+      if (event.error !== 'no-speech') {
+        setError(event.error);
+      }
       setIsListening(false);
     };
 
@@ -50,7 +60,7 @@ export const useSpeechRecognition = (): SpeechRecognitionHook => {
     recognitionRef.current = recognition;
   }, []);
 
-  const startListening = (lang: 'en-US' | 'hi-IN' = 'en-US') => {
+  const startListening = useCallback((lang: 'en-US' | 'hi-IN' = 'en-US') => {
     if (recognitionRef.current && !isListening) {
       recognitionRef.current.lang = lang;
       setTranscript('');
@@ -59,18 +69,22 @@ export const useSpeechRecognition = (): SpeechRecognitionHook => {
         recognitionRef.current.start();
         setIsListening(true);
       } catch (err) {
-        setError('Speech recognition could not be started.');
+        if (err instanceof DOMException && err.name === 'NotAllowedError') {
+          setError('Microphone permission denied.');
+        } else {
+          setError('Speech recognition could not be started.');
+        }
         setIsListening(false);
       }
     }
-  };
+  }, [isListening]);
 
-  const stopListening = () => {
+  const stopListening = useCallback(() => {
     if (recognitionRef.current && isListening) {
       recognitionRef.current.stop();
       setIsListening(false);
     }
-  };
+  }, [isListening]);
 
   return {
     isListening,
