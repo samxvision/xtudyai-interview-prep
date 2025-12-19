@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from 'react';
@@ -35,19 +36,14 @@ export const useSpeechRecognition = (): SpeechRecognitionHook => {
 
     recognition.onresult = (event) => {
       let finalTranscript = '';
-      let interimTranscript = '';
       for (let i = 0; i < event.results.length; ++i) {
-        if (event.results[i].isFinal) {
-          finalTranscript += event.results[i][0].transcript;
-        } else {
-          interimTranscript += event.results[i][0].transcript;
-        }
+        finalTranscript += event.results[i][0].transcript;
       }
-      setTranscript(finalTranscript + interimTranscript);
+      setTranscript(finalTranscript);
     };
 
     recognition.onerror = (event) => {
-      if (event.error !== 'no-speech') {
+      if (event.error !== 'no-speech' && event.error !== 'aborted') {
         setError(event.error);
       }
       setIsListening(false);
@@ -58,6 +54,12 @@ export const useSpeechRecognition = (): SpeechRecognitionHook => {
     };
 
     recognitionRef.current = recognition;
+    
+    return () => {
+        if (recognitionRef.current) {
+            recognitionRef.current.abort();
+        }
+    };
   }, []);
 
   const startListening = useCallback((lang: 'en-US' | 'hi-IN' = 'en-US') => {
