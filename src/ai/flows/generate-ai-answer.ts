@@ -57,12 +57,6 @@ Please generate the following fields:
 Provide a factual, professional, and clear response suitable for someone preparing for a technical interview.`,
 });
 
-// A list of candidate models to try in order. The free Gemini API tier provides access to gemini-1.5-flash.
-const candidateModels = [
-  googleAI.model('gemini-1.5-flash'),
-  googleAI.model('gemini-pro'),
-];
-
 const generateAiAnswerFlow = ai.defineFlow(
   {
     name: 'generateAiAnswerFlow',
@@ -70,28 +64,23 @@ const generateAiAnswerFlow = ai.defineFlow(
     outputSchema: GenerateAiAnswerOutputSchema,
   },
   async (input) => {
-    let lastError: any = null;
-
-    // Iterate through the candidate models and try to get a response.
-    for (const model of candidateModels) {
-      try {
-        const { output } = await ai.generate({
-          model: model,
-          prompt: promptTemplate,
-          input: input,
-          output: { schema: GenerateAiAnswerOutputSchema },
-        });
-        
-        if (output) {
-          return output; // Success, return the output immediately.
-        }
-      } catch (error) {
-        console.warn(`Model ${model.name} failed. Trying next model. Error:`, error);
-        lastError = error; // Store the last error encountered.
+    try {
+      const { output } = await ai.generate({
+        model: googleAI.model('gemini-1.5-flash'), // Using a single, reliable model
+        prompt: promptTemplate,
+        input: input,
+        output: { schema: GenerateAiAnswerOutputSchema },
+      });
+      
+      if (output) {
+        return output;
       }
+      // This line is unlikely to be reached if output is null without an error, but it's good practice.
+      throw new Error('AI model returned a null output without an error.');
+    } catch (error: any) {
+        console.error(`AI model failed to respond. Error:`, error);
+        // Re-throw a more user-friendly error to be caught by the calling function
+        throw new Error(`AI model failed to respond. Last error: ${error?.message || 'Unknown error'}`);
     }
-
-    // If all models failed, throw the last error.
-    throw new Error(`All AI models failed to respond. Last error: ${lastError?.message || 'Unknown error'}`);
   }
 );
