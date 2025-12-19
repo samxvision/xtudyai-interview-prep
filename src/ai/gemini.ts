@@ -27,7 +27,23 @@ export async function generateAiAnswer(prompt: string) {
     // Clean the response to ensure it's valid JSON
     const jsonString = text.replace(/```json/g, '').replace(/```/g, '').trim();
     
-    return JSON.parse(jsonString);
+    // Attempt to parse the cleaned JSON
+    try {
+        return JSON.parse(jsonString);
+    } catch (parseError) {
+        console.error("Failed to parse AI response as JSON:", parseError);
+        console.error("Original AI response text:", text);
+        // Fallback for non-JSON or malformed JSON responses
+        // Create a structured object from the raw text
+        return {
+            shortAnswer_en: text,
+            shortAnswer_hi: "एआई से कोई संरचित प्रतिक्रिया नहीं मिली।",
+            longAnswer_en: text,
+            longAnswer_hi: "एआई से कोई संरचित प्रतिक्रिया नहीं मिली।",
+            summaryPoints_en: [text],
+            summaryPoints_hi: ["एआई से कोई संरचित प्रतिक्रिया नहीं मिली।"]
+        };
+    }
 
   } catch (error: any) {
     console.error(`AI model failed to respond. Error:`, error);
