@@ -76,7 +76,7 @@ export default function SmartQuestionSearch() {
     const detectedLang = detectLanguage(query);
     setUiLanguage(detectedLang);
 
-    setTimeout(() => {
+    setTimeout(async () => {
         const matches = findBestMatch(query, questions);
         const bestMatch = matches.length > 0 ? matches[0] : null;
 
@@ -101,13 +101,13 @@ export default function SmartQuestionSearch() {
             }
             setLoading(false);
         } else if (mode === 'ai') {
-            performAiSearch(query, detectedLang).finally(() => setLoading(false));
+            await performAiSearch(query, detectedLang).finally(() => setLoading(false));
         } else if (mode === 'hybrid') {
             if (bestMatch && bestMatch.type === 'question' && bestMatch.score > 70) {
                 setResult(bestMatch as QuestionResult);
                 setLoading(false);
             } else {
-                performAiSearch(query, detectedLang).finally(() => setLoading(false));
+                await performAiSearch(query, detectedLang).finally(() => setLoading(false));
             }
         }
     }, 300);
@@ -115,16 +115,19 @@ export default function SmartQuestionSearch() {
 
   const performAiSearch = async (query: string, language: 'en' | 'hi') => {
     try {
-      const aiResult = await generateAiAnswer(query);
-      if (!aiResult) throw new Error("AI did not return a valid result.");
+      const aiResponse = await generateAiAnswer(
+        `Based on the question "${query}", provide a comprehensive answer for a QA/QC professional in the Oil & Gas industry. The response must be structured as a JSON object with the following fields: shortAnswer_en, shortAnswer_hi, longAnswer_en, longAnswer_hi, summaryPoints_en, and summaryPoints_hi.`
+      );
+      
+      const aiResult = JSON.parse(aiResponse);
       
       const aiQuestion: Question = {
-        ...(JSON.parse(aiResult)),
+        ...aiResult,
         id: `ai-${Date.now()}`,
         question_en: language === 'en' ? query : '(AI Generated Answer)',
         question_hi: language === 'hi' ? query : '(एआई जनरेटेड उत्तर)',
-        normalized_en: normalizeText(language === 'en' ? query : (JSON.parse(aiResult)).shortAnswer_en),
-        normalized_hi: normalizeText(language === 'hi' ? query : (JSON.parse(aiResult)).shortAnswer_hi),
+        normalized_en: normalizeText(language === 'en' ? query : aiResult.shortAnswer_en),
+        normalized_hi: normalizeText(language === 'hi' ? query : aiResult.shortAnswer_hi),
         keywords_en: [],
         keywords_hi: [],
         category: 'AI Generated',
@@ -136,7 +139,7 @@ export default function SmartQuestionSearch() {
       setResult({ type: 'question', document: aiQuestion, score: 100, intent: ['what'] });
       
       startTransition(() => {
-          saveNewQuestion(query, language, aiResult, 'ai-generated');
+          saveNewQuestion(query, language, aiResponse, 'ai-generated');
       });
 
     } catch (error) {
@@ -365,12 +368,9 @@ export default function SmartQuestionSearch() {
               onChange={(e) => setQuery(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
               placeholder={uiLanguage === 'hi' ? 'सवाल या Acronym सर्च करें...' : 'Search questions or acronyms...'}
-              className="w-full px-4 py-3 pr-24 bg-slate-100 border-slate-200 border rounded-lg text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500 text-base"
+              className="w-full h-14 px-4 pr-28 bg-slate-100 border-slate-200 border rounded-lg text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500 text-base"
             />
-            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-              <Button variant="ghost" size="icon" className="text-slate-500 hover:bg-slate-200">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
-              </Button>
+            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-2">
               <Button
                 onClick={handleSearch}
                 disabled={loading || isPending}
@@ -382,9 +382,14 @@ export default function SmartQuestionSearch() {
                   <Search className="w-5 h-5 text-white" />
                 )}
               </Button>
+              <Button variant="ghost" size="icon" className="text-white bg-green-500 hover:bg-green-600 h-10 w-10 rounded-lg">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+              </Button>
             </div>
           </div>
        </footer>
     </div>
   );
 }
+
+    
