@@ -53,32 +53,43 @@ export function AnswerCard({ question, initialLang }: AnswerCardProps) {
     setLang((prevLang) => (prevLang === 'en' ? 'hi' : 'en'));
   };
 
-  const difficultyColors = {
-    easy: 'bg-yellow-100 text-yellow-800 border-yellow-300',
-    medium: 'bg-orange-100 text-orange-800 border-orange-300',
-    hard: 'bg-red-100 text-red-800 border-red-300',
+  const difficultyColors: { [key: string]: string } = {
+    easy: 'bg-orange-100 text-orange-800 border-orange-200',
+    medium: 'bg-orange-100 text-orange-800 border-orange-200', // Using same for medium
+    hard: 'bg-red-100 text-red-800 border-red-200',
+  };
+
+  const categoryColors: { [key: string]: string } = {
+    piping: 'bg-gray-100 text-gray-800 border-gray-200',
+    welding: 'bg-gray-100 text-gray-800 border-gray-200',
+    // Add other categories as needed
   };
 
   return (
-    <Card className="w-full max-w-4xl mx-auto shadow-lg">
-      <CardHeader>
+    <Card className="w-full max-w-4xl mx-auto shadow-lg border-slate-200">
+      <CardHeader className="pb-4">
         <div className="flex flex-wrap items-center gap-2 mb-4">
           <Badge
             variant="outline"
-            className={`uppercase ${difficultyColors[question.difficulty]}`}
+            className={`uppercase text-xs font-bold ${difficultyColors[question.difficulty] || 'bg-gray-100 text-gray-800 border-gray-200'}`}
           >
             {question.difficulty}
           </Badge>
-          <Badge className="bg-primary/10 text-primary border-primary/20">{question.category}</Badge>
+          <Badge 
+            variant="outline"
+            className={`text-xs font-bold ${categoryColors[question.category.toLowerCase()] || 'bg-gray-100 text-gray-800 border-gray-200'}`}
+          >
+            {question.category}
+          </Badge>
         </div>
-        <CardTitle className="font-headline text-3xl mb-2">
+        <CardTitle className="font-bold text-2xl text-slate-800 mb-2">
           {question[`question_${lang}`]}
         </CardTitle>
         <div className="flex justify-between items-center">
-          <Button variant="link" onClick={toggleLanguage} className="p-0 h-auto">
+          <Button variant="link" onClick={toggleLanguage} className="p-0 h-auto text-orange-600 font-semibold">
             {lang === 'en' ? 'Switch to Hinglish' : 'Switch to English'}
           </Button>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 text-slate-500">
             <Button variant="ghost" size="icon">
               <Bookmark className="w-5 h-5" />
             </Button>
@@ -88,50 +99,50 @@ export function AnswerCard({ question, initialLang }: AnswerCardProps) {
           </div>
         </div>
       </CardHeader>
-      <CardContent className="space-y-8">
+      <CardContent className="space-y-6 pt-0">
         <div>
-          <h3 className="text-sm font-semibold uppercase text-muted-foreground mb-2">
+          <h3 className="text-xs font-bold uppercase text-slate-500 mb-2">
             Quick Answer
           </h3>
-          <p className="text-lg leading-relaxed">
+          <p className="text-base leading-relaxed text-slate-700">
             {question[`shortAnswer_${lang}`]}
           </p>
         </div>
 
-        <div className="bg-green-50 dark:bg-green-900/20 p-6 rounded-lg">
-          <h3 className="text-sm font-semibold uppercase text-green-800 dark:text-green-300 mb-4">
+        <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+          <h3 className="text-xs font-bold uppercase text-green-800 mb-3">
             Key Takeaways
           </h3>
-          <ul className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3">
+          <ul className="space-y-2">
             {question[`summaryPoints_${lang}`] && question[`summaryPoints_${lang}`].map((point, index) => (
               <li key={index} className="flex items-start gap-3">
-                <CheckCircle className="w-5 h-5 text-green-500 mt-1 shrink-0" />
-                <span className="text-lg">{point}</span>
+                <CheckCircle className="w-5 h-5 text-green-500 mt-0.5 shrink-0" />
+                <span className="text-base text-slate-800">{point}</span>
               </li>
             ))}
           </ul>
         </div>
 
-        <Accordion type="single" collapsible defaultValue="item-1">
-          <AccordionItem value="item-1">
-            <AccordionTrigger className="text-sm font-semibold uppercase text-muted-foreground">
+        <Accordion type="single" collapsible defaultValue="item-1" className="w-full">
+          <AccordionItem value="item-1" className="border-b-0">
+            <AccordionTrigger className="text-xs font-bold uppercase text-slate-500 hover:no-underline py-2">
               Detailed Explanation
             </AccordionTrigger>
-            <AccordionContent className="prose-lg dark:prose-invert max-w-none pt-4 text-foreground/80">
-              <div className="text-lg leading-relaxed">
+            <AccordionContent className="pt-2 text-slate-700 text-base leading-relaxed">
                 {renderMarkdown(question[`longAnswer_${lang}`])}
-              </div>
             </AccordionContent>
           </AccordionItem>
         </Accordion>
       </CardContent>
-      <CardFooter className="flex flex-col items-start gap-4 pt-6 border-t">
-         <p className="text-sm text-muted-foreground">Was this helpful?</p>
+      <CardFooter className="flex flex-col items-start gap-2 pt-4 border-t bg-slate-50 p-4">
+         <p className="text-sm text-slate-600">Was this helpful?</p>
          <div className="flex gap-2">
-            <Button variant="outline"><ThumbsUp className="mr-2 h-4 w-4"/> Yes</Button>
-            <Button variant="outline"><ThumbsDown className="mr-2 h-4 w-4"/> No</Button>
+            <Button variant="outline" size="sm" className="bg-white"><ThumbsUp className="mr-2 h-4 w-4"/> Yes</Button>
+            <Button variant="outline" size="sm" className="bg-white"><ThumbsDown className="mr-2 h-4 w-4"/> No</Button>
          </div>
       </CardFooter>
     </Card>
   );
 }
+
+    
