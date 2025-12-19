@@ -36,26 +36,27 @@ export const useSpeechRecognition = (): SpeechRecognitionHook => {
     recognition.interimResults = true;
 
     recognition.onstart = () => {
-      finalTranscriptRef.current = '';
+      // Don't reset transcript here, keep the last final transcript
     };
 
     recognition.onresult = (event) => {
       let interimTranscript = '';
-      let currentFinalTranscript = finalTranscriptRef.current;
-
+      
+      // Iterate through all results from the current recognition
       for (let i = event.resultIndex; i < event.results.length; ++i) {
-        const transcriptSegment = event.results[i][0].transcript;
         if (event.results[i].isFinal) {
-          // Append the final segment with a space if needed
-          currentFinalTranscript += (currentFinalTranscript ? ' ' : '') + transcriptSegment;
+          // Append final transcript segment, add a space if there's existing content
+          const finalSegment = event.results[i][0].transcript;
+          finalTranscriptRef.current += (finalTranscriptRef.current ? ' ' : '') + finalSegment;
         } else {
-          interimTranscript += transcriptSegment;
+          // Collect the latest interim transcript
+          interimTranscript += event.results[i][0].transcript;
         }
       }
-      finalTranscriptRef.current = currentFinalTranscript;
       
-      // Update the state with the combined final and interim transcripts
-      setTranscript((currentFinalTranscript + ' ' + interimTranscript).trim());
+      // Update the display text by combining the stable final transcript
+      // with the fluctuating interim part.
+      setTranscript((finalTranscriptRef.current + ' ' + interimTranscript).trim());
     };
 
     recognition.onerror = (event) => {
@@ -81,8 +82,8 @@ export const useSpeechRecognition = (): SpeechRecognitionHook => {
   const startListening = useCallback((lang: 'en-US' | 'hi-IN' = 'en-US') => {
     if (recognitionRef.current && !isListening) {
       recognitionRef.current.lang = lang;
-      setTranscript('');
-      finalTranscriptRef.current = ''; // Reset final transcript on start
+      setTranscript(''); // Clear visual transcript
+      finalTranscriptRef.current = ''; // Reset internal final transcript
       setError(null);
       try {
         recognitionRef.current.start();
