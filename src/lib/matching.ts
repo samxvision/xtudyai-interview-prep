@@ -1,3 +1,4 @@
+
 // ============================================
 // ENHANCED QUESTION MATCHING WITH ACRONYMS
 // Handles: Questions + Acronyms + Full Names
@@ -252,7 +253,7 @@ class EnhancedQuestionMatcher {
 const matcher = new EnhancedQuestionMatcher();
 
 export const findBestMatch = (userQuery: string, questions: Question[]) => {
-    return matcher.findBestMatch(userQuery, questions, 40);
+    return matcher.findBestMatch(userQuery, questions, 50);
 };
 
 export const normalizeText = (text: string): string => {
