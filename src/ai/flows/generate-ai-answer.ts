@@ -40,7 +40,6 @@ const prompt = ai.definePrompt({
   name: 'generateAiAnswerPrompt',
   input: { schema: GenerateAiAnswerInputSchema },
   output: { schema: GenerateAiAnswerOutputSchema },
-  model: googleAI.model('gemini-pro'),
   prompt: `You are an expert in Oil and Gas QA/QC interview questions. The user has asked a question in {{language}}.
 Your task is to provide a comprehensive and structured answer in BOTH English and Hindi (Hinglish).
 
