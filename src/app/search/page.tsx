@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useTransition, useCallback } from 'react';
@@ -264,12 +265,12 @@ export default function SmartQuestionSearch() {
             <div className="bg-white rounded-xl border border-slate-200 p-8 text-center mt-4">
               <AlertCircle className="w-16 h-16 text-red-400 mx-auto mb-4" />
               <h3 className="text-xl font-bold text-slate-800 mb-2">
-                {uiLanguage === 'hi' ? 'कोई रिजल्ट नहीं मिला' : 'No Results Found'}
+                {uiLanguage === 'hi' ? 'डेटा नहीं मिला' : 'Data not found'}
               </h3>
               <p className="text-slate-500 mb-4">
                 {uiLanguage === 'hi' 
-                  ? 'कृपया अपने सवाल को दोबारा लिखें या कोई दूसरा सवाल पूछें।'
-                  : 'Please rephrase your question or ask something else.'}
+                  ? 'कृपया कुछ समय बाद इस प्रश्न को खोजें।'
+                  : 'Search this question after some time.'}
               </p>
             </div>
           )}
@@ -344,3 +345,5 @@ export default function SmartQuestionSearch() {
     </div>
   );
 }
+
+    
