@@ -252,7 +252,7 @@ class EnhancedQuestionMatcher {
 const matcher = new EnhancedQuestionMatcher();
 
 export const findBestMatch = (userQuery: string, questions: Question[]) => {
-    return matcher.findBestMatch(userQuery, questions);
+    return matcher.findBestMatch(userQuery, questions, 40);
 };
 
 export const normalizeText = (text: string): string => {
