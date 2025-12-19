@@ -23,7 +23,6 @@ export const useSpeechRecognition = (): SpeechRecognitionHook => {
   const [transcript, setTranscript] = useState('');
   const [error, setError] = useState<string | null>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
-  const finalTranscriptRef = useRef('');
 
   useEffect(() => {
     if (!SpeechRecognition) {
@@ -36,34 +35,25 @@ export const useSpeechRecognition = (): SpeechRecognitionHook => {
     recognition.interimResults = true;
 
     recognition.onstart = () => {
-      // Reset the final transcript for the new listening session
-      finalTranscriptRef.current = '';
+        // This is called when recognition starts
     };
-
+    
     recognition.onresult = (event) => {
-      let interimTranscript = '';
-      
-      // The final transcript is now managed by the ref within the onstart/onresult scope
-      let currentFinal = finalTranscriptRef.current;
+        let interimTranscript = '';
+        let finalTranscript = '';
 
-      // Iterate through all results from the current recognition session
-      for (let i = event.resultIndex; i < event.results.length; ++i) {
-        const transcriptSegment = event.results[i][0].transcript;
-        if (event.results[i].isFinal) {
-          // Append final segments, ensuring a space is added between them.
-          currentFinal += (currentFinal ? ' ' : '') + transcriptSegment;
-        } else {
-          // Collect the latest interim transcript
-          interimTranscript += transcriptSegment;
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+            const transcriptSegment = event.results[i][0].transcript;
+            if (event.results[i].isFinal) {
+                finalTranscript += transcriptSegment;
+            } else {
+                interimTranscript += transcriptSegment;
+            }
         }
-      }
-      
-      // Update the ref with the latest concatenated final transcript
-      finalTranscriptRef.current = currentFinal;
-
-      // Update the display text by combining the stable final transcript
-      // with the fluctuating interim part.
-      setTranscript((currentFinal + ' ' + interimTranscript).trim());
+        
+        // Update the state with the combined transcript.
+        // This rebuilds the transcript from scratch on each result, preventing duplication.
+        setTranscript(finalTranscript + interimTranscript);
     };
 
     recognition.onerror = (event) => {
@@ -89,8 +79,7 @@ export const useSpeechRecognition = (): SpeechRecognitionHook => {
   const startListening = useCallback((lang: 'en-US' | 'hi-IN' = 'en-US') => {
     if (recognitionRef.current && !isListening) {
       recognitionRef.current.lang = lang;
-      setTranscript(''); // Clear visual transcript
-      finalTranscriptRef.current = ''; // Reset internal final transcript
+      setTranscript(''); // Clear previous transcript on new start
       setError(null);
       try {
         recognitionRef.current.start();
@@ -122,3 +111,4 @@ export const useSpeechRecognition = (): SpeechRecognitionHook => {
     stopListening,
   };
 };
+
