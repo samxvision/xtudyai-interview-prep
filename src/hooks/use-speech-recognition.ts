@@ -23,6 +23,7 @@ export const useSpeechRecognition = (): SpeechRecognitionHook => {
   const [transcript, setTranscript] = useState('');
   const [error, setError] = useState<string | null>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const finalTranscriptRef = useRef('');
 
   useEffect(() => {
     if (!SpeechRecognition) {
@@ -34,19 +35,27 @@ export const useSpeechRecognition = (): SpeechRecognitionHook => {
     recognition.continuous = true;
     recognition.interimResults = true;
 
-    recognition.onresult = (event) => {
-      let finalTranscript = '';
-      let interimTranscript = '';
+    recognition.onstart = () => {
+      finalTranscriptRef.current = '';
+    };
 
-      for (let i = 0; i < event.results.length; ++i) {
+    recognition.onresult = (event) => {
+      let interimTranscript = '';
+      let currentFinalTranscript = finalTranscriptRef.current;
+
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        const transcriptSegment = event.results[i][0].transcript;
         if (event.results[i].isFinal) {
-          finalTranscript += event.results[i][0].transcript;
+          // Append the final segment with a space if needed
+          currentFinalTranscript += (currentFinalTranscript ? ' ' : '') + transcriptSegment;
         } else {
-          interimTranscript += event.results[i][0].transcript;
+          interimTranscript += transcriptSegment;
         }
       }
-      // By reconstructing the full transcript each time, we avoid duplication.
-      setTranscript(finalTranscript + interimTranscript);
+      finalTranscriptRef.current = currentFinalTranscript;
+      
+      // Update the state with the combined final and interim transcripts
+      setTranscript((currentFinalTranscript + ' ' + interimTranscript).trim());
     };
 
     recognition.onerror = (event) => {
@@ -73,6 +82,7 @@ export const useSpeechRecognition = (): SpeechRecognitionHook => {
     if (recognitionRef.current && !isListening) {
       recognitionRef.current.lang = lang;
       setTranscript('');
+      finalTranscriptRef.current = ''; // Reset final transcript on start
       setError(null);
       try {
         recognitionRef.current.start();
