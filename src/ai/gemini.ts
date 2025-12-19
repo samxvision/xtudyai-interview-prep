@@ -12,7 +12,7 @@ const genAI = new GoogleGenerativeAI(API_KEY);
 
 /**
  * Generates a structured answer using the Gemini API.
- * This function now uses the recommended gemini-1.5-pro model.
+ * This function now uses the stable gemini-pro model.
  */
 export async function generateAiAnswer(input: { question: string, language: 'en' | 'hi' }) {
   try {
@@ -39,7 +39,7 @@ Provide a factual, professional, and clear response suitable for someone prepari
 `;
 
     const model = genAI.getGenerativeModel({
-        model: "gemini-1.5-pro", // ✅ FIXED MODEL as per instructions
+        model: "gemini-pro", // ✅ Using the stable gemini-pro model
     });
 
     const result = await model.generateContent(prompt);
