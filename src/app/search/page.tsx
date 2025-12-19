@@ -15,6 +15,12 @@ import { detectLanguage } from '@/lib/language';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/logo';
 import Link from 'next/link';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
 
 type SearchMode = 'database' | 'ai' | 'hybrid';
 type AcronymResult = {
@@ -30,6 +36,15 @@ type QuestionResult = {
 };
 type NotFoundResult = { notFound: true };
 type SearchResult = AcronymResult | QuestionResult | NotFoundResult | null;
+
+const renderMarkdown = (text: string) => {
+  if (!text) return [];
+  let processedText = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  const paragraphs = processedText.split('\n').filter(p => p.trim() !== '');
+  return paragraphs.map((para, i) => (
+    <p key={i} className="mb-4 last:mb-0" dangerouslySetInnerHTML={{ __html: para }} />
+  ));
+};
 
 
 const modeConfig = {
@@ -385,6 +400,18 @@ export default function SmartQuestionSearch() {
                 ))}
               </div>
             </div>
+            <Accordion type="single" collapsible className="w-full" defaultValue="item-1">
+              <AccordionItem value="item-1" className="border-t border-slate-700">
+                <AccordionTrigger className="px-6 py-4 text-sm font-semibold text-slate-400 uppercase">
+                  Detailed Explanation
+                </AccordionTrigger>
+                <AccordionContent className="px-6 pb-6 text-slate-300 prose-lg max-w-none">
+                  <div>
+                    {renderMarkdown(uiLanguage === 'hi' ? result.document.longAnswer_hi : result.document.longAnswer_en)}
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
           </div>
         )}
 
@@ -450,3 +477,5 @@ export default function SmartQuestionSearch() {
     </div>
   );
 }
+
+    
