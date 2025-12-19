@@ -13,6 +13,7 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import { googleAI } from '@genkit-ai/google-genai';
+import { generate } from 'genkit/generate';
 
 const GenerateAiAnswerInputSchema = z.object({
   question: z.string().describe('The user\'s question.'),
@@ -36,15 +37,20 @@ export async function generateAiAnswer(input: GenerateAiAnswerInput): Promise<Ge
   return generateAiAnswerFlow(input);
 }
 
-// Define the base prompt without a specific model.
-const promptTemplate = ai.definePrompt({
-  name: 'generateAiAnswerPrompt',
-  input: { schema: GenerateAiAnswerInputSchema },
-  output: { schema: GenerateAiAnswerOutputSchema },
-  prompt: `You are an expert in Oil and Gas QA/QC interview questions. The user has asked a question in {{language}}.
+const generateAiAnswerFlow = ai.defineFlow(
+  {
+    name: 'generateAiAnswerFlow',
+    inputSchema: GenerateAiAnswerInputSchema,
+    outputSchema: GenerateAiAnswerOutputSchema,
+  },
+  async (input) => {
+    try {
+        const safeQuestion = typeof input.question === "string" && input.question.trim() ? input.question.trim() : "Explain this technical concept.";
+
+        const prompt = `You are an expert in Oil and Gas QA/QC interview questions. The user has asked a question in ${input.language}.
 Your task is to provide a comprehensive and structured answer in BOTH English and Hindi (Hinglish).
 
-The question is: {{{question}}}
+The question is: ${safeQuestion}
 
 Please generate the following fields:
 1.  **shortAnswer_en**: A quick, direct answer in English.
@@ -54,32 +60,27 @@ Please generate the following fields:
 5.  **summaryPoints_en**: A list of 3-5 key takeaway bullet points in English.
 6.  **summaryPoints_hi**: A list of 3-5 key takeaway bullet points in Hindi (Hinglish).
 
-Provide a factual, professional, and clear response suitable for someone preparing for a technical interview.`,
-});
+Provide a factual, professional, and clear response suitable for someone preparing for a technical interview.`;
 
-const generateAiAnswerFlow = ai.defineFlow(
-  {
-    name: 'generateAiAnswerFlow',
-    inputSchema: GenerateAiAnswerInputSchema,
-    outputSchema: GenerateAiAnswerOutputSchema,
-  },
-  async (input) => {
-    try {
-      const { output } = await ai.generate({
-        model: googleAI.model('gemini-1.5-flash'), // Using a single, reliable model
-        prompt: promptTemplate,
-        input: input,
-        output: { schema: GenerateAiAnswerOutputSchema },
+
+      const response = await generate({
+        model: googleAI('gemini-1.5-pro'),
+        prompt: prompt,
+        output: {
+          schema: GenerateAiAnswerOutputSchema,
+        },
       });
       
+      const output = response.output();
+
       if (output) {
         return output;
       }
-      // This line is unlikely to be reached if output is null without an error, but it's good practice.
+      
       throw new Error('AI model returned a null output without an error.');
+
     } catch (error: any) {
         console.error(`AI model failed to respond. Error:`, error);
-        // Re-throw a more user-friendly error to be caught by the calling function
         throw new Error(`AI model failed to respond. Last error: ${error?.message || 'Unknown error'}`);
     }
   }
