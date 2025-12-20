@@ -15,6 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { AnswerCard } from '@/components/answer-card';
 import { useSpeechRecognition } from '@/hooks/use-speech-recognition';
 import { useToast } from '@/hooks/use-toast';
+import { sendQuestionToGoogleSheet } from '@/lib/googleSheet';
 
 type SearchMode = 'database' | 'ai' | 'hybrid';
 type AcronymResult = {
@@ -120,6 +121,8 @@ export default function SmartQuestionSearch() {
           setResult(bestMatch as QuestionResult);
         } else {
           setResult({ notFound: true });
+          // 🔥 BACKGROUND me Google Sheet ko bhej do
+          sendQuestionToGoogleSheet(finalQuery, 'database');
         }
       } catch (error) {
         console.error("Search failed:", error);
@@ -345,5 +348,3 @@ export default function SmartQuestionSearch() {
     </div>
   );
 }
-
-    
