@@ -8,6 +8,7 @@ export async function sendQuestionToGoogleSheet(
       'https://script.google.com/macros/s/AKfycbwdl2TBklXbW8GYMKmyOXz1p266tztAJpJX-DF-YIuMOpXThxyl9C-vQDynLoNVhlOq/exec',
       {
         method: 'POST',
+        mode: 'no-cors', // Fix for TypeError: Failed to fetch
         headers: {
           'Content-Type': 'application/json',
         },
