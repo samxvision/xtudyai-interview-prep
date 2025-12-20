@@ -1,25 +1,18 @@
 
-export async function sendQuestionToGoogleSheet(
-  question: string,
-  mode: 'database' | 'hybrid' | 'ai'
-) {
+export async function sendQuestionToAutomation(question: string) {
   try {
-    await fetch(
-      'https://script.google.com/macros/s/AKfycbwdl2TBklXbW8GYMKmyOXz1p266tztAJpJX-DF-YIuMOpXThxyl9C-vQDynLoNVhlOq/exec',
-      {
-        method: 'POST',
-        mode: 'no-cors', // Fix for TypeError: Failed to fetch
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          question,
-          mode,
-        }),
-      }
-    );
-  } catch (error) {
-    // silent fail – user ko kuch nahi dikhana
-    console.error('Google Sheet error:', error);
+    await fetch("https://hook.eu1.make.com/1vmcx0bm16xcasj3rhsisgf92ljasl4x", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        question: question,
+        source: "app_search",
+        createdAt: new Date().toISOString()
+      })
+    });
+  } catch (err) {
+    console.error("Automation webhook failed", err);
   }
 }
