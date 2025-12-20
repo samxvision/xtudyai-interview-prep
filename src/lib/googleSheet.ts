@@ -7,12 +7,11 @@ export async function sendQuestionToAutomation(question: string) {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        question: question,
-        source: "app_search",
-        createdAt: new Date().toISOString()
+        question: question
       })
     });
   } catch (err) {
     console.error("Automation webhook failed", err);
   }
 }
+
