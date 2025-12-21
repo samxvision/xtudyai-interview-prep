@@ -1,6 +1,7 @@
 'use server';
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
+import { gemini15Flash } from '@genkit-ai/google-genai';
 
 const AIResponseSchema = z.object({
   question_en: z.string().describe("The user's question, rephrased clearly in English if needed."),
@@ -49,7 +50,7 @@ export const generateAiAnswer = ai.defineFlow(
 
         Generate the response strictly following the provided JSON schema. Both English and Hinglish fields are mandatory.
       `,
-      model: 'googleai/gemini-1.5-flash',
+      model: gemini15Flash,
       output: {
         format: 'json',
         schema: AIResponseSchema,
