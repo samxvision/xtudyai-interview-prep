@@ -49,7 +49,7 @@ export const generateAiAnswer = ai.defineFlow(
 
         Generate the response strictly following the provided JSON schema. Both English and Hinglish fields are mandatory.
       `,
-      model: 'gemini-2.5-flash-lite',
+      model: 'gemini-1.5-flash-latest',
       output: {
         format: 'json',
         schema: AIResponseSchema,
