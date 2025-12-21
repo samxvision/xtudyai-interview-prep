@@ -1,1 +1,9 @@
-// This file is no longer needed as Genkit and AI functionality are being removed.
+'use server';
+import { genkit } from 'genkit';
+import { googleAI } from '@genkit-ai/google-genai';
+
+export const ai = genkit({
+  plugins: [googleAI()],
+  logLevel: 'silent',
+  enableDevUi: false,
+});

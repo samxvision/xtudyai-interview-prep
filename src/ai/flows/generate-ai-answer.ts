@@ -1,1 +1,73 @@
-// This file is no longer needed as AI functionality is being removed.
+'use server';
+import { ai } from '@/ai/genkit';
+import { z } from 'genkit/zod';
+
+const AIResponseSchema = z.object({
+  question_en: z.string().describe("The user's question, rephrased clearly in English if needed."),
+  question_hi: z.string().describe("The user's question, rephrased clearly in Hinglish."),
+  normalized_en: z.string().describe("Lowercase, punctuation-removed version of the English question."),
+  normalized_hi: z.string().describe("Lowercase, punctuation-removed version of the Hinglish question."),
+  keywords_en: z.array(z.string()).describe("5-7 relevant English keywords from the question and answer."),
+  keywords_hi: z.array(z.string()).describe("5-7 relevant Hinglish keywords from the question and answer."),
+  shortAnswer_en: z.string().describe("A concise, direct answer to the question in English (2-3 sentences)."),
+  shortAnswer_hi: z.string().describe("A concise, direct answer to the question in Hinglish (2-3 sentences)."),
+  longAnswer_en: z.string().describe("A detailed, expert-level explanation in English, using markdown for formatting (like **bold**)."),
+  longAnswer_hi: z.string().describe("A detailed, expert-level explanation in Hinglish, using markdown for formatting (like **bold**)."),
+  summaryPoints_en: z.array(z.string()).describe("3-4 key takeaway bullet points in English."),
+  summaryPoints_hi: z.array(z.string()).describe("3-4 key takeaway bullet points in Hinglish."),
+  category: z.string().describe("A relevant category for the question (e.g., welding, NDT, piping, quality, testing)."),
+  difficulty: z.enum(['easy', 'medium', 'hard']).describe("The difficulty level of the question."),
+  tags: z.array(z.string()).describe("A list of 3-5 specific technical tags related to the question."),
+  source: z.literal("expert_knowledge").describe("The source is always 'expert_knowledge'."),
+  viewCount: z.number().describe("The view count, which should always be 0."),
+});
+
+export type AIResponse = z.infer<typeof AIResponseSchema>;
+
+export const generateAiAnswer = ai.defineFlow(
+  {
+    name: 'generateAiAnswer',
+    inputSchema: z.string().describe("The user's interview question."),
+    outputSchema: AIResponseSchema,
+  },
+  async (prompt) => {
+
+    const llmResponse = await ai.generate({
+      prompt: `
+        You are a highly respected and seasoned expert in the oil and gas industry with over 30 years of hands-on experience. Your expertise spans roles as a Senior QA/QC Engineer, Inspection Engineer, NDT Inspector, NDT Engineer, and Maintenance Expert. You are mentoring a junior inspector and your goal is to provide clear, practical, and expert answers to their questions.
+
+        Your response must be structured in the required JSON format.
+
+        The user's question is: "${prompt}"
+
+        Provide a comprehensive answer covering both English and Hinglish (a mix of Hindi and English).
+        - **shortAnswer**: A quick, to-the-point summary.
+        - **longAnswer**: A detailed explanation as if you're teaching a junior colleague on-site, including industry context and code references (like ASME B31.3 or Section VIII) where relevant. Use markdown for emphasis (e.g., **important term**).
+        - **summaryPoints**: Crisp, easy-to-remember bullet points.
+        - **keywords/tags**: Use specific, relevant technical terms.
+        - **difficulty**: Assess the question's difficulty (easy, medium, hard).
+
+        Generate the response strictly following the provided JSON schema. Both English and Hinglish fields are mandatory.
+      `,
+      model: 'gemini-1.5-flash-latest',
+      output: {
+        format: 'json',
+        schema: AIResponseSchema,
+      },
+      config: {
+        temperature: 0.3,
+      }
+    });
+
+    const structuredResponse = llmResponse.output();
+    if (!structuredResponse) {
+      throw new Error("Failed to generate a structured response from the AI.");
+    }
+    
+    // Add a unique ID to the response before returning
+    return {
+      ...structuredResponse,
+      id: `ai_${new Date().getTime()}`, 
+    };
+  }
+);

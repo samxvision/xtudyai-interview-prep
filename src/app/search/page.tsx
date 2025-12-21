@@ -16,6 +16,7 @@ import { AnswerCard } from '@/components/answer-card';
 import { useSpeechRecognition } from '@/hooks/use-speech-recognition';
 import { useToast } from '@/hooks/use-toast';
 import { sendQuestionToAutomation } from '@/lib/googleSheet';
+import { generateAiAnswer } from '@/ai/flows/generate-ai-answer';
 
 type SearchMode = 'database' | 'ai' | 'hybrid';
 type AcronymResult = {
@@ -98,6 +99,27 @@ export default function SmartQuestionSearch() {
     }
   }, [speechError, toast]);
 
+  const performAiSearch = async (searchQuery: string) => {
+    try {
+      const aiResponse = await generateAiAnswer(searchQuery);
+      setResult({
+        type: 'question',
+        document: aiResponse,
+        score: 100, // AI results are considered a perfect match
+        intent: [],
+      });
+    } catch (aiError) {
+      console.error("AI search failed:", aiError);
+      setResult({ notFound: true });
+      toast({
+        title: "AI Error",
+        description: "The AI expert could not provide an answer. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+
   const handleSearch = useCallback(async (searchQuery: string) => {
     const finalQuery = searchQuery.trim();
     if (!finalQuery) return;
@@ -106,31 +128,34 @@ export default function SmartQuestionSearch() {
     setLoading(true);
     setResult(null);
     
-    // Using a small timeout to allow UI to update to loading state
-    setTimeout(async () => {
-      try {
+    startTransition(async () => {
+        if (mode === 'ai') {
+            await performAiSearch(finalQuery);
+            setLoading(false);
+            return;
+        }
+
         const matches = findBestMatch(finalQuery, questions);
         const bestMatch = matches.length > 0 ? matches[0] : null;
 
         if (bestMatch?.type === 'acronym') {
           setResult(bestMatch as AcronymResult);
+          setLoading(false);
           return;
         }
 
-        if (bestMatch && bestMatch.type === 'question') {
+        if (bestMatch && bestMatch.type === 'question' && bestMatch.score > 60) {
           setResult(bestMatch as QuestionResult);
         } else {
-          setResult({ notFound: true });
-          // 🔥 BACKGROUND me automation ko bhej do
-          sendQuestionToAutomation(finalQuery);
+            if (mode === 'hybrid') {
+                await performAiSearch(finalQuery);
+            } else {
+                 setResult({ notFound: true });
+                 sendQuestionToAutomation(finalQuery);
+            }
         }
-      } catch (error) {
-        console.error("Search failed:", error);
-        setResult({ notFound: true });
-      } finally {
         setLoading(false);
-      }
-    }, 300);
+    });
   }, [query, questions, mode]);
 
   const getCategoryBadgeColor = (category?: string) => {
@@ -209,20 +234,20 @@ export default function SmartQuestionSearch() {
                 <Database className="mr-2 h-4 w-4" /> Database
               </Button>
               <Button
-                 variant={'ghost'}
-                 size="sm"
-                 disabled={true}
-                 className={`rounded-full px-3 text-sm h-8 text-slate-400 cursor-not-allowed`}
+                variant={mode === 'ai' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setMode('ai')}
+                 className={`rounded-full px-3 text-sm h-8 ${mode === 'ai' ? 'bg-purple-500 text-white' : 'text-slate-600'}`}
               >
-                <Sparkles className="mr-2 h-4 w-4" /> AI <Lock className="ml-1 h-3 w-3"/>
+                <Sparkles className="mr-2 h-4 w-4" /> AI
               </Button>
                <Button
-                 variant={'ghost'}
-                 size="sm"
-                 disabled={true}
-                 className={`rounded-full px-3 text-sm h-8 text-slate-400 cursor-not-allowed`}
+                variant={mode === 'hybrid' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setMode('hybrid')}
+                 className={`rounded-full px-3 text-sm h-8 ${mode === 'hybrid' ? 'bg-green-500 text-white' : 'text-slate-600'}`}
               >
-                <Layers className="mr-2 h-4 w-4" /> Hybrid <Lock className="ml-1 h-3 w-3"/>
+                <Layers className="mr-2 h-4 w-4" /> Hybrid
               </Button>
             </div>
         </div>
