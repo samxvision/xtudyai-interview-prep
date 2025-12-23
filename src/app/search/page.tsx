@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect, useTransition, useCallback } from 'react';
 import { Search, Loader2, AlertCircle, Tag, ArrowLeft, Database, Sparkles, Layers, Lock, Mic } from 'lucide-react';
-import { AcronymData } from '@/lib/acronyms';
+import { AcronymData, searchAcronym } from '@/lib/acronyms';
 import { findBestMatch, normalizeText } from '@/lib/matching';
 import { useAppContext } from '@/context/AppContext';
 import type { Question } from '@/types';
@@ -134,15 +134,19 @@ export default function SmartQuestionSearch() {
             setLoading(false);
             return;
         }
-
-        const matches = findBestMatch(finalQuery, questions);
-        const bestMatch = matches.length > 0 ? matches[0] : null;
-
-        if (bestMatch?.type === 'acronym') {
-          setResult(bestMatch as AcronymResult);
-          setLoading(false);
-          return;
+        
+        const acronymResult = searchAcronym(finalQuery);
+        if (acronymResult && finalQuery.trim().split(/\s+/).length <= 3) {
+            setResult({
+                type: 'acronym',
+                data: { ...acronymResult, acronym: acronymResult.acronym },
+            });
+            setLoading(false);
+            return;
         }
+
+        const matches = await findBestMatch(finalQuery, questions);
+        const bestMatch = matches.length > 0 ? matches[0] : null;
 
         if (bestMatch && bestMatch.type === 'question' && bestMatch.score > 60) {
           setResult(bestMatch as QuestionResult);
