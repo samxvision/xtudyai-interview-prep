@@ -280,8 +280,8 @@ function calculateSemanticScore(userQuery: string, dbQuestion: Question) {
       totalScore += 30;
       breakdown.push({ layer: "INTENT_MATCH_PRIMARY", score: 30, matched: userIntentResolved.primaryIntent.type, detail: "Primary intent exact match" });
     } else {
-      const userAllTypes = [userIntentResolved.primaryIntent.type, ...userIntentResolved.supportingIntents.map((i: any) => i.type)];
-      const dbAllTypes = [dbIntentResolved.primaryIntent.type, ...dbIntentResolved.supportingIntents.map((i: any) => i.type)];
+      const userAllTypes = [userIntentResolved.primaryIntent.type, ...(userIntentResolved.supportingIntents as any[]).map(i => i.type)];
+      const dbAllTypes = [dbIntentResolved.primaryIntent.type, ...(dbIntentResolved.supportingIntents as any[]).map(i => i.type)];
       const commonIntents = userAllTypes.filter((t: any) => dbAllTypes.includes(t));
       if (commonIntents.length > 0) {
         const intentScore = (commonIntents.length / userAllTypes.length) * 20;
@@ -345,3 +345,5 @@ export const normalizeText = (text: string): string => {
     .replace(/[^\w\s]/g, '')
     .trim();
 }
+
+    
