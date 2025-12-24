@@ -4,7 +4,7 @@
 import React, { useState, useEffect, useTransition, useCallback } from 'react';
 import { Search, Loader2, AlertCircle, Tag, ArrowLeft, Database, Sparkles, Layers, Lock, Mic } from 'lucide-react';
 import { AcronymData, searchAcronym } from '@/lib/acronyms';
-import { findBestMatch, normalizeText } from '@/lib/matching';
+import { extractEntities, findBestMatch } from '@/lib/matching';
 import { useAppContext } from '@/context/AppContext';
 import type { Question } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -17,6 +17,7 @@ import { useSpeechRecognition } from '@/hooks/use-speech-recognition';
 import { useToast } from '@/hooks/use-toast';
 import { sendQuestionToAutomation } from '@/lib/googleSheet';
 import { generateAiAnswer } from '@/ai/flows/generate-ai-answer';
+import { getCandidateQuestions } from '@/lib/data';
 
 type SearchMode = 'database' | 'ai' | 'hybrid';
 type AcronymResult = {
@@ -70,7 +71,7 @@ export default function SmartQuestionSearch() {
   const [uiLanguage, setUiLanguage] = useState<'en' | 'hi'>('hi');
   const [mode, setMode] = useState<SearchMode>('database');
 
-  const { questions, areQuestionsLoading } = useAppContext();
+  const { areQuestionsLoading } = useAppContext();
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
 
@@ -145,7 +146,12 @@ export default function SmartQuestionSearch() {
             return;
         }
 
-        const matches = await findBestMatch(finalQuery, questions);
+        // --- OPTIMIZED SEARCH FLOW ---
+        // 1. Pre-filter candidates from Firestore
+        const candidateQuestions = await getCandidateQuestions(finalQuery);
+
+        // 2. Run semantic search on the small candidate list
+        const matches = findBestMatch(finalQuery, candidateQuestions);
         const bestMatch = matches.length > 0 ? matches[0] : null;
 
         if (bestMatch && bestMatch.type === 'question' && bestMatch.score > 60) {
@@ -160,7 +166,7 @@ export default function SmartQuestionSearch() {
         }
         setLoading(false);
     });
-  }, [query, questions, mode]);
+  }, [query, mode]);
 
   const getCategoryBadgeColor = (category?: string) => {
     const colors: { [key: string]: string } = {

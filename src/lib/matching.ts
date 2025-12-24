@@ -108,7 +108,7 @@ function getEntityCategory(entity: string) {
   return "OTHER"
 }
 
-function extractEntities(text: string) {
+export function extractEntities(text: string) {
   const entities: { text: string; start: number; end: number; category: string }[] = [];
   const positions: { start: number, end: number }[] = [];
   const allEntities = [
@@ -322,9 +322,9 @@ function calculateSemanticScore(userQuery: string, dbQuestion: Question) {
 }
 
 // MAIN SEARCH FUNCTION
-export async function findBestMatch(userQuery: string, dbQuestions: Question[]) {
+export function findBestMatch(userQuery: string, candidateQuestions: Question[]) {
   const results: any[] = [];
-  for (const question of dbQuestions) {
+  for (const question of candidateQuestions) {
     const scoreResult = calculateSemanticScore(userQuery, question);
     if (scoreResult.score >= 60) {
       results.push({
@@ -345,5 +345,3 @@ export const normalizeText = (text: string): string => {
     .replace(/[^\w\s]/g, '')
     .trim();
 }
-
-    
