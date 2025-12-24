@@ -259,9 +259,8 @@ function calculateSemanticScore(userQuery: string, dbQuestion: Question) {
   let totalScore = 0;
   const breakdown: any[] = [];
   
-  // Layer 1 is already applied to userQuery before this function is called.
   const cleanedUserQuery = userQuery;
-  const cleanedDbQuestion = removeExpressionNoise(dbQuestion.question_en + ' ' + dbQuestion.question_hi);
+  const cleanedDbQuestion = dbQuestion.normalized_en + ' ' + dbQuestion.normalized_hi;
 
   const { entities: userEntities, markedText } = extractEntities(cleanedUserQuery);
   const { entities: dbEntities } = extractEntities(cleanedDbQuestion);
@@ -280,11 +279,10 @@ function calculateSemanticScore(userQuery: string, dbQuestion: Question) {
     breakdown.push({ layer: "ENTITY_MATCH", score: entityScore, matched: commonEntities });
   }
 
-  // Precision Penalty (New Logic)
+  // Precision Penalty
   const extraDbEntities = dbEntities.filter(de => !userEntities.some(ue => de.includes(ue) || ue.includes(de)));
   if (extraDbEntities.length > 0 && userEntities.length > 0) {
-    // Penalize if the DB question has more specific entities than the user asked for.
-    const penalty = Math.min(extraDbEntities.length * 10, 20); // Cap penalty at 20
+    const penalty = Math.min(extraDbEntities.length * 5, 20); // Adjusted penalty
     totalScore -= penalty;
     breakdown.push({ layer: "PRECISION_PENALTY", score: -penalty, detail: `Found extra entities: ${extraDbEntities.join(', ')}` });
   }
@@ -331,7 +329,6 @@ function calculateSemanticScore(userQuery: string, dbQuestion: Question) {
 
 // MAIN SEARCH FUNCTION
 export function findBestMatch(userQuery: string, candidateQuestions: Question[]) {
-  // Layer 1 is now applied in the search page, so userQuery is already clean.
   const results: any[] = [];
   for (const question of candidateQuestions) {
     const scoreResult = calculateSemanticScore(userQuery, question);
