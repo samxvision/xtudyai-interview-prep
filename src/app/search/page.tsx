@@ -4,7 +4,7 @@
 import React, { useState, useEffect, useTransition, useCallback } from 'react';
 import { Search, Loader2, AlertCircle, Tag, ArrowLeft, Database, Sparkles, Layers, Lock, Mic } from 'lucide-react';
 import { AcronymData, searchAcronym } from '@/lib/acronyms';
-import { extractEntities, findBestMatch } from '@/lib/matching';
+import { findBestMatch, removeExpressionNoise } from '@/lib/matching';
 import { useAppContext } from '@/context/AppContext';
 import type { Question } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -122,51 +122,57 @@ export default function SmartQuestionSearch() {
 
 
   const handleSearch = useCallback(async (searchQuery: string) => {
-    const finalQuery = searchQuery.trim();
-    if (!finalQuery) return;
-
-    setQuery(finalQuery);
+    if (!searchQuery.trim()) return;
+  
+    setQuery(searchQuery);
     setLoading(true);
     setResult(null);
-    
+  
     startTransition(async () => {
-        if (mode === 'ai') {
-            await performAiSearch(finalQuery);
-            setLoading(false);
-            return;
-        }
-        
-        const acronymResult = searchAcronym(finalQuery);
-        if (acronymResult && finalQuery.trim().split(/\s+/).length <= 3) {
-            setResult({
-                type: 'acronym',
-                data: { ...acronymResult, acronym: acronymResult.acronym },
-            });
-            setLoading(false);
-            return;
-        }
-
-        // --- OPTIMIZED SEARCH FLOW ---
-        // 1. Pre-filter candidates from Firestore
-        const candidateQuestions = await getCandidateQuestions(finalQuery);
-
-        // 2. Run semantic search on the small candidate list
-        const matches = findBestMatch(finalQuery, candidateQuestions);
-        const bestMatch = matches.length > 0 ? matches[0] : null;
-
-        if (bestMatch && bestMatch.type === 'question' && bestMatch.score > 60) {
-          setResult(bestMatch as QuestionResult);
-        } else {
-            if (mode === 'hybrid') {
-                await performAiSearch(finalQuery);
-            } else {
-                 setResult({ notFound: true });
-                 sendQuestionToAutomation(finalQuery);
-            }
-        }
+      // Layer 1: Clean the user's query first.
+      const cleanedQuery = removeExpressionNoise(searchQuery);
+      if (!cleanedQuery) {
+        setResult({ notFound: true });
         setLoading(false);
+        return;
+      }
+  
+      if (mode === 'ai') {
+        await performAiSearch(cleanedQuery);
+        setLoading(false);
+        return;
+      }
+  
+      const acronymResult = searchAcronym(cleanedQuery);
+      if (acronymResult && cleanedQuery.trim().split(/\s+/).length <= 3) {
+        setResult({
+          type: 'acronym',
+          data: { ...acronymResult, acronym: acronymResult.acronym },
+        });
+        setLoading(false);
+        return;
+      }
+  
+      // Step 1: Pre-filter candidates from Firestore using the cleaned query.
+      const candidateQuestions = await getCandidateQuestions(cleanedQuery);
+  
+      // Step 2: Run the full semantic search on the smaller candidate list.
+      const matches = findBestMatch(cleanedQuery, candidateQuestions);
+      const bestMatch = matches.length > 0 ? matches[0] : null;
+
+      if (bestMatch && bestMatch.type === 'question' && bestMatch.score > 60) {
+        setResult(bestMatch as QuestionResult);
+      } else {
+        if (mode === 'hybrid') {
+          await performAiSearch(cleanedQuery);
+        } else {
+          setResult({ notFound: true });
+          sendQuestionToAutomation(cleanedQuery);
+        }
+      }
+      setLoading(false);
     });
-  }, [query, mode]);
+  }, [mode]);
 
   const getCategoryBadgeColor = (category?: string) => {
     const colors: { [key: string]: string } = {

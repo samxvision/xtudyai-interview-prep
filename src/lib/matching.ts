@@ -52,7 +52,7 @@ const IGNORE_SPEECH_FILLERS = [
   "what i mean is", "what i'm saying is", "the thing is", "point is", "baat ye hai ki", "scene ye hai ki"
 ];
 
-function removeExpressionNoise(text: string) {
+export function removeExpressionNoise(text: string) {
   let cleaned = text.toLowerCase().trim();
   const allIgnoreWords = [
     ...IGNORE_EN,
@@ -259,74 +259,84 @@ function levenshteinDistance(s1: string, s2: string): number {
 function calculateSemanticScore(userQuery: string, dbQuestion: Question) {
   let totalScore = 0;
   const breakdown: any[] = [];
-  const cleaned = removeExpressionNoise(userQuery);
-  const { entities: userEntities, markedText } = extractEntities(cleaned);
-  const { entities: dbEntities } = extractEntities(dbQuestion.normalized_en + ' ' + dbQuestion.normalized_hi);
+  
+  // Layer 1 is already applied to userQuery before this function is called.
+  const cleanedUserQuery = userQuery;
+  const cleanedDbQuestion = removeExpressionNoise(dbQuestion.question_en + ' ' + dbQuestion.question_hi);
 
-  const commonEntities = userEntities.filter(ue => dbEntities.some(de => de.includes(ue) || ue.includes(de) || levenshteinDistance(ue, de) <= 2));
+  const { entities: userEntities, markedText } = extractEntities(cleanedUserQuery);
+  const { entities: dbEntities } = extractEntities(cleanedDbQuestion);
+
+  // Entity Matching (40 points)
+  const commonEntities = userEntities.filter(ue =>
+    dbEntities.some(de => 
+      de.includes(ue) || 
+      ue.includes(de) ||
+      levenshteinDistance(ue, de) <= 2
+    )
+  );
   if (userEntities.length > 0) {
     const entityScore = (commonEntities.length / userEntities.length) * 40;
     totalScore += entityScore;
-    breakdown.push({ layer: "ENTITY_MATCH", score: entityScore, matched: commonEntities, detail: `${commonEntities.length}/${userEntities.length} entities matched` });
+    breakdown.push({ layer: "ENTITY_MATCH", score: entityScore, matched: commonEntities });
   }
 
-  const userIntentResult = detectIntent(cleaned);
-  const userIntentResolved = resolveIntentConflicts(userIntentResult);
-  const dbIntentResult = detectIntent(dbQuestion.question_en + ' ' + dbQuestion.question_hi);
-  const dbIntentResolved = resolveIntentConflicts(dbIntentResult);
+  // Precision Penalty (New Logic)
+  const extraDbEntities = dbEntities.filter(de => !userEntities.some(ue => de.includes(ue) || ue.includes(de)));
+  if (extraDbEntities.length > 0 && userEntities.length > 0) {
+    // Penalize if the DB question has more specific entities than the user asked for.
+    const penalty = Math.min(extraDbEntities.length * 10, 20); // Cap penalty at 20
+    totalScore -= penalty;
+    breakdown.push({ layer: "PRECISION_PENALTY", score: -penalty, detail: `Found extra entities: ${extraDbEntities.join(', ')}` });
+  }
 
+
+  // Intent Matching (30 points)
+  const userIntentResolved = resolveIntentConflicts(detectIntent(cleanedUserQuery));
+  const dbIntentResolved = resolveIntentConflicts(detectIntent(cleanedDbQuestion));
   if (userIntentResolved.primaryIntent && dbIntentResolved.primaryIntent) {
     if (userIntentResolved.primaryIntent.type === dbIntentResolved.primaryIntent.type) {
       totalScore += 30;
-      breakdown.push({ layer: "INTENT_MATCH_PRIMARY", score: 30, matched: userIntentResolved.primaryIntent.type, detail: "Primary intent exact match" });
-    } else {
-      const userAllTypes = [userIntentResolved.primaryIntent.type, ...(userIntentResolved.supportingIntents as any[]).map(i => i.type)];
-      const dbAllTypes = [dbIntentResolved.primaryIntent.type, ...(dbIntentResolved.supportingIntents as any[]).map(i => i.type)];
-      const commonIntents = userAllTypes.filter((t: any) => dbAllTypes.includes(t));
-      if (commonIntents.length > 0) {
-        const intentScore = (commonIntents.length / userAllTypes.length) * 20;
-        totalScore += intentScore;
-        breakdown.push({ layer: "INTENT_MATCH_SUPPORTING", score: intentScore, matched: commonIntents, detail: "Supporting intents matched" });
-      }
+      breakdown.push({ layer: "INTENT_MATCH_PRIMARY", score: 30, matched: userIntentResolved.primaryIntent.type });
     }
   }
 
+  // Keyword Overlap (20 points)
   const userTokens = markedText.replace(/_ENTITY_\d+_/g, '').split(' ').filter(w => w.length > 2);
   const dbKeywords = [...dbQuestion.keywords_en, ...dbQuestion.keywords_hi].map(k => k.toLowerCase());
-  const matchedKeywords = userTokens.filter(token => dbKeywords.some(kw => kw.includes(token) || token.includes(kw) || levenshteinDistance(token, kw) <= 2));
+  const matchedKeywords = userTokens.filter(token => dbKeywords.some(kw => kw.includes(token) || token.includes(kw)));
   if (userTokens.length > 0) {
     const keywordScore = Math.min((matchedKeywords.length / userTokens.length) * 20, 20);
     totalScore += keywordScore;
-    breakdown.push({ layer: "KEYWORD_OVERLAP", score: keywordScore, matched: matchedKeywords, detail: `${matchedKeywords.length}/${userTokens.length} keywords matched` });
+    breakdown.push({ layer: "KEYWORD_OVERLAP", score: keywordScore, matched: matchedKeywords });
   }
-
-  const userConditions = detectConditions(cleaned);
-  const dbConditions = detectConditions(dbQuestion.question_en + ' ' + dbQuestion.longAnswer_en);
+  
+  // Context Modifier Bonus (10 points)
+  const userConditions = detectConditions(cleanedUserQuery);
+  const dbConditions = detectConditions(cleanedDbQuestion);
   const commonConditions = userConditions.filter(uc => dbConditions.some(dc => dc.condition === uc.condition));
   if (commonConditions.length > 0) {
     const contextScore = Math.min(commonConditions.length * 5, 10);
     totalScore += contextScore;
-    breakdown.push({ layer: "CONTEXT_MODIFIER", score: contextScore, matched: commonConditions.map(c => c.condition), detail: "Context conditions matched" });
+    breakdown.push({ layer: "CONTEXT_MODIFIER", score: contextScore, matched: commonConditions.map(c => c.condition) });
   }
 
-  totalScore = Math.min(totalScore, 100);
+  totalScore = Math.max(0, Math.min(totalScore, 100)); // Ensure score is between 0 and 100
 
   return {
     score: totalScore,
     breakdown,
     userIntents: userIntentResolved,
-    userEntities,
-    userConditions,
-    confidence: totalScore >= 75 ? "HIGH" : totalScore >= 60 ? "MEDIUM" : "LOW"
   };
 }
 
 // MAIN SEARCH FUNCTION
 export function findBestMatch(userQuery: string, candidateQuestions: Question[]) {
+  // Layer 1 is now applied in the search page, so userQuery is already clean.
   const results: any[] = [];
   for (const question of candidateQuestions) {
     const scoreResult = calculateSemanticScore(userQuery, question);
-    if (scoreResult.score >= 60) {
+    if (scoreResult.score >= 60) { // Threshold for a decent match
       results.push({
         type: 'question',
         document: question,
