@@ -65,6 +65,13 @@ export function AnswerCard({ question, initialLang }: AnswerCardProps) {
     // Add other categories as needed
   };
 
+  const getCategoryColor = (category?: string) => {
+    if (typeof category === 'string') {
+      return categoryColors[category.toLowerCase()] || 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+    return 'bg-gray-100 text-gray-800 border-gray-200';
+  };
+
   return (
     <Card className="w-full max-w-4xl mx-auto shadow-lg border-slate-200">
       <CardHeader className="pb-4">
@@ -77,9 +84,9 @@ export function AnswerCard({ question, initialLang }: AnswerCardProps) {
           </Badge>
           <Badge 
             variant="outline"
-            className={`text-xs font-bold ${categoryColors[question.category.toLowerCase()] || 'bg-gray-100 text-gray-800 border-gray-200'}`}
+            className={`text-xs font-bold ${getCategoryColor(question.category)}`}
           >
-            {question.category}
+            {question.category || 'General'}
           </Badge>
         </div>
         <CardTitle className="font-bold text-2xl text-slate-800 mb-2">
@@ -144,5 +151,3 @@ export function AnswerCard({ question, initialLang }: AnswerCardProps) {
     </Card>
   );
 }
-
-    
