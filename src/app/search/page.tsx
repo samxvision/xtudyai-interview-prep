@@ -153,7 +153,7 @@ export default function SmartQuestionSearch() {
         return;
       }
   
-      // Step 1: Pre-filter candidates from Firestore using the cleaned query.
+      // Step 1: Pre-filter candidates from Firestore using the cleaned query (Layer 2 for keywords).
       const candidateQuestions = await getCandidateQuestions(cleanedQuery);
   
       // Step 2: Run the full semantic search on the smaller candidate list.
@@ -192,7 +192,7 @@ export default function SmartQuestionSearch() {
       inspection: 'bg-violet-500/20 text-violet-400 border-violet-500/30',
 
     };
-    return category ? (colors[category.toLowerCase()] || 'bg-slate-500/20 text-slate-400 border-slate-500/30') : 'bg-slate-500/20 text-slate-400 border-slate-500/30';
+    return typeof category === 'string' ? (colors[category.toLowerCase()] || 'bg-slate-500/20 text-slate-400 border-slate-500/30') : 'bg-slate-500/20 text-slate-400 border-slate-500/30';
   };
 
   const handleMicPress = () => {
