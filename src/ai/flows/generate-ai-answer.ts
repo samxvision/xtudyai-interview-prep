@@ -1,3 +1,4 @@
+
 'use server';
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
@@ -50,7 +51,7 @@ export const generateAiAnswer = ai.defineFlow(
 
         Generate the response strictly following the provided JSON schema. Both English and Hinglish fields are mandatory.
       `,
-      model: 'googleai/gemini-1.5-flash',
+      model: 'googleai/gemini-pro',
       output: {
         format: 'json',
         schema: AIResponseSchema,
