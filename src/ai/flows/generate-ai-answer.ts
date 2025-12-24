@@ -16,7 +16,7 @@ const AIResponseSchema = z.object({
   longAnswer_en: z.string().describe("A detailed, expert-level explanation in English, using markdown for formatting (like **bold**)."),
   longAnswer_hi: z.string().describe("A detailed, expert-level explanation in Hinglish, using markdown for formatting (like **bold**)."),
   summaryPoints_en: z.array(z.string()).describe("3-4 key takeaway bullet points in English."),
-  summaryPoints_hi: z.array(z.string()).describe("3-4 key takeaway bullet points in Hinglish."),
+  summaryPoints_hi: z.array(z السيناريو).describe("3-4 key takeaway bullet points in Hinglish."),
   category: z.string().describe("A relevant category for the question (e.g., welding, NDT, piping, quality, testing)."),
   difficulty: z.enum(['easy', 'medium', 'hard']).describe("The difficulty level of the question."),
   tags: z.array(z.string()).describe("A list of 3-5 specific technical tags related to the question."),
