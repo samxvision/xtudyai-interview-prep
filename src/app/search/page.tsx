@@ -71,7 +71,7 @@ export default function SmartQuestionSearch() {
   const [uiLanguage, setUiLanguage] = useState<'en' | 'hi'>('hi');
   const [mode, setMode] = useState<SearchMode>('database');
 
-  const { areQuestionsLoading } = useAppContext();
+  const { areQuestionsLoading, addLearnedQuestion } = useAppContext();
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
 
@@ -103,6 +103,7 @@ export default function SmartQuestionSearch() {
   const performAiSearch = async (searchQuery: string) => {
     try {
       const aiResponse = await generateAiAnswer(searchQuery);
+      addLearnedQuestion(aiResponse); // Add to context to make it searchable later
       setResult({
         type: 'question',
         document: aiResponse,
@@ -160,7 +161,7 @@ export default function SmartQuestionSearch() {
       const matches = findBestMatch(cleanedQuery, candidateQuestions);
       const bestMatch = matches.length > 0 ? matches[0] : null;
 
-      if (bestMatch && bestMatch.type === 'question' && bestMatch.score > 60) {
+      if (bestMatch && bestMatch.score > 60) {
         setResult(bestMatch as QuestionResult);
       } else {
         if (mode === 'hybrid') {
@@ -172,7 +173,7 @@ export default function SmartQuestionSearch() {
       }
       setLoading(false);
     });
-  }, [mode]);
+  }, [mode, addLearnedQuestion]);
 
   const getCategoryBadgeColor = (category?: string) => {
     const colors: { [key: string]: string } = {
