@@ -1,76 +1,114 @@
 import type { Question } from '@/types';
 
 // =================================================================
-// LAYER 1: EXPRESSION / FILLER / POLITENESS WORDS
+// LAYER 1: AGGRESSIVE EXPRESSION REMOVAL
 // =================================================================
 
-const IGNORE_EN = [
-  "please", "pls", "kindly", "pardon", "tell me", "can you", "could you", "would you", "will you",
-  "i want to know", "i wanna know", "i need to know", "i would like to know", "i'd like to know",
-  "help me", "just tell me", "do you know", "let me know", "guide me", "suggest me", "show me", "give me",
-  "share with me", "brief me", "quickly tell me", "tell me something", "enlighten me", "any idea", 
-  "have you idea", "do you have any idea", "is it possible", "is there any way", "can we", "what about", 
-  "how about", "what if", "okay", "ok", "fine", "alright", "right", "correct", "yes", "yeah", "yep", 
-  "sure", "exactly", "thanks", "thank you", "thanks a lot", "thank you so much", "much appreciated", 
-  "appreciate it", "appreciated", "sorry", "excuse me", "pardon me", "hey", "hi", "hello", "good morning", 
-  "good afternoon", "well", "so", "now", "then", "just", "actually", "basically", "technically", 
-  "normally", "generally", "usually", "mostly", "typically", "like", "you know", "i mean", "as such",
-  "in fact", "to be honest"
-];
+const IGNORE_PATTERNS = {
+  expressions: [
+    "tum batao", "aap bataiye", "kripya bataiye",
+    "mujhe batao", "hamko batao", "please tell",
+    "can you tell", "could you explain",
+    "i want to know", "mujhe janna hai",
+    "help me", "guide me"
+  ],
+  fillers: [
+    "ki", "ye", "wo", "yaar", "bhai",
+    "accha", "ok", "thik hai", "dekho", "suno",
+    "actually", "basically", "you know"
+  ],
+  questionWords: [
+    "kya", "kyun", "kaise", "kab", "kahan",
+    "what", "why", "how", "when", "where", "which"
+  ]
+};
 
-const IGNORE_HI = [
-  "batao", "bataiye", "batana", "bata do", "bata dijiye", "samjhao", "samjhaiye", "samjhana", "samjha do",
-  "dikhao", "dikhaiye", "dikha do", "sikhaiye", "sikha do", "sikhana", "mujhe", "hamko", "hume", "humein", 
-  "mereko", "aapko", "tumko", "tumhe", "kripya", "kripaya", "zara", "thoda", "jara", "please", "ji",
-  "kya aap", "kya tum", "kya aisa", "kya ye", "kaise hota hai batao", "ka idea hai", "kuch pata hai",
-  "pata hai kya", "maloom hai", "accha", "achha", "acha", "theek hai", "thik hai", "haan", "haan ji", 
-  "han", "nahi", "nhi", "bilkul", "sahi", "ekdum", "arre", "yaar", "bhai", "bro", "dost", "sir", "madam", 
-  "sahab", "suno", "dekho", "sunno", "dekhiye", "suniye", "arey", "are", "matlab", "yaani", "toh", 
-  "phir", "aur", "waise", "lekin", "par", "magar", "bas", "ekdum"
-];
-
-const IGNORE_HINGLISH = [
-  "tum batao", "aap bataiye", "aap batao", "mujhe janna hai", "mujhe samajhna hai", "mujhe pata karna hai", 
-  "mujhe dekhna hai", "bas itna bata do", "bas ye bata do", "thoda explain karo", "thoda samjhao",
-  "simple me batao", "easy language me batao", "detail me batao", "brief me batao", "quickly batao", 
-  "jaldi batao", "ek baat batao", "ek baat puchni hai", "ek cheez puchni hai", "ek doubt hai", 
-  "mereko doubt hai", "mera doubt hai", "mereko samajh nahi aa raha", "samajh nahi aa raha", "confusion hai", 
-  "clear karo", "iska idea do", "iska concept batao", "iska solution batao", "iska answer batao",
-  "iska kya scene hai", "iska kya scene hota hai", "ye kaise hota hai", "ye hota kaise hai", 
-  "ye possible hai kya", "aisa ho sakta hai kya", "iska kuch tareeka hai", "iska option kya hai",
-  "iska best tareeka kya hai", "chalo ye batao", "ab ye batao", "next ye batao", "phir ye batao",
-  "aur ek baat", "ek aur baat", "ek minute", "ruko ruko", "waise", "matlab", "yaani", "actually", 
-  "basically", "technically", "normally", "generally", "usually", "mostly", "as such", "in general", 
-  "typically", "practically", "theoretically", "you know", "i mean", "like", "as per my knowledge", 
-  "according to me", "in my opinion", "mere hisaab se", "jitna mujhe pata hai", "meri jaankari me"
-];
-
-const IGNORE_SPEECH_FILLERS = [
-  "uh", "uhh", "um", "umm", "ummm", "hmm", "hmmm", "hmmmm", "ah", "ahh", "oh", "ohh", "err", "errr",
-  "let me think", "let me see", "give me a second", "give me a minute", "sochne do", "dekhte hain",
-  "what i mean is", "what i'm saying is", "the thing is", "point is", "baat ye hai ki", "scene ye hai ki"
-];
-
-export function removeExpressionNoise(text: string) {
+function aggressiveClean(text: string): string {
   let cleaned = text.toLowerCase().trim();
-  const allIgnoreWords = [
-    ...IGNORE_EN,
-    ...IGNORE_HI,
-    ...IGNORE_HINGLISH,
-    ...IGNORE_SPEECH_FILLERS
-  ];
-  const sortedIgnore = allIgnoreWords.sort((a, b) => b.length - a.length);
-
-  for (const phrase of sortedIgnore) {
-    const regex = new RegExp(`\\b${phrase}\\b`, 'gi');
-    cleaned = cleaned.replace(regex, ' ');
+  
+  // Remove expressions
+  for (const expr of IGNORE_PATTERNS.expressions) {
+    cleaned = cleaned.replace(new RegExp(`\\b${expr}\\b`, 'gi'), ' ');
   }
+  
+  // Remove fillers
+  for (const filler of IGNORE_PATTERNS.fillers) {
+    cleaned = cleaned.replace(new RegExp(`\\b${filler}\\b`, 'gi'), ' ');
+  }
+  
+  // Clean up spaces
   cleaned = cleaned.replace(/\s+/g, ' ').trim();
+  
   return cleaned;
 }
 
 // =================================================================
-// LAYER 2: MASTER ENTITY DICTIONARY
+// LAYER 2: INTENT WORD EXTRACTION
+// =================================================================
+
+const INTENT_WORD_MAP: Record<string, string[]> = {
+  "kya hai": ["definition", "kya hai", "meaning"],
+  "kya hota hai": ["definition", "kya hota hai", "meaning"],
+  "what is": ["definition", "what is", "meaning"],
+  "define": ["definition", "define"],
+  "meaning": ["definition", "meaning"],
+  "matlab": ["definition", "matlab", "meaning"],
+  "kaise kaam karta": ["working", "kaise kaam karta", "principle"],
+  "kaise kaam karti": ["working", "kaise kaam karti", "principle"],
+  "how it works": ["working", "how works", "principle"],
+  "working principle": ["working", "principle"],
+  "kaise kare": ["procedure", "kaise kare", "method", "steps"],
+  "kaise karte": ["procedure", "kaise karte", "method"],
+  "how to": ["procedure", "how to", "method"],
+  "procedure": ["procedure", "method", "steps"],
+  "steps": ["procedure", "steps", "method"],
+  "repair": ["repair", "fix", "thik karna"],
+  "thik kare": ["repair", "thik kare", "fix"],
+  "theek kare": ["repair", "theek kare", "fix"],
+  "fix": ["repair", "fix"],
+  "inspect": ["inspection", "check", "examine"],
+  "check": ["inspection", "check", "verify"],
+  "dekhte": ["inspection", "dekhte", "check"],
+  "dekhna": ["inspection", "dekhna", "check"],
+  "identify": ["identify", "detect", "pehchan"],
+  "pehchan": ["identify", "pehchan", "detect"],
+  "kaise pata": ["identify", "kaise pata", "detect"],
+  "problem": ["problem", "issue", "fault"],
+  "kharab": ["problem", "kharab", "damage"],
+  "damage": ["problem", "damage", "defect"],
+  "leak": ["problem", "leak", "leakage"],
+  "difference": ["comparison", "difference", "vs"],
+  "farak": ["comparison", "farak", "difference"],
+  "compare": ["comparison", "compare", "vs"],
+  "vs": ["comparison", "vs", "versus"],
+  "types": ["types", "classification", "kinds"],
+  "kitne type": ["types", "kitne type", "kinds"],
+  "prakar": ["types", "prakar", "kinds"]
+};
+
+function extractIntentWords(text: string): { intentKeywords: string[], remainingText: string } {
+  const intentKeywords: string[] = [];
+  
+  const sortedPatterns = Object.keys(INTENT_WORD_MAP)
+    .sort((a, b) => b.length - a.length);
+  
+  for (const pattern of sortedPatterns) {
+    if (text.includes(pattern)) {
+      intentKeywords.push(...INTENT_WORD_MAP[pattern]);
+      text = text.replace(pattern, ' ');
+      break; 
+    }
+  }
+  
+  return {
+    intentKeywords,
+    remainingText: text.replace(/\s+/g, ' ').trim()
+  };
+}
+
+
+// =================================================================
+// LAYER 3: ENTITY EXTRACTION (UNCHANGED)
 // =================================================================
 const ENTITY_STATIC_EQUIPMENT = ["pressure vessel", "vertical vessel", "horizontal vessel", "reactor", "reactor vessel", "cstr", "pfr", "heat exchanger", "hx", "shell and tube heat exchanger", "shell and tube", "plate heat exchanger", "plate and frame", "double pipe heat exchanger", "air cooler", "air fin cooler", "fin fan cooler", "afc", "air cooled heat exchanger", "ache", "distillation column", "column", "tower", "fractionation column", "fractionating tower", "fractionator", "frac tower", "absorption column", "absorber", "stripping column", "stripper", "scrubber", "scrubbing column", "extraction column", "drying column", "dryer", "separator", "separation drum", "knock out drum", "ko drum", "kod", "flash drum", "flash separator", "surge drum", "surge vessel", "decanter", "phase separator", "filter separator", "cyclone separator", "storage tank", "tank", "fixed roof tank", "cone roof tank", "floating roof tank", "external floating roof tank", "efrt", "internal floating roof tank", "ifrt", "dome roof tank", "bullet tank", "bullet", "lpg bullet", "sphere", "spherical tank", "horton sphere", "day tank", "service tank", "reboiler", "thermosyphon reboiler", "kettle reboiler", "kettle type reboiler", "condenser", "overhead condenser", "reflux condenser", "partial condenser", "total condenser", "furnace", "fired heater", "process heater", "cabin heater", "box heater", "vertical heater", "vertical furnace", "horizontal heater", "reformer", "reformer furnace", "cracking furnace", "boiler", "steam boiler", "water tube boiler", "fire tube boiler", "package boiler", "waste heat recovery boiler", "whrb", "hrsg", "heat recovery steam generator", "stack", "chimney", "flare stack", "vent stack", "filter", "cartridge filter", "bag filter", "sand filter", "activated carbon filter", "silo", "hopper", "mixer", "static mixer", "crystallizer"];
 const ENTITY_ROTATING_EQUIPMENT = ["pump", "centrifugal pump", "centrifugal", "reciprocating pump", "recip pump", "positive displacement pump", "pd pump", "gear pump", "screw pump", "lobe pump", "diaphragm pump", "plunger pump", "submersible pump", "sump pump", "metering pump", "dosing pump", "slurry pump", "vacuum pump", "compressor", "centrifugal compressor", "reciprocating compressor", "recip compressor", "screw compressor", "rotary screw compressor", "axial compressor", "air compressor", "gas compressor", "turbine", "steam turbine", "gas turbine", "back pressure turbine", "condensing turbine", "blower", "roots blower", "fan", "centrifugal fan", "axial fan", "induced draft fan", "id fan", "forced draft fan", "fd fan", "motor", "electric motor", "induction motor", "synchronous motor", "vfd", "variable frequency drive", "gearbox", "gear reducer", "speed reducer", "coupling", "flexible coupling", "gear coupling", "disc coupling", "fluid coupling"];
@@ -93,150 +131,67 @@ const ENTITY_MATERIALS = ["carbon steel", "cs", "mild steel", "ms", "a106", "a53
 const ENTITY_VALVES = ["valve", "gate valve", "globe valve", "ball valve", "plug valve", "butterfly valve", "knife gate valve", "control valve", "cv", "pressure reducing valve", "prv", "pressure relief valve", "safety valve", "pressure safety valve", "psv", "relief valve", "check valve", "non return valve", "nrv", "swing check valve", "lift check valve", "dual plate check valve", "needle valve", "diaphragm valve", "pinch valve", "solenoid valve", "valve body", "valve bonnet", "valve stem", "valve disc", "valve seat", "valve trim", "gland", "gland packing", "actuator", "valve actuator"];
 const ENTITY_INSTRUMENTATION = ["instrument", "instrumentation", "pressure gauge", "pressure indicator", "pressure transmitter", "pressure switch", "temperature gauge", "thermometer", "temperature transmitter", "thermocouple", "rtd", "resistance temperature detector", "level gauge", "level indicator", "level transmitter", "level switch", "sight glass", "level glass", "flow meter", "flow transmitter", "orifice plate", "orifice meter", "rotameter", "control panel", "dcs", "plc", "scada"];
 
-function getEntityCategory(entity: string) {
-  if (ENTITY_STATIC_EQUIPMENT.includes(entity)) return "STATIC_EQUIPMENT"
-  if (ENTITY_ROTATING_EQUIPMENT.includes(entity)) return "ROTATING_EQUIPMENT"
-  if (ENTITY_PIPING.includes(entity)) return "PIPING"
-  if (ENTITY_FLANGE_COMPONENTS.includes(entity)) return "FLANGE"
-  if (ENTITY_NDT_TESTS.includes(entity)) return "NDT"
-  if (ENTITY_WELDING.includes(entity)) return "WELDING"
-  if (ENTITY_MAINTENANCE.includes(entity)) return "MAINTENANCE"
-  if (ENTITY_DEFECTS.includes(entity)) return "DEFECT"
-  if (ENTITY_VALVES.includes(entity)) return "VALVE"
-  if (ENTITY_INSTRUMENTATION.includes(entity)) return "INSTRUMENT"
-  return "OTHER"
+export function extractEntities(text: string): { entities: string[], remainingText: string } {
+    let remainingText = text;
+    const entitiesFound: string[] = [];
+
+    const allEntities = [
+        ...ENTITY_STATIC_EQUIPMENT, ...ENTITY_ROTATING_EQUIPMENT, ...ENTITY_PIPING, ...ENTITY_FLANGE_COMPONENTS,
+        ...ENTITY_BOLTING, ...ENTITY_VESSEL_COMPONENTS, ...ENTITY_HX_INTERNALS, ...ENTITY_COLUMN_INTERNALS,
+        ...ENTITY_TANK_COMPONENTS, ...ENTITY_FURNACE_COMPONENTS, ...ENTITY_NDT_TESTS, ...ENTITY_WELDING,
+        ...ENTITY_MAINTENANCE, ...ENTITY_INSPECTION, ...ENTITY_DEFECTS, ...ENTITY_DOCUMENTS, ...ENTITY_STANDARDS,
+        ...ENTITY_MATERIALS, ...ENTITY_VALVES, ...ENTITY_INSTRUMENTATION
+    ].sort((a, b) => b.length - a.length);
+
+    for (const entity of allEntities) {
+        const regex = new RegExp(`\\b${entity}\\b`, 'gi');
+        if (regex.test(remainingText)) {
+            entitiesFound.push(entity);
+            remainingText = remainingText.replace(regex, ' ');
+        }
+    }
+
+    return {
+        entities: [...new Set(entitiesFound)], // Return unique entities
+        remainingText: remainingText.replace(/\s+/g, ' ').trim()
+    };
 }
 
-export function extractEntities(text: string) {
-  const entities: { text: string; start: number; end: number; category: string }[] = [];
-  const positions: { start: number, end: number }[] = [];
-  const allEntities = [
-    ...ENTITY_STATIC_EQUIPMENT, ...ENTITY_ROTATING_EQUIPMENT, ...ENTITY_PIPING, ...ENTITY_FLANGE_COMPONENTS,
-    ...ENTITY_BOLTING, ...ENTITY_VESSEL_COMPONENTS, ...ENTITY_HX_INTERNALS, ...ENTITY_COLUMN_INTERNALS,
-    ...ENTITY_TANK_COMPONENTS, ...ENTITY_FURNACE_COMPONENTS, ...ENTITY_NDT_TESTS, ...ENTITY_WELDING,
-    ...ENTITY_MAINTENANCE, ...ENTITY_INSPECTION, ...ENTITY_DEFECTS, ...ENTITY_DOCUMENTS, ...ENTITY_STANDARDS,
-    ...ENTITY_MATERIALS, ...ENTITY_VALVES, ...ENTITY_INSTRUMENTATION
+
+// =================================================================
+// LAYER 4: GENERATE SEARCH KEYWORDS
+// =================================================================
+
+function generateSearchKeywords(originalQuery: string): string[] {
+  // Step 1: Clean
+  const cleaned = aggressiveClean(originalQuery);
+  
+  // Step 2: Extract intent words
+  const { intentKeywords, remainingText: afterIntent } = extractIntentWords(cleaned);
+  
+  // Step 3: Extract entities
+  const { entities, remainingText: afterEntity } = extractEntities(afterIntent);
+  
+  // Step 4: Extract remaining meaningful words
+  const remainingWords = afterEntity
+    .split(' ')
+    .filter(word => word.length > 2)
+    .filter(word => !['the', 'and', 'or', 'in', 'on', 'at', 'to', 'for'].includes(word));
+  
+  // Step 5: Combine all
+  const searchKeywords = [
+    ...entities,
+    ...intentKeywords,
+    ...remainingWords
   ];
-  const uniqueEntities = [...new Set(allEntities)].sort((a, b) => b.length - a.length);
-  let markedText = text.toLowerCase();
-
-  for (const entity of uniqueEntities) {
-    const regex = new RegExp(`\\b${entity}\\b`, 'gi');
-    const matches = [...markedText.matchAll(regex)];
-    for (const match of matches) {
-      if (match.index === undefined) continue;
-      const start = match.index;
-      const end = start + entity.length;
-      const isOverlap = positions.some(pos => (start >= pos.start && start < pos.end) || (end > pos.start && end <= pos.end));
-      if (!isOverlap) {
-        entities.push({
-          text: entity,
-          start: start,
-          end: end,
-          category: getEntityCategory(entity)
-        });
-        positions.push({ start, end });
-        markedText = markedText.substring(0, start) + `_ENTITY_${entities.length}_` + markedText.substring(end);
-      }
-    }
-  }
-
-  return {
-    entities: entities.map(e => e.text),
-    entitiesWithPosition: entities,
-    markedText: markedText
-  };
-}
-
-// =================================================================
-// LAYER 3: INTENT DETECTION
-// =================================================================
-
-const INTENT_PATTERNS: { [key: string]: { patterns: string[], weight: number, group: string } } = {
-    DEFINITION: { patterns: ["kya hai", "kya hota hai", "iska matlab kya", "iska meaning kya", "matlab", "ka matlab", "simple meaning", "basic meaning", "term ka matlab", "terminology", "concept kya hai", "what is", "what does it mean", "meaning of", "define", "definition", "basic definition", "simple definition", "technical meaning", "terminology of", "concept of"], weight: 50, group: "PRIMARY" },
-    WORKING: { patterns: ["kaise kaam karta", "kaise kaam karti", "kaam kaise hota", "operate kaise hota", "operation kaise hota", "working kya hai", "principle kya hai", "mechanism kya hai", "logic kya hai", "how it works", "working principle", "principle of operation", "operating principle", "how does it work", "function", "mechanism", "operation", "system working", "working mechanism"], weight: 48, group: "PRIMARY" },
-    REPAIR: { patterns: ["repair", "repair kaise kare", "thik kar", "thik kare", "theek kar", "theek kare", "kaise thik", "sudhar", "sudharna", "maintenance", "maintain kaise kare", "rectify", "rectification", "rework", "overhaul", "repairing ka tarika", "how to repair", "fix", "how to fix", "corrective maintenance", "repair method", "repair procedure", "troubleshooting", "fixing method"], weight: 45, group: "PRIMARY" },
-    PROCEDURE: { patterns: ["kaise kare", "kaise karte", "kaise kiya jata", "karne ka tarika", "tarika", "tareeka", "process", "method", "steps", "step by step", "workflow", "sequence", "standard procedure", "sop", "how to", "procedure", "sequence of steps", "standard operating procedure", "procedure to follow", "process flow"], weight: 40, group: "PRIMARY" },
-    PROBLEM: { patterns: ["kharab", "kharabi", "problem", "issue", "fault", "fail", "failure", "damage", "defect", "galti", "leak", "leakage", "break", "not working", "work nahi kar raha", "issue aa raha", "problem aa rahi", "failed", "malfunction", "breakdown", "abnormal condition"], weight: 35, group: "SECONDARY" },
-    IDENTIFICATION: { patterns: ["identify", "pehchan", "kaise pata", "kaise check", "check kare", "inspect", "inspection", "verify", "detect", "kaise detect", "kaise dekhe", "kaise find kare", "identification", "how to identify", "how to inspect", "how to check"], weight: 30, group: "SECONDARY" },
-    DECISION: { patterns: ["acceptable hai", "reject", "rejection", "accept", "acceptance", "pass", "fail criteria", "limit", "allowable", "tolerance", "criteria", "standard ke according", "code ke hisab se", "chal jayega ya nahi", "use kar sakte ya nahi", "acceptable", "pass or fail", "acceptance criteria", "rejection criteria", "allowable limit", "tolerance limit", "as per code", "as per standard", "code requirement"], weight: 32, group: "DECISIONAL" },
-    COMPARISON: { patterns: ["difference", "farak", "compare", "comparison", "vs", "versus", "better", "best", "konsa better", "konsa best", "advantage", "disadvantage", "pros and cons", "difference between", "which is better", "best option", "advantages", "disadvantages", "comparison between"], weight: 28, group: "PRIMARY" },
-    APPLICATION: { patterns: ["use", "usage", "application", "kaha use hota", "kaha lagta", "kis liye", "kyu use", "purpose", "role kya", "used for", "used in", "function of", "where used", "practical use"], weight: 26, group: "SECONDARY" },
-    SAFETY: { patterns: ["safety", "precaution", "risk", "hazard", "danger", "safety measure", "precaution lena", "safe hai ya nahi", "safety measures", "safety precaution", "risk involved", "unsafe condition"], weight: 25, group: "SECONDARY" },
-    COST_TIME: { patterns: ["cost", "kharcha", "kitna paisa", "time lagega", "kitna time", "duration", "downtime", "practical hai", "possible hai", "expense", "time required", "feasible", "practical", "viable", "economical"], weight: 22, group: "SECONDARY" },
-    REPORTING: { patterns: ["report", "reporting", "format", "kaise likhe", "kaise banaye", "documentation", "record", "observation kaise likhe", "remark kaise likhe", "report format", "how to write report", "inspection report", "repair report", "ndt report", "documentation process"], weight: 24, group: "PRIMARY" },
-    TYPES: { patterns: ["types", "prakar", "kitne type", "kya kya types", "classification", "category", "categories", "varieties", "kinds", "types of", "kinds of"], weight: 38, group: "PRIMARY" },
-    CAUSES: { patterns: ["reason", "karan", "wajah", "kyu hota", "kyun hota", "kaise hota", "cause", "causes", "why", "why does it happen", "root cause"], weight: 33, group: "SECONDARY" }
-};
-const INTENT_GROUPS = { PRIMARY: ["DEFINITION", "WORKING", "PROCEDURE", "REPAIR", "COMPARISON", "REPORTING", "TYPES"], SECONDARY: ["PROBLEM", "IDENTIFICATION", "APPLICATION", "SAFETY", "COST_TIME", "CAUSES"], DECISIONAL: ["DECISION"] };
-
-function detectIntent(text: string) {
-  const cleanedText = text.toLowerCase();
-  const detectedIntents: { type: string, weight: number, group: string, matchedPatterns: string[], matchCount: number }[] = [];
-  for (const [intentName, intentData] of Object.entries(INTENT_PATTERNS)) {
-    const matches: string[] = [];
-    for (const pattern of intentData.patterns) {
-      const regex = new RegExp(`\\b${pattern}\\b`, 'i');
-      if (regex.test(cleanedText)) matches.push(pattern);
-    }
-    if (matches.length > 0) {
-      detectedIntents.push({ type: intentName, weight: intentData.weight, group: intentData.group, matchedPatterns: matches, matchCount: matches.length });
-    }
-  }
-  return detectedIntents;
-}
-
-function resolveIntentConflicts(detectedIntents: any[]) {
-    if (detectedIntents.length === 0) return { primaryIntent: null, allIntents: [], confidence: 0 };
-    const scored = detectedIntents.map(intent => {
-        let score = intent.weight;
-        if (intent.matchCount > 1) score += 10 * (intent.matchCount - 1);
-        if (INTENT_GROUPS.PRIMARY.includes(intent.type)) score += 15;
-        if (INTENT_GROUPS.DECISIONAL.includes(intent.type)) score += 10;
-        return { ...intent, finalScore: score };
-    }).sort((a, b) => b.finalScore - a.finalScore);
-    
-    const primaryCandidates = scored.filter(i => i.type !== "PROBLEM" && i.type !== "CAUSES");
-    const primaryIntent = primaryCandidates.length > 0 ? primaryCandidates[0] : scored[0];
-    const supportingIntents = scored.filter(i => i.type !== primaryIntent.type).slice(0, 3);
-    
-    return { primaryIntent, supportingIntents, allIntents: scored, confidence: primaryIntent.finalScore };
+  
+  // Remove duplicates and return
+  return [...new Set(searchKeywords)];
 }
 
 
 // =================================================================
-// LAYER 4: CONTEXT MODIFIERS (CONDITIONS)
-// =================================================================
-
-const CONDITION_PATTERNS = {
-  IF_DAMAGED: { patterns: ["agar kharab", "agar damage", "if damaged", "if broken", "agar fail", "if fail", "kharab ho jaye", "damage ho jaye"], modifier: "CONDITIONAL_DAMAGE" },
-  IF_LEAK: { patterns: ["agar leak", "if leak", "if leaking", "leak ho jaye", "leakage ho"], modifier: "CONDITIONAL_LEAK" },
-  DURING_OPERATION: { patterns: ["operation mein", "during operation", "running mein", "during running", "chalne par", "service mein"], modifier: "DURING_OPERATION" },
-  AFTER_INSTALL: { patterns: ["installation ke baad", "after installation", "lagane ke baad", "after fitting", "assembly ke baad"], modifier: "AFTER_INSTALLATION" },
-  BEFORE_INSTALL: { patterns: ["installation se pehle", "before installation", "lagane se pehle", "before fitting"], modifier: "BEFORE_INSTALLATION" },
-  DURING_SHUTDOWN: { patterns: ["shutdown mein", "during shutdown", "turnaround mein", "ta mein", "outage mein"], modifier: "DURING_SHUTDOWN" },
-  WHEN_NEW: { patterns: ["naya", "new", "fresh", "first time", "pehli baar"], modifier: "WHEN_NEW" },
-  WHEN_OLD: { patterns: ["purana", "old", "aged", "long service", "bahut time se"], modifier: "WHEN_OLD" }
-};
-
-function detectConditions(text: string) {
-  const cleanedText = text.toLowerCase();
-  const detectedConditions: { condition: string, modifier: string, matchedPattern: string }[] = [];
-  for (const [condName, condData] of Object.entries(CONDITION_PATTERNS)) {
-    for (const pattern of condData.patterns) {
-      const regex = new RegExp(`\\b${pattern}\\b`, 'i');
-      if (regex.test(cleanedText)) {
-        detectedConditions.push({ condition: condName, modifier: condData.modifier, matchedPattern: pattern });
-        break;
-      }
-    }
-  }
-  return detectedConditions;
-}
-
-
-// =================================================================
-// LAYER 5: FINAL SCORING + MATCHING ALGORITHM
+// LAYER 5: MATCH WITH DATABASE KEYWORDS
 // =================================================================
 
 function levenshteinDistance(s1: string, s2: string): number {
@@ -255,143 +210,75 @@ function levenshteinDistance(s1: string, s2: string): number {
     return matrix[len1][len2];
 }
 
-function calculateSemanticScore(userQuery: string, dbQuestion: Question) {
-  let totalScore = 0;
-  const breakdown: any[] = [];
+function calculateMatchScore(searchKeywords: string[], dbKeywords: string[]): number {
+  if (searchKeywords.length === 0) return 0;
+  let matchedCount = 0;
   
-  const cleanedUserQuery = userQuery;
-  const cleanedDbQuestion = dbQuestion.normalized_en + ' ' + dbQuestion.normalized_hi;
-
-  const { entities: userEntities, markedText } = extractEntities(cleanedUserQuery);
-  const { entities: dbEntities } = extractEntities(cleanedDbQuestion);
-
-  // Entity Matching (40 points)
-  const commonEntities = userEntities.filter(ue =>
-    dbEntities.some(de => 
-      de.includes(ue) || 
-      ue.includes(de) ||
-      levenshteinDistance(ue, de) <= 2
-    )
-  );
-  if (userEntities.length > 0) {
-    const entityScore = (commonEntities.length / userEntities.length) * 40;
-    totalScore += entityScore;
-    breakdown.push({ layer: "ENTITY_MATCH", score: entityScore, matched: commonEntities });
-  }
-
-  // Precision Penalty
-  const extraDbEntities = dbEntities.filter(de => !userEntities.some(ue => de.includes(ue) || ue.includes(de)));
-  if (extraDbEntities.length > 0 && userEntities.length > 0) {
-    const penalty = Math.min(extraDbEntities.length * 5, 20); // Adjusted penalty
-    totalScore -= penalty;
-    breakdown.push({ layer: "PRECISION_PENALTY", score: -penalty, detail: `Found extra entities: ${extraDbEntities.join(', ')}` });
-  }
-
-
-  // Intent Matching (30 points)
-  const userIntentResolved = resolveIntentConflicts(detectIntent(cleanedUserQuery));
-  const dbIntentResolved = resolveIntentConflicts(detectIntent(cleanedDbQuestion));
-  if (userIntentResolved.primaryIntent && dbIntentResolved.primaryIntent) {
-    if (userIntentResolved.primaryIntent.type === dbIntentResolved.primaryIntent.type) {
-      totalScore += 30;
-      breakdown.push({ layer: "INTENT_MATCH_PRIMARY", score: 30, matched: userIntentResolved.primaryIntent.type });
+  for (const searchKey of searchKeywords) {
+    let bestMatchFound = false;
+    for (const dbKey of dbKeywords) {
+      if (searchKey === dbKey) {
+        bestMatchFound = true;
+        break;
+      }
+      if (dbKey.includes(searchKey) || searchKey.includes(dbKey)) {
+        bestMatchFound = true;
+        break;
+      }
+      if (levenshteinDistance(searchKey, dbKey) <= 2 && searchKey.length > 3) {
+        bestMatchFound = true;
+        break;
+      }
+    }
+    if (bestMatchFound) {
+      matchedCount++;
     }
   }
-
-  // Keyword Overlap (20 points)
-  const userTokens = markedText.replace(/_ENTITY_\d+_/g, '').split(' ').filter(w => w.length > 2);
-  const dbKeywords = [...dbQuestion.keywords_en, ...dbQuestion.keywords_hi].map(k => k.toLowerCase());
-  const matchedKeywords = userTokens.filter(token => dbKeywords.some(kw => kw.includes(token) || token.includes(kw)));
-  if (userTokens.length > 0) {
-    const keywordScore = Math.min((matchedKeywords.length / userTokens.length) * 20, 20);
-    totalScore += keywordScore;
-    breakdown.push({ layer: "KEYWORD_OVERLAP", score: keywordScore, matched: matchedKeywords });
-  }
   
-  // Context Modifier Bonus (10 points)
-  const userConditions = detectConditions(cleanedUserQuery);
-  const dbConditions = detectConditions(cleanedDbQuestion);
-  const commonConditions = userConditions.filter(uc => dbConditions.some(dc => dc.condition === uc.condition));
-  if (commonConditions.length > 0) {
-    const contextScore = Math.min(commonConditions.length * 5, 10);
-    totalScore += contextScore;
-    breakdown.push({ layer: "CONTEXT_MODIFIER", score: contextScore, matched: commonConditions.map(c => c.condition) });
-  }
-
-  totalScore = Math.max(0, Math.min(totalScore, 100)); // Ensure score is between 0 and 100
-
-  return {
-    score: totalScore,
-    breakdown,
-    userIntents: userIntentResolved,
-  };
+  return (matchedCount / searchKeywords.length) * 100;
 }
 
-export function findBestMatch(userQuery: string, candidateQuestions: Question[]) {
-  const results: any[] = [];
+
+export function findExactMatch(userQuery: string, candidateQuestions: Question[]) {
+  // Layers 1-4: Generate search keywords from user query
+  const searchKeywords = generateSearchKeywords(userQuery);
+  
+  if (searchKeywords.length === 0) return [];
+
+  const matches = [];
+
   for (const question of candidateQuestions) {
-    const scoreResult = calculateSemanticScore(userQuery, question);
-    if (scoreResult.score >= 60) { // Threshold for a decent match
-      results.push({
-        type: 'question',
+    const dbKeywords = [
+      ...question.keywords_en,
+      ...question.keywords_hi
+    ].map(k => k.toLowerCase());
+
+    const score = calculateMatchScore(searchKeywords, dbKeywords);
+
+    if (score >= 90) { // Apply 90% threshold
+      matches.push({
+        type: 'question' as const,
         document: question,
-        score: scoreResult.score,
-        intent: scoreResult.userIntents.primaryIntent ? [scoreResult.userIntents.primaryIntent.type] : [],
+        score: score,
+        intent: [], 
       });
     }
   }
-  results.sort((a, b) => b.score - a.score);
-  return results;
+
+  // Sort by score to get the best match first
+  matches.sort((a, b) => b.score - a.score);
+
+  return matches;
 }
 
-/**
- * Finds questions that strictly contain all entities from the user query.
- * @param userQuery The raw user query.
- * @param candidateQuestions The list of questions to search within.
- * @returns An array of matching questions.
- */
-export function findExactMatch(userQuery: string, candidateQuestions: Question[]) {
-    // Layer 1: Clean the user query
-    const cleanedQuery = removeExpressionNoise(userQuery);
-    if (!cleanedQuery) return [];
 
-    // Layer 2: Extract entities from the cleaned query
-    const { entities: userEntities } = extractEntities(cleanedQuery);
-    if (userEntities.length === 0) return [];
-
-    const lowerCaseUserEntities = userEntities.map(e => e.toLowerCase());
-
-    const results = candidateQuestions.filter(question => {
-        const dbKeywords = new Set([
-            ...question.keywords_en.map(k => k.toLowerCase()),
-            ...question.keywords_hi.map(k => k.toLowerCase())
-        ]);
-
-        // Check if every entity from the user's query exists in the database keywords
-        const allEntitiesFound = lowerCaseUserEntities.every(userEntity => {
-            // Check for an exact match or if a keyword contains the user entity
-            return [...dbKeywords].some(dbKeyword => dbKeyword.includes(userEntity));
-        });
-        
-        return allEntitiesFound;
-    });
-
-    // Sort results to prioritize those with fewer extra keywords for relevance
-    results.sort((a, b) => {
-        const aKeywords = new Set([...a.keywords_en, ...a.keywords_hi]);
-        const bKeywords = new Set([...b.keywords_en, ...b.keywords_hi]);
-        return aKeywords.size - bKeywords.size;
-    });
-    
-    // Map to the required result format
-    return results.map(doc => ({
-        type: 'question' as const,
-        document: doc,
-        score: 95, // Assign a high score to indicate a strong, exact match
-        intent: [],
-    }));
+// This function is no longer needed with the new system.
+// Keeping it here commented out for reference, but it can be removed.
+/*
+export const removeExpressionNoise = (text: string): string => {
+  return text; // Placeholder
 }
-
+*/
 
 export const normalizeText = (text: string): string => {
   return text

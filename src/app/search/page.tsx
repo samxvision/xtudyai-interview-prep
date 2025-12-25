@@ -4,7 +4,7 @@
 import React, { useState, useEffect, useTransition, useCallback } from 'react';
 import { Search, Loader2, AlertCircle, Tag, ArrowLeft, Database, Mic } from 'lucide-react';
 import { AcronymData, searchAcronym } from '@/lib/acronyms';
-import { removeExpressionNoise, findExactMatch } from '@/lib/matching';
+import { findExactMatch } from '@/lib/matching';
 import { useAppContext } from '@/context/AppContext';
 import type { Question } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -82,15 +82,8 @@ export default function SmartQuestionSearch() {
     setResult(null);
   
     startTransition(async () => {
-      const cleanedQuery = removeExpressionNoise(searchQuery);
-      if (!cleanedQuery) {
-        setResult({ notFound: true });
-        setLoading(false);
-        return;
-      }
-  
-      const acronymResult = searchAcronym(cleanedQuery);
-      if (acronymResult && cleanedQuery.trim().split(/\s+/).length <= 3) {
+      const acronymResult = searchAcronym(searchQuery.toUpperCase().trim());
+      if (acronymResult && searchQuery.trim().split(/\s+/).length <= 3) {
         setResult({
           type: 'acronym',
           data: { ...acronymResult, acronym: acronymResult.acronym },
@@ -98,26 +91,28 @@ export default function SmartQuestionSearch() {
         setLoading(false);
         return;
       }
-  
-      // Use the new strict matching function with all questions
-      const matches = findExactMatch(searchQuery, questions);
-      const bestMatch = matches.length > 0 ? matches[0] : null;
-
-      if (bestMatch) {
-        setResult(bestMatch as QuestionResult);
-      } else {
-        // Fallback to fetching candidates if no strict match is found initially
-        const candidateQuestions = await getCandidateQuestions(cleanedQuery);
-        const candidateMatches = findExactMatch(searchQuery, candidateQuestions);
-        const bestCandidateMatch = candidateMatches.length > 0 ? candidateMatches[0] : null;
-
-        if(bestCandidateMatch) {
-            setResult(bestCandidateMatch as QuestionResult);
-        } else {
-            setResult({ notFound: true });
-            sendQuestionToAutomation(cleanedQuery);
-        }
+      
+      const candidateQuestions = await getCandidateQuestions(searchQuery);
+      
+      let allQuestionsToSearch = [...questions];
+      if (candidateQuestions.length > 0) {
+        const candidateIds = new Set(candidateQuestions.map(q => q.id));
+        allQuestionsToSearch = [
+          ...candidateQuestions,
+          ...questions.filter(q => !candidateIds.has(q.id))
+        ];
       }
+      
+      const matches = findExactMatch(searchQuery, allQuestionsToSearch);
+      
+      if (matches.length > 0) {
+        setResult(matches[0] as QuestionResult);
+      } else {
+        setResult({ notFound: true });
+        // Only send to automation if no match is found.
+        sendQuestionToAutomation(searchQuery);
+      }
+  
       setLoading(false);
     });
   }, [questions]);
