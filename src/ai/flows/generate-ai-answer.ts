@@ -30,6 +30,34 @@ export async function generateAiAnswer(input: string): Promise<AIResponse> {
   return generateAiAnswerFlow(input);
 }
 
+const expertPrompt = ai.definePrompt(
+  {
+    name: 'expertQaPrompt',
+    input: { schema: z.string() },
+    output: { schema: AIResponseSchema },
+    prompt: `
+      You are a highly respected and seasoned expert in the oil and gas industry with over 30 years of hands-on experience. Your expertise spans roles as a Senior QA/QC Engineer, Inspection Engineer, NDT Inspector, NDT Engineer, and Maintenance Expert. You are mentoring a junior inspector and your goal is to provide clear, practical, and expert answers to their questions.
+
+      Your response must be structured in the required JSON format.
+
+      The user's question is: "{{input}}"
+
+      Provide a comprehensive answer covering both English and Hinglish (a mix of Hindi and English).
+      - **shortAnswer**: A quick, to-the-point summary.
+      - **longAnswer**: A detailed explanation as if you're teaching a junior colleague on-site, including industry context and code references (like ASME B31.3 or Section VIII) where relevant. Use markdown for emphasis (e.g., **important term**).
+      - **summaryPoints**: Crisp, easy-to-remember bullet points.
+      - **keywords/tags**: Use specific, relevant technical terms.
+      - **difficulty**: Assess the question's difficulty (easy, medium, hard).
+
+      Generate the response strictly following the provided JSON schema. Both English and Hinglish fields are mandatory.
+    `,
+    config: {
+      model: 'googleai/gemini-1.5-flash',
+      temperature: 0.3,
+    },
+  },
+);
+
 
 const generateAiAnswerFlow = ai.defineFlow(
   {
@@ -38,34 +66,9 @@ const generateAiAnswerFlow = ai.defineFlow(
     outputSchema: AIResponseSchema,
   },
   async (prompt) => {
-
-    const llmResponse = await ai.generate({
-      prompt: `
-        You are a highly respected and seasoned expert in the oil and gas industry with over 30 years of hands-on experience. Your expertise spans roles as a Senior QA/QC Engineer, Inspection Engineer, NDT Inspector, NDT Engineer, and Maintenance Expert. You are mentoring a junior inspector and your goal is to provide clear, practical, and expert answers to their questions.
-
-        Your response must be structured in the required JSON format.
-
-        The user's question is: "${prompt}"
-
-        Provide a comprehensive answer covering both English and Hinglish (a mix of Hindi and English).
-        - **shortAnswer**: A quick, to-the-point summary.
-        - **longAnswer**: A detailed explanation as if you're teaching a junior colleague on-site, including industry context and code references (like ASME B31.3 or Section VIII) where relevant. Use markdown for emphasis (e.g., **important term**).
-        - **summaryPoints**: Crisp, easy-to-remember bullet points.
-        - **keywords/tags**: Use specific, relevant technical terms.
-        - **difficulty**: Assess the question's difficulty (easy, medium, hard).
-
-        Generate the response strictly following the provided JSON schema. Both English and Hinglish fields are mandatory.
-      `,
-      model: 'googleai/gemini-1.5-flash',
-      output: {
-        format: 'json',
-        schema: AIResponseSchema,
-      },
-      config: {
-        temperature: 0.3,
-      }
-    });
-
+    
+    const llmResponse = await expertPrompt(prompt);
+    
     const structuredResponse = llmResponse.output;
     if (!structuredResponse) {
       throw new Error("Failed to generate a structured response from the AI.");
@@ -75,4 +78,3 @@ const generateAiAnswerFlow = ai.defineFlow(
     return structuredResponse;
   }
 );
-
