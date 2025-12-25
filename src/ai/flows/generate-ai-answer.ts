@@ -56,7 +56,7 @@ const generateAiAnswerFlow = ai.defineFlow(
 
         Generate the response strictly following the provided JSON schema. Both English and Hinglish fields are mandatory.
       `,
-      model: 'googleai/gemini-pro',
+      model: 'googleai/gemini-1.5-flash',
       output: {
         format: 'json',
         schema: AIResponseSchema,
