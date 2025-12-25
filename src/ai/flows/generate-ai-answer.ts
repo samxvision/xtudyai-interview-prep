@@ -66,7 +66,7 @@ const generateAiAnswerFlow = ai.defineFlow(
       }
     });
 
-    const structuredResponse = llmResponse.output();
+    const structuredResponse = llmResponse.output;
     if (!structuredResponse) {
       throw new Error("Failed to generate a structured response from the AI.");
     }
@@ -75,3 +75,4 @@ const generateAiAnswerFlow = ai.defineFlow(
     return structuredResponse;
   }
 );
+
