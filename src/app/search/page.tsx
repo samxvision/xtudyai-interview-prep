@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useEffect, useTransition, useCallback } from 'react';
-import { Search, Loader2, AlertCircle, Tag, ArrowLeft, Database, Sparkles, Layers, Lock, Mic } from 'lucide-react';
+import { Search, Loader2, AlertCircle, Tag, ArrowLeft, Database, Mic } from 'lucide-react';
 import { AcronymData, searchAcronym } from '@/lib/acronyms';
 import { findBestMatch, removeExpressionNoise } from '@/lib/matching';
 import { useAppContext } from '@/context/AppContext';
@@ -16,10 +16,9 @@ import { AnswerCard } from '@/components/answer-card';
 import { useSpeechRecognition } from '@/hooks/use-speech-recognition';
 import { useToast } from '@/hooks/use-toast';
 import { sendQuestionToAutomation } from '@/lib/googleSheet';
-import { generateAiAnswer } from '@/ai/flows/generate-ai-answer';
 import { getCandidateQuestions } from '@/lib/data';
 
-type SearchMode = 'database' | 'ai' | 'hybrid';
+type SearchMode = 'database';
 type AcronymResult = {
   type: 'acronym';
   data: AcronymData & { acronym: string };
@@ -33,30 +32,6 @@ type QuestionResult = {
 type NotFoundResult = { notFound: true };
 type SearchResult = AcronymResult | QuestionResult | NotFoundResult | null;
 
-const modeConfig = {
-  database: {
-    icon: Database,
-    title: 'Database Search',
-    description: 'Searches our curated list of QA/QC interview questions.',
-    color: 'text-blue-500',
-    bgColor: 'bg-blue-100 dark:bg-blue-900/20',
-  },
-  ai: {
-    icon: Sparkles,
-    title: 'AI Expert Mode',
-    description: 'Get answers directly from our trained AI expert.',
-    color: 'text-purple-500',
-    bgColor: 'bg-purple-100 dark:bg-purple-900/20',
-  },
-  hybrid: {
-    icon: Layers,
-    title: 'Hybrid Search',
-    description: 'Searches database first, then consults AI if no match is found.',
-    color: 'text-green-500',
-    bgColor: 'bg-green-100 dark:bg-green-900/20',
-  },
-};
-
 const exampleQuestions = [
     "What is the difference between WPS and PQR?",
     "Explain undercut acceptance criteria",
@@ -69,9 +44,8 @@ export default function SmartQuestionSearch() {
   const [result, setResult] = useState<SearchResult>(null);
   const [loading, setLoading] = useState(false);
   const [uiLanguage, setUiLanguage] = useState<'en' | 'hi'>('hi');
-  const [mode, setMode] = useState<SearchMode>('database');
 
-  const { areQuestionsLoading, addLearnedQuestion } = useAppContext();
+  const { areQuestionsLoading } = useAppContext();
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
 
@@ -100,28 +74,6 @@ export default function SmartQuestionSearch() {
     }
   }, [speechError, toast]);
 
-  const performAiSearch = async (searchQuery: string) => {
-    try {
-      const aiResponse = await generateAiAnswer(searchQuery);
-      addLearnedQuestion(aiResponse); // Add to context to make it searchable later
-      setResult({
-        type: 'question',
-        document: aiResponse,
-        score: 100, // AI results are considered a perfect match
-        intent: [],
-      });
-    } catch (aiError) {
-      console.error("AI search failed:", aiError);
-      setResult({ notFound: true });
-      toast({
-        title: "AI Error",
-        description: "The AI expert could not provide an answer. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
-
-
   const handleSearch = useCallback(async (searchQuery: string) => {
     if (!searchQuery.trim()) return;
   
@@ -130,16 +82,9 @@ export default function SmartQuestionSearch() {
     setResult(null);
   
     startTransition(async () => {
-      // Layer 1: Clean the user's query first.
       const cleanedQuery = removeExpressionNoise(searchQuery);
       if (!cleanedQuery) {
         setResult({ notFound: true });
-        setLoading(false);
-        return;
-      }
-  
-      if (mode === 'ai') {
-        await performAiSearch(cleanedQuery);
         setLoading(false);
         return;
       }
@@ -154,26 +99,20 @@ export default function SmartQuestionSearch() {
         return;
       }
   
-      // Step 1: Pre-filter candidates from Firestore using the cleaned query (Layer 2 for keywords).
       const candidateQuestions = await getCandidateQuestions(cleanedQuery);
   
-      // Step 2: Run the full semantic search on the smaller candidate list.
       const matches = findBestMatch(cleanedQuery, candidateQuestions);
       const bestMatch = matches.length > 0 ? matches[0] : null;
 
       if (bestMatch && bestMatch.score > 60) {
         setResult(bestMatch as QuestionResult);
       } else {
-        if (mode === 'hybrid') {
-          await performAiSearch(cleanedQuery);
-        } else {
-          setResult({ notFound: true });
-          sendQuestionToAutomation(cleanedQuery);
-        }
+        setResult({ notFound: true });
+        sendQuestionToAutomation(cleanedQuery);
       }
       setLoading(false);
     });
-  }, [mode, addLearnedQuestion]);
+  }, []);
 
   const getCategoryBadgeColor = (category?: string) => {
     const colors: { [key: string]: string } = {
@@ -211,7 +150,6 @@ export default function SmartQuestionSearch() {
   
   const handleMicRelease = () => {
     stopListening();
-    // Use a timeout to ensure the final transcript is set before searching
     setTimeout(() => {
         handleSearch(transcript || query);
     }, 100);
@@ -241,32 +179,10 @@ export default function SmartQuestionSearch() {
             </Button>
              <Logo />
           </div>
-            <div className="flex items-center gap-1 p-1 bg-slate-200 rounded-full border border-slate-300">
-              <Button
-                variant={mode === 'database' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => setMode('database')}
-                className={`rounded-full px-3 text-sm h-8 ${mode === 'database' ? 'bg-orange-500 text-white' : 'text-slate-600'}`}
-              >
-                <Database className="mr-2 h-4 w-4" /> Database
-              </Button>
-              <Button
-                variant={mode === 'ai' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => setMode('ai')}
-                 className={`rounded-full px-3 text-sm h-8 ${mode === 'ai' ? 'bg-purple-500 text-white' : 'text-slate-600'}`}
-              >
-                <Sparkles className="mr-2 h-4 w-4" /> AI
-              </Button>
-               <Button
-                variant={mode === 'hybrid' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => setMode('hybrid')}
-                 className={`rounded-full px-3 text-sm h-8 ${mode === 'hybrid' ? 'bg-green-500 text-white' : 'text-slate-600'}`}
-              >
-                <Layers className="mr-2 h-4 w-4" /> Hybrid
-              </Button>
-            </div>
+          <Badge variant="outline" className="border-blue-500/30 bg-blue-500/10 text-blue-500">
+            <Database className="mr-2 h-4 w-4" />
+            Database Search
+          </Badge>
         </div>
       </header>
 
@@ -314,8 +230,8 @@ export default function SmartQuestionSearch() {
               </h3>
               <p className="text-slate-500 mb-4">
                 {uiLanguage === 'hi' 
-                  ? 'कृपया कुछ समय बाद इस प्रश्न को खोजें।'
-                  : 'Search this question after some time.'}
+                  ? 'यह प्रश्न हमारे डेटाबेस में नहीं मिला। हम इसे भविष्य के लिए जोड़ देंगे।'
+                  : 'This question was not found in our database. We will add it for the future.'}
               </p>
             </div>
           )}
