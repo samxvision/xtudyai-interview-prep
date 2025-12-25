@@ -58,14 +58,14 @@ const IGNORE_PATTERNS = {
       "mujhe batao", "hamko batao", "please tell",
       "can you tell", "could you explain",
       "i want to know", "mujhe janna hai",
-      "help me", "guide me", "now tell me"
+      "help me", "guide me", "now tell me", "accha tum ab batao ki"
     ],
     fillers: [
       "ki", "ye", "wo", "yaar", "bhai",
       "accha", "ok", "thik hai", "dekho", "suno",
       "actually", "basically", "you know", "it's fine"
     ],
-  };
+};
   
 function aggressiveClean(text: string): string {
     let cleaned = text.toLowerCase().trim();
