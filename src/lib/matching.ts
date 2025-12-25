@@ -106,8 +106,8 @@ export function findExactMatch(userQuery: string, candidateQuestions: Question[]
 
   for (const question of candidateQuestions) {
     const dbKeywords = new Set([
-      ...question.keywords_en,
-      ...question.keywords_hi
+      ...(question.keywords_en || []),
+      ...(question.keywords_hi || [])
     ].map(k => k.toLowerCase()));
 
     // 1. All user keywords must be present in DB keywords
