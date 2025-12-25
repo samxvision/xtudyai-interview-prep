@@ -80,49 +80,83 @@ function aggressiveClean(text: string): string {
       cleaned = cleaned.replace(new RegExp(`\\b${filler}\\b`, 'gi'), ' ');
     }
   
-    // Clean up spaces
-    cleaned = cleaned.replace(/\s+/g, ' ').trim();
+    // Clean up spaces and punctuation
+    cleaned = cleaned.replace(/[^\w\s]/g, '').replace(/\s+/g, ' ').trim();
   
     return cleaned;
 }
 
+
 // =================================================================
-// DIRECT QUESTION-TO-QUESTION MATCHING
+// HYBRID SEARCH FUNCTION
 // =================================================================
 
+/**
+ * Implements a hybrid search strategy.
+ * 1. Tries a direct, high-threshold match against the question text.
+ * 2. If no direct match, falls back to a keyword-based search.
+ */
 export function findExactMatch(userQuery: string, candidateQuestions: Question[]) {
-  // Apply Layer 1 to clean the user's query first
   const cleanedUserQuery = aggressiveClean(userQuery);
-  const normalizedUserQuery = normalizeText(cleanedUserQuery);
-  const matches = [];
 
+  // === STAGE 1: Direct Question Matching ===
+  const directMatches = [];
   for (const question of candidateQuestions) {
-    // Normalize database questions for comparison
     const normalizedEn = normalizeText(question.question_en);
     const normalizedHi = normalizeText(question.question_hi);
 
-    // Calculate similarity score with both English and Hinglish questions
-    const scoreEn = calculateSimilarity(normalizedUserQuery, normalizedEn);
-    const scoreHi = calculateSimilarity(normalizedUserQuery, normalizedHi);
-
-    // Take the higher of the two scores
+    const scoreEn = calculateSimilarity(cleanedUserQuery, normalizedEn);
+    const scoreHi = calculateSimilarity(cleanedUserQuery, normalizedHi);
     const finalScore = Math.max(scoreEn, scoreHi);
 
-    // If the score meets the 85% threshold, add it to the results
     if (finalScore >= 85) {
-      matches.push({
+      directMatches.push({
         type: 'question' as const,
         document: question,
         score: finalScore,
-        intent: [], 
+        intent: ['direct_match'], 
       });
     }
   }
 
-  // Sort by score to get the best match first
-  matches.sort((a, b) => b.score - a.score);
+  if (directMatches.length > 0) {
+    directMatches.sort((a, b) => b.score - a.score);
+    return directMatches;
+  }
 
-  return matches;
+  // === STAGE 2: Keyword Fallback Matching ===
+  // If no direct matches were found, proceed to keyword search.
+  const searchKeywords = cleanedUserQuery.split(' ').filter(word => word.length > 2);
+  const keywordMatches = [];
+
+  for (const question of candidateQuestions) {
+    const dbKeywords = [
+      ...question.keywords_en,
+      ...question.keywords_hi
+    ].map(k => k.toLowerCase());
+    
+    let matchedCount = 0;
+    for (const searchKey of searchKeywords) {
+      if (dbKeywords.some(dbKey => dbKey.includes(searchKey))) {
+        matchedCount++;
+      }
+    }
+    
+    const matchPercentage = (matchedCount / searchKeywords.length) * 100;
+    
+    // Use a slightly lower threshold for keyword matching to be more flexible
+    if (matchPercentage >= 75) {
+      keywordMatches.push({
+        type: 'question' as const,
+        document: question,
+        score: matchPercentage,
+        intent: ['keyword_match'],
+      });
+    }
+  }
+
+  keywordMatches.sort((a, b) => b.score - a.score);
+  return keywordMatches;
 }
 
 
@@ -133,8 +167,7 @@ export function findExactMatch(userQuery: string, candidateQuestions: Question[]
 export const normalizeText = (text: string): string => {
   return text
     .toLowerCase()
-    // Remove punctuation but keep alphanumeric and space
     .replace(/[^\w\s]/g, '')
-    .replace(/\s+/g, ' ') // Collapse multiple spaces
+    .replace(/\s+/g, ' ') 
     .trim();
 }
