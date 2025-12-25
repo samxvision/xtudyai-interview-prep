@@ -108,8 +108,8 @@ export function findExactMatch(userQuery: string, candidateQuestions: Question[]
     // Take the higher of the two scores
     const finalScore = Math.max(scoreEn, scoreHi);
 
-    // If the score meets the 90% threshold, add it to the results
-    if (finalScore >= 90) {
+    // If the score meets the 85% threshold, add it to the results
+    if (finalScore >= 85) {
       matches.push({
         type: 'question' as const,
         document: question,
