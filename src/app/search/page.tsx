@@ -16,7 +16,6 @@ import { AnswerCard } from '@/components/answer-card';
 import { useSpeechRecognition } from '@/hooks/use-speech-recognition';
 import { useToast } from '@/hooks/use-toast';
 import { sendQuestionToAutomation } from '@/lib/googleSheet';
-import { getCandidateQuestions } from '@/lib/data';
 
 type SearchMode = 'database';
 type AcronymResult = {
@@ -81,7 +80,7 @@ export default function SmartQuestionSearch() {
     setLoading(true);
     setResult(null);
   
-    startTransition(async () => {
+    startTransition(() => {
       const acronymResult = searchAcronym(searchQuery.toUpperCase().trim());
       if (acronymResult && searchQuery.trim().split(/\s+/).length <= 3) {
         setResult({
@@ -92,18 +91,7 @@ export default function SmartQuestionSearch() {
         return;
       }
       
-      const candidateQuestions = await getCandidateQuestions(searchQuery);
-      
-      let allQuestionsToSearch = [...questions];
-      if (candidateQuestions.length > 0) {
-        const candidateIds = new Set(candidateQuestions.map(q => q.id));
-        allQuestionsToSearch = [
-          ...candidateQuestions,
-          ...questions.filter(q => !candidateIds.has(q.id))
-        ];
-      }
-      
-      const matches = findExactMatch(searchQuery, allQuestionsToSearch);
+      const matches = findExactMatch(searchQuery, questions);
       
       if (matches.length > 0) {
         setResult(matches[0] as QuestionResult);
