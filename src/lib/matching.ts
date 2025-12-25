@@ -49,11 +49,51 @@ function calculateSimilarity(s1: string, s2: string): number {
 
 
 // =================================================================
+// LAYER 1: AGGRESSIVE EXPRESSION REMOVAL
+// =================================================================
+
+const IGNORE_PATTERNS = {
+    expressions: [
+      "tum batao", "aap bataiye", "kripya bataiye",
+      "mujhe batao", "hamko batao", "please tell",
+      "can you tell", "could you explain",
+      "i want to know", "mujhe janna hai",
+      "help me", "guide me", "now tell me"
+    ],
+    fillers: [
+      "ki", "ye", "wo", "yaar", "bhai",
+      "accha", "ok", "thik hai", "dekho", "suno",
+      "actually", "basically", "you know", "it's fine"
+    ],
+  };
+  
+function aggressiveClean(text: string): string {
+    let cleaned = text.toLowerCase().trim();
+  
+    // Remove expressions
+    for (const expr of IGNORE_PATTERNS.expressions) {
+      cleaned = cleaned.replace(new RegExp(`\\b${expr}\\b`, 'gi'), ' ');
+    }
+  
+    // Remove fillers
+    for (const filler of IGNORE_PATTERNS.fillers) {
+      cleaned = cleaned.replace(new RegExp(`\\b${filler}\\b`, 'gi'), ' ');
+    }
+  
+    // Clean up spaces
+    cleaned = cleaned.replace(/\s+/g, ' ').trim();
+  
+    return cleaned;
+}
+
+// =================================================================
 // DIRECT QUESTION-TO-QUESTION MATCHING
 // =================================================================
 
 export function findExactMatch(userQuery: string, candidateQuestions: Question[]) {
-  const normalizedUserQuery = normalizeText(userQuery);
+  // Apply Layer 1 to clean the user's query first
+  const cleanedUserQuery = aggressiveClean(userQuery);
+  const normalizedUserQuery = normalizeText(cleanedUserQuery);
   const matches = [];
 
   for (const question of candidateQuestions) {
@@ -74,7 +114,7 @@ export function findExactMatch(userQuery: string, candidateQuestions: Question[]
         type: 'question' as const,
         document: question,
         score: finalScore,
-        intent: [], // This can be deprecated or used differently
+        intent: [], 
       });
     }
   }
