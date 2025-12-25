@@ -4,7 +4,7 @@
 import React, { useState, useEffect, useTransition, useCallback } from 'react';
 import { Search, Loader2, AlertCircle, Tag, ArrowLeft, Database, Mic } from 'lucide-react';
 import { AcronymData, searchAcronym } from '@/lib/acronyms';
-import { findBestMatch, removeExpressionNoise } from '@/lib/matching';
+import { removeExpressionNoise, findExactMatch } from '@/lib/matching';
 import { useAppContext } from '@/context/AppContext';
 import type { Question } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -45,7 +45,7 @@ export default function SmartQuestionSearch() {
   const [loading, setLoading] = useState(false);
   const [uiLanguage, setUiLanguage] = useState<'en' | 'hi'>('hi');
 
-  const { areQuestionsLoading } = useAppContext();
+  const { areQuestionsLoading, questions } = useAppContext();
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
 
@@ -99,20 +99,28 @@ export default function SmartQuestionSearch() {
         return;
       }
   
-      const candidateQuestions = await getCandidateQuestions(cleanedQuery);
-  
-      const matches = findBestMatch(cleanedQuery, candidateQuestions);
+      // Use the new strict matching function with all questions
+      const matches = findExactMatch(searchQuery, questions);
       const bestMatch = matches.length > 0 ? matches[0] : null;
 
-      if (bestMatch && bestMatch.score > 60) {
+      if (bestMatch) {
         setResult(bestMatch as QuestionResult);
       } else {
-        setResult({ notFound: true });
-        sendQuestionToAutomation(cleanedQuery);
+        // Fallback to fetching candidates if no strict match is found initially
+        const candidateQuestions = await getCandidateQuestions(cleanedQuery);
+        const candidateMatches = findExactMatch(searchQuery, candidateQuestions);
+        const bestCandidateMatch = candidateMatches.length > 0 ? candidateMatches[0] : null;
+
+        if(bestCandidateMatch) {
+            setResult(bestCandidateMatch as QuestionResult);
+        } else {
+            setResult({ notFound: true });
+            sendQuestionToAutomation(cleanedQuery);
+        }
       }
       setLoading(false);
     });
-  }, []);
+  }, [questions]);
 
   const getCategoryBadgeColor = (category?: string) => {
     const colors: { [key: string]: string } = {

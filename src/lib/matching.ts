@@ -327,7 +327,6 @@ function calculateSemanticScore(userQuery: string, dbQuestion: Question) {
   };
 }
 
-// MAIN SEARCH FUNCTION
 export function findBestMatch(userQuery: string, candidateQuestions: Question[]) {
   const results: any[] = [];
   for (const question of candidateQuestions) {
@@ -344,6 +343,55 @@ export function findBestMatch(userQuery: string, candidateQuestions: Question[])
   results.sort((a, b) => b.score - a.score);
   return results;
 }
+
+/**
+ * Finds questions that strictly contain all entities from the user query.
+ * @param userQuery The raw user query.
+ * @param candidateQuestions The list of questions to search within.
+ * @returns An array of matching questions.
+ */
+export function findExactMatch(userQuery: string, candidateQuestions: Question[]) {
+    // Layer 1: Clean the user query
+    const cleanedQuery = removeExpressionNoise(userQuery);
+    if (!cleanedQuery) return [];
+
+    // Layer 2: Extract entities from the cleaned query
+    const { entities: userEntities } = extractEntities(cleanedQuery);
+    if (userEntities.length === 0) return [];
+
+    const lowerCaseUserEntities = userEntities.map(e => e.toLowerCase());
+
+    const results = candidateQuestions.filter(question => {
+        const dbKeywords = new Set([
+            ...question.keywords_en.map(k => k.toLowerCase()),
+            ...question.keywords_hi.map(k => k.toLowerCase())
+        ]);
+
+        // Check if every entity from the user's query exists in the database keywords
+        const allEntitiesFound = lowerCaseUserEntities.every(userEntity => {
+            // Check for an exact match or if a keyword contains the user entity
+            return [...dbKeywords].some(dbKeyword => dbKeyword.includes(userEntity));
+        });
+        
+        return allEntitiesFound;
+    });
+
+    // Sort results to prioritize those with fewer extra keywords for relevance
+    results.sort((a, b) => {
+        const aKeywords = new Set([...a.keywords_en, ...a.keywords_hi]);
+        const bKeywords = new Set([...b.keywords_en, ...b.keywords_hi]);
+        return aKeywords.size - bKeywords.size;
+    });
+    
+    // Map to the required result format
+    return results.map(doc => ({
+        type: 'question' as const,
+        document: doc,
+        score: 95, // Assign a high score to indicate a strong, exact match
+        intent: [],
+    }));
+}
+
 
 export const normalizeText = (text: string): string => {
   return text
