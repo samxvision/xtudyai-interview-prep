@@ -30,9 +30,10 @@ function calculateSimilarity(s1: string, s2: string): number {
 }
 
 // =================================================================
-// LAYER 1: AGGRESSIVE EXPRESSION REMOVAL
+// 5-LAYER SEARCH SYSTEM
 // =================================================================
 
+// LAYER 1: AGGRESSIVE EXPRESSION REMOVAL
 const IGNORE_PATTERNS = {
     expressions: [
       "tum batao", "aap bataiye", "kripya bataiye",
@@ -50,105 +51,192 @@ const IGNORE_PATTERNS = {
   
 function aggressiveClean(text: string): string {
     let cleaned = text.toLowerCase().trim();
-    for (const expr of IGNORE_PATTERNS.expressions) {
-      cleaned = cleaned.replace(new RegExp(`\\b${expr}\\b`, 'gi'), ' ');
+    // Remove expressions and fillers
+    for (const pattern of [...IGNORE_PATTERNS.expressions, ...IGNORE_PATTERNS.fillers]) {
+      cleaned = cleaned.replace(new RegExp(`\\b${pattern}\\b`, 'gi'), ' ');
     }
-    for (const filler of IGNORE_PATTERNS.fillers) {
-      cleaned = cleaned.replace(new RegExp(`\\b${filler}\\b`, 'gi'), ' ');
-    }
+    // Remove punctuation and extra spaces
     cleaned = cleaned.replace(/[^\w\s]/g, '').replace(/\s+/g, ' ').trim();
     return cleaned;
 }
 
+// LAYER 2: INTENT WORD EXTRACTION
+const INTENT_WORD_MAP: Record<string, string[]> = {
+    "kya hai": ["definition", "kya hai", "meaning"],
+    "kya hota hai": ["definition", "kya hota hai", "meaning"],
+    "what is": ["definition", "what is", "meaning"],
+    "define": ["definition", "define"],
+    "meaning": ["definition", "meaning"],
+    "matlab": ["definition", "matlab", "meaning"],
+    "kaise kaam karta": ["working", "kaise kaam karta", "principle"],
+    "kaise kaam karti": ["working", "kaise kaam karti", "principle"],
+    "how it works": ["working", "how works", "principle"],
+    "working principle": ["working", "principle"],
+    "kaise kare": ["procedure", "kaise kare", "method", "steps"],
+    "kaise karte": ["procedure", "kaise karte", "method"],
+    "how to": ["procedure", "how to", "method"],
+    "procedure": ["procedure", "method", "steps"],
+    "steps": ["procedure", "steps", "method"],
+    "repair": ["repair", "fix", "thik karna"],
+    "thik kare": ["repair", "thik kare", "fix"],
+    "theek kare": ["repair", "theek kare", "fix"],
+    "fix": ["repair", "fix"],
+    "inspect": ["inspection", "check", "examine"],
+    "check": ["inspection", "check", "verify"],
+    "dekhte": ["inspection", "dekhte", "check"],
+    "dekhna": ["inspection", "dekhna", "check"],
+    "identify": ["identify", "detect", "pehchan"],
+    "pehchan": ["identify", "pehchan", "detect"],
+    "kaise pata": ["identify", "kaise pata", "detect"],
+    "problem": ["problem", "issue", "fault"],
+    "kharab": ["problem", "kharab", "damage"],
+    "damage": ["problem", "damage", "defect"],
+    "leak": ["problem", "leak", "leakage"],
+    "difference": ["comparison", "difference", "vs"],
+    "farak": ["comparison", "farak", "difference"],
+    "compare": ["comparison", "compare", "vs"],
+    "vs": ["comparison", "vs", "versus"],
+    "types": ["types", "classification", "kinds"],
+    "kitne type": ["types", "kitne type", "kinds"],
+    "prakar": ["types", "prakar", "kinds"]
+};
+
+function extractIntentWords(text: string) {
+    const intentKeywords: string[] = [];
+    const sortedPatterns = Object.keys(INTENT_WORD_MAP).sort((a, b) => b.length - a.length);
+    
+    for (const pattern of sortedPatterns) {
+        if (text.includes(pattern)) {
+            intentKeywords.push(...INTENT_WORD_MAP[pattern]);
+            text = text.replace(pattern, ' ');
+            break;
+        }
+    }
+    
+    return {
+        intentKeywords,
+        remainingText: text.replace(/\s+/g, ' ').trim()
+    };
+}
+
+
+// LAYER 3: ENTITY EXTRACTION (Improved)
+function extractEntities(text: string): { entities: string[], remainingText: string } {
+    const words = text.split(' ');
+    const entities = new Set<string>();
+
+    words.forEach(word => {
+        // Treat short, all-caps words as potential acronyms/entities
+        if (word.length > 1 && word.length <= 4 && word === word.toUpperCase()) {
+            entities.add(word.toLowerCase());
+        }
+        // Add any word longer than 3 chars as a potential entity
+        else if (word.length > 3) {
+             entities.add(word);
+        }
+        // Add specific short words that are entities
+        else if (['cui', 'wps', 'pqr', 'ndt', 'rt', 'ut', 'mt', 'pt'].includes(word)) {
+            entities.add(word);
+        }
+    });
+
+    return {
+        entities: Array.from(entities),
+        remainingText: text // We don't remove entities from text anymore for keyword generation
+    };
+}
+
+
+// LAYER 4: GENERATE SEARCH KEYWORDS
+function generateSearchKeywords(originalQuery: string): string[] {
+    const cleaned = aggressiveClean(originalQuery);
+    const { intentKeywords, remainingText: afterIntent } = extractIntentWords(cleaned);
+    const { entities } = extractEntities(afterIntent);
+    
+    const remainingWords = afterIntent.split(' ').filter(word => word.length > 2);
+
+    const searchKeywords = [
+        ...entities,
+        ...intentKeywords,
+        ...remainingWords
+    ];
+    
+    return [...new Set(searchKeywords.map(k => k.toLowerCase()))];
+}
+
+
 // Keywords that are variations of intent, not subject matter.
 const SUPPORTIVE_KEYWORDS = new Set([
-  'kya', 'hota', 'hai', 'what', 'is', 'explain', 'explanation', 
-  'introduction', 'about', 'meaning', 'matlab', 'define', 'concept',
-  'kaise', 'how', 'procedure', 'steps', 'working', 'principle',
-  'difference', 'vs', 'compare', 'farak', 'types', 'prakar', 'kinds',
-  'check', 'inspect', 'repair', 'fix', 'identify', 'detect', 'problem'
+    'kya', 'hota', 'hai', 'what', 'is', 'explain', 'explanation', 
+    'introduction', 'about', 'meaning', 'matlab', 'define', 'concept',
+    'kaise', 'how', 'procedure', 'steps', 'working', 'principle',
+    'difference', 'vs', 'compare', 'farak', 'types', 'prakar', 'kinds',
+    'check', 'inspect', 'repair', 'fix', 'identify', 'detect', 'problem'
 ]);
 
-// =================================================================
-// HYBRID SEARCH FUNCTION
-// =================================================================
 
+// LAYER 5: HYBRID MATCHING
 export function findExactMatch(userQuery: string, candidateQuestions: Question[]) {
-  const cleanedUserQuery = aggressiveClean(userQuery);
+    const cleanedUserQuery = aggressiveClean(userQuery);
 
-  // === STAGE 1: Direct Question Matching ===
-  const directMatches = [];
-  for (const question of candidateQuestions) {
-    const normalizedEn = normalizeText(question.question_en);
-    const normalizedHi = normalizeText(question.question_hi);
-    const scoreEn = calculateSimilarity(cleanedUserQuery, normalizedEn);
-    const scoreHi = calculateSimilarity(cleanedUserQuery, normalizedHi);
-    const finalScore = Math.max(scoreEn, scoreHi);
+    // === STAGE 1: Direct Question Matching ===
+    const directMatches = [];
+    for (const question of candidateQuestions) {
+        const simEn = calculateSimilarity(cleanedUserQuery, normalizeText(question.question_en));
+        const simHi = calculateSimilarity(cleanedUserQuery, normalizeText(question.question_hi));
+        const score = Math.max(simEn, simHi);
 
-    if (finalScore >= 85) {
-      directMatches.push({
-        type: 'question' as const,
-        document: question,
-        score: finalScore,
-        intent: ['direct_match'], 
-      });
+        if (score >= 85) {
+            directMatches.push({ type: 'question', document: question, score, intent: ['direct_match'] });
+        }
     }
-  }
-
-  if (directMatches.length > 0) {
-    directMatches.sort((a, b) => b.score - a.score);
-    return directMatches;
-  }
-
-  // === STAGE 2: Advanced Keyword Fallback Matching ===
-  const userKeywords = new Set(cleanedUserQuery.split(' ').filter(word => word.length > 1));
-  const keywordMatches = [];
-
-  for (const question of candidateQuestions) {
-    const dbKeywords = new Set([
-      ...(question.keywords_en || []),
-      ...(question.keywords_hi || [])
-    ].map(k => k.toLowerCase()));
-
-    // 1. All user keywords must be present in DB keywords
-    let allUserKeywordsFound = true;
-    for (const uKey of userKeywords) {
-      if (!dbKeywords.has(uKey)) {
-        allUserKeywordsFound = false;
-        break;
-      }
+    if (directMatches.length > 0) {
+        directMatches.sort((a, b) => b.score - a.score);
+        return directMatches;
     }
-    if (!allUserKeywordsFound) continue;
 
-    // 2. Check extra keywords in the database
-    const extraDbKeywords = new Set([...dbKeywords].filter(dbKey => !userKeywords.has(dbKey)));
+    // === STAGE 2: Advanced Keyword Fallback Matching ===
+    const searchKeywords = new Set(generateSearchKeywords(userQuery));
+    if (searchKeywords.size === 0) return [];
     
-    let hasExtraSubjectKeyword = false;
-    for(const extraKey of extraDbKeywords) {
-      // If the extra keyword is NOT a supportive word, it's a subject-changing keyword.
-      if (!SUPPORTIVE_KEYWORDS.has(extraKey)) {
-        hasExtraSubjectKeyword = true;
-        break;
-      }
+    const keywordMatches = [];
+    for (const question of candidateQuestions) {
+        const dbKeywords = new Set([
+            ...(question.keywords_en || []),
+            ...(question.keywords_hi || [])
+        ].map(k => k.toLowerCase()));
+        
+        if (dbKeywords.size === 0) continue;
+
+        let allUserKeywordsFound = true;
+        for (const uKey of searchKeywords) {
+            if (!dbKeywords.has(uKey)) {
+                allUserKeywordsFound = false;
+                break;
+            }
+        }
+        if (!allUserKeywordsFound) continue;
+
+        const extraDbKeywords = new Set([...dbKeywords].filter(dbKey => !searchKeywords.has(dbKey)));
+        
+        let hasExtraSubjectKeyword = false;
+        for (const extraKey of extraDbKeywords) {
+            if (!SUPPORTIVE_KEYWORDS.has(extraKey)) {
+                hasExtraSubjectKeyword = true;
+                break;
+            }
+        }
+        
+        if (hasExtraSubjectKeyword) continue;
+        
+        const score = 100;
+        keywordMatches.push({ type: 'question', document: question, score, intent: ['keyword_match'] });
     }
-    
-    // 3. If there's an extra subject keyword, it's not a match.
-    if (hasExtraSubjectKeyword) continue;
 
-    // If we passed all checks, it's a valid keyword match.
-    // Score based on how many user keywords were found.
-    const score = (userKeywords.size / userKeywords.size) * 100; // Will be 100 if it passes
-    keywordMatches.push({
-      type: 'question' as const,
-      document: question,
-      score: score,
-      intent: ['keyword_match'],
-    });
-  }
-
-  keywordMatches.sort((a, b) => b.score - a.score);
-  return keywordMatches;
+    keywordMatches.sort((a, b) => b.score - a.score);
+    return keywordMatches;
 }
+
 
 // =================================================================
 // HELPER FUNCTIONS
