@@ -6,9 +6,9 @@ dotenv.config();
 
 export const ai = genkit({
   plugins: [
-    googleAI({ 
-      apiKey: process.env.GOOGLE_GENAI_API_KEY 
-    }),
+    // By not passing an API key, Genkit will automatically use the
+    // Application Default Credentials from the environment.
+    googleAI(),
   ],
   logLevel: 'info',
   enableDevUi: false,
