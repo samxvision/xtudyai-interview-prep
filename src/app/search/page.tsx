@@ -4,7 +4,7 @@
 import React, { useState, useEffect, useTransition, useCallback } from 'react';
 import { Search, Loader2, AlertCircle, Tag, ArrowLeft, Database, Mic } from 'lucide-react';
 import { AcronymData, searchAcronym } from '@/lib/acronyms';
-import { findExactMatch } from '@/lib/matching';
+import { findBestMatch } from '@/lib/matching';
 import { useAppContext } from '@/context/AppContext';
 import type { Question } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -17,7 +17,6 @@ import { useSpeechRecognition } from '@/hooks/use-speech-recognition';
 import { useToast } from '@/hooks/use-toast';
 import { sendQuestionToAutomation } from '@/lib/googleSheet';
 
-type SearchMode = 'database';
 type AcronymResult = {
   type: 'acronym';
   data: AcronymData & { acronym: string };
@@ -26,7 +25,6 @@ type QuestionResult = {
   type: 'question';
   document: Question;
   score: number;
-  intent: string[];
 };
 type NotFoundResult = { notFound: true };
 type SearchResult = AcronymResult | QuestionResult | NotFoundResult | null;
@@ -44,7 +42,7 @@ export default function SmartQuestionSearch() {
   const [loading, setLoading] = useState(false);
   const [uiLanguage, setUiLanguage] = useState<'en' | 'hi'>('hi');
 
-  const { areQuestionsLoading, questions } = useAppContext();
+  const { areQuestionsLoading, questions, questionEmbeddings } = useAppContext();
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
 
@@ -74,36 +72,45 @@ export default function SmartQuestionSearch() {
   }, [speechError, toast]);
 
   const handleSearch = useCallback(async (searchQuery: string) => {
-    if (!searchQuery.trim()) return;
+    if (!searchQuery.trim() || areQuestionsLoading) return;
   
     setQuery(searchQuery);
     setLoading(true);
     setResult(null);
   
-    startTransition(() => {
-      const acronymResult = searchAcronym(searchQuery.toUpperCase().trim());
-      if (acronymResult && searchQuery.trim().split(/\s+/).length <= 3) {
-        setResult({
-          type: 'acronym',
-          data: { ...acronymResult, acronym: acronymResult.acronym },
-        });
-        setLoading(false);
-        return;
-      }
+    // Acronym search is synchronous and fast
+    const acronymResult = searchAcronym(searchQuery.toUpperCase().trim());
+    if (acronymResult && searchQuery.trim().split(/\s+/).length <= 3) {
+      setResult({
+        type: 'acronym',
+        data: { ...acronymResult, acronym: acronymResult.acronym },
+      });
+      setLoading(false);
+      return;
+    }
+  
+    // Semantic search is asynchronous
+    try {
+      const match = await findBestMatch(searchQuery, questions, questionEmbeddings);
       
-      const matches = findExactMatch(searchQuery, questions);
-      
-      if (matches.length > 0) {
-        setResult(matches[0] as QuestionResult);
+      if (match) {
+        setResult({ type: 'question', document: match.question, score: match.similarity });
       } else {
         setResult({ notFound: true });
-        // Only send to automation if no match is found.
         sendQuestionToAutomation(searchQuery);
       }
-  
+    } catch (err) {
+      console.error("Error during semantic search:", err);
+      setResult({ notFound: true });
+      toast({
+        title: "Search Error",
+        description: "Could not perform search due to an AI model error.",
+        variant: "destructive",
+      });
+    } finally {
       setLoading(false);
-    });
-  }, [questions]);
+    }
+  }, [questions, areQuestionsLoading, questionEmbeddings, toast]);
 
   const getCategoryBadgeColor = (category?: string) => {
     const colors: { [key: string]: string } = {
@@ -141,9 +148,10 @@ export default function SmartQuestionSearch() {
   
   const handleMicRelease = () => {
     stopListening();
+    // A slight delay to ensure the final transcript is processed
     setTimeout(() => {
         handleSearch(transcript || query);
-    }, 100);
+    }, 300);
   };
   
   if (areQuestionsLoading) {

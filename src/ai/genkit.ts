@@ -1,5 +1,5 @@
 import { genkit } from 'genkit';
-import { googleAI } from '@genkit-ai/googleai';
+import { googleAI } from '@genkit-ai/google-genai';
 import * as dotenv from 'dotenv';
 
 dotenv.config();
@@ -10,6 +10,6 @@ export const ai = genkit({
       apiKey: process.env.GOOGLE_GENAI_API_KEY 
     }),
   ],
-  logLevel: 'debug',
-  enableDevUi: true,
+  logLevel: 'info',
+  enableDevUi: false,
 });

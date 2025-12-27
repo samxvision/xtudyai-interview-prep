@@ -2,8 +2,8 @@
 import { genkit } from 'genkit';
 import { googleAI } from '@genkit-ai/google-genai';
 
-// Load flows from the specified file.
-import './flows/generate-ai-answer';
+// Make sure to register your flows here
+// import './flows/generate-ai-answer';
 
 export default genkit({
   plugins: [
