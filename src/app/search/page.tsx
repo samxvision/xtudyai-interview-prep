@@ -4,7 +4,7 @@
 import React, { useState, useEffect, useTransition, useCallback } from 'react';
 import { Search, Loader2, AlertCircle, Tag, ArrowLeft, Database, Mic } from 'lucide-react';
 import { AcronymData, searchAcronym } from '@/lib/acronyms';
-import { findBestMatch } from '@/lib/matching';
+import { findExactMatch } from '@/lib/matching';
 import { useAppContext } from '@/context/AppContext';
 import type { Question } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -16,6 +16,8 @@ import { AnswerCard } from '@/components/answer-card';
 import { useSpeechRecognition } from '@/hooks/use-speech-recognition';
 import { useToast } from '@/hooks/use-toast';
 import { sendQuestionToAutomation } from '@/lib/googleSheet';
+import { fetchAllQuestions } from '@/lib/data';
+
 
 type AcronymResult = {
   type: 'acronym';
@@ -42,7 +44,7 @@ export default function SmartQuestionSearch() {
   const [loading, setLoading] = useState(false);
   const [uiLanguage, setUiLanguage] = useState<'en' | 'hi'>('hi');
 
-  const { areQuestionsLoading, questions, questionEmbeddings } = useAppContext();
+  const { areQuestionsLoading, questions } = useAppContext();
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
 
@@ -71,13 +73,13 @@ export default function SmartQuestionSearch() {
     }
   }, [speechError, toast]);
 
-  const handleSearch = useCallback(async (searchQuery: string) => {
+  const handleSearch = (searchQuery: string) => {
     if (!searchQuery.trim() || areQuestionsLoading) return;
-  
+
     setQuery(searchQuery);
     setLoading(true);
     setResult(null);
-  
+
     // Acronym search is synchronous and fast
     const acronymResult = searchAcronym(searchQuery.toUpperCase().trim());
     if (acronymResult && searchQuery.trim().split(/\s+/).length <= 3) {
@@ -88,29 +90,19 @@ export default function SmartQuestionSearch() {
       setLoading(false);
       return;
     }
-  
-    // Semantic search is asynchronous
-    try {
-      const match = await findBestMatch(searchQuery, questions, questionEmbeddings);
-      
-      if (match) {
-        setResult({ type: 'question', document: match.question, score: match.similarity });
-      } else {
-        setResult({ notFound: true });
-        sendQuestionToAutomation(searchQuery);
-      }
-    } catch (err) {
-      console.error("Error during semantic search:", err);
-      setResult({ notFound: true });
-      toast({
-        title: "Search Error",
-        description: "Could not perform search due to an AI model error.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [questions, areQuestionsLoading, questionEmbeddings, toast]);
+
+    startTransition(async () => {
+        const match = findExactMatch(searchQuery, questions);
+        
+        if (match) {
+          setResult({ type: 'question', document: match, score: 1 }); // Score is not used in this model
+        } else {
+          setResult({ notFound: true });
+          sendQuestionToAutomation(searchQuery);
+        }
+        setLoading(false);
+    });
+  };
 
   const getCategoryBadgeColor = (category?: string) => {
     const colors: { [key: string]: string } = {
