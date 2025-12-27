@@ -2,7 +2,7 @@
 'use server';
 
 import { ai } from '@/ai/genkit';
-import { embed, type Embedder } from 'genkit/ai';
+import { embed, type Embedder } from 'genkit';
 import type { Question } from '@/types';
 import type { EmbeddedQuestion } from '@/context/AppContext';
 
