@@ -225,7 +225,6 @@ function deepClean(text) {
   
   return cleaned
 }
-
 const QUERY_EXPANSION_MAP = {
   // ============================================
   // ENTITY EXPANSION (Context-Aware)
@@ -558,7 +557,25 @@ function intelligentExpansion(cleaned) {
     originalQuery: cleaned
   }
 }
-
+function layer1Processing(userQuery) {
+  console.log('🔍 Original Query:', userQuery)
+  
+  // Phase 1A: Deep Clean
+  const cleaned = deepClean(userQuery)
+  console.log('🧹 After Cleaning:', cleaned)
+  
+  // Phase 1B: Intelligent Expansion
+  const expansionResult = intelligentExpansion(cleaned)
+  console.log('🔄 Expansions:', expansionResult.expansions)
+  console.log('📋 Expansion Log:', expansionResult.log)
+  
+  return {
+    original: userQuery,
+    cleaned: cleaned,
+    expansions: expansionResult.expansions,
+    expansionLog: expansionResult.log
+  }
+}
 const ENTITY_SEMANTIC_MAP = {
   
   /* ========================================
@@ -1797,7 +1814,6 @@ function levenshteinDistance(str1, str2) {
   
   return dp[m][n]
 }
-
 const ADVANCED_INTENT_PATTERNS = {
 
   // =====================================================
@@ -2632,7 +2648,6 @@ function routeAnswerBasedOnIntent(intentResolution) {
     confidence: intentResolution.confidence
   }
 }
-
 const CONTEXT_PATTERNS = {
   // ==========================================
   // CONDITIONAL SITUATIONS
@@ -2960,12 +2975,12 @@ function calculateSemanticSimilarity(userQuery, dbQuestion) {
     const dbKeywords = [
       ...(dbQuestion.keywords_en || []),
       ...(dbQuestion.keywords_hi || [])
-    ].map(k => k.toLowerCase())
+    ].map(k => k.toLowerCase());
     
-    let matches = 0
+    let matches = 0;
     for (const token of expandedTokens) {
       if (dbKeywords.some(kw => kw.includes(token) || token.includes(kw))) {
-        matches++
+        matches++;
       }
     }
     
@@ -3172,7 +3187,7 @@ function contextualBoost(matchResult, userQuery, dbQuestion) {
   }
 }
 
-async function intelligentQuestionMatch(userQuery, dbQuestions) {
+export async function intelligentQuestionMatch(userQuery, dbQuestions) {
   console.log('🔍 Starting intelligent search for:', userQuery)
   
   const startTime = Date.now()
