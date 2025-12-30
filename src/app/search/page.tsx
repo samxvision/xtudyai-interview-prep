@@ -4,7 +4,7 @@
 import React, { useState, useEffect, useTransition, useCallback } from 'react';
 import { Search, Loader2, AlertCircle, Tag, ArrowLeft, Database, Mic } from 'lucide-react';
 import { AcronymData, searchAcronym } from '@/lib/acronyms';
-import { findExactMatch } from '@/lib/matching';
+import { intelligentQuestionMatch } from '@/lib/matching';
 import { useAppContext } from '@/context/AppContext';
 import type { Question } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -16,7 +16,6 @@ import { AnswerCard } from '@/components/answer-card';
 import { useSpeechRecognition } from '@/hooks/use-speech-recognition';
 import { useToast } from '@/hooks/use-toast';
 import { sendQuestionToAutomation } from '@/lib/googleSheet';
-import { fetchAllQuestions } from '@/lib/data';
 
 
 type AcronymResult = {
@@ -73,7 +72,7 @@ export default function SmartQuestionSearch() {
     }
   }, [speechError, toast]);
 
-  const handleSearch = (searchQuery: string) => {
+  const handleSearch = async (searchQuery: string) => {
     if (!searchQuery.trim() || areQuestionsLoading) return;
 
     setQuery(searchQuery);
@@ -92,10 +91,10 @@ export default function SmartQuestionSearch() {
     }
 
     startTransition(async () => {
-        const match = findExactMatch(searchQuery, questions);
+        const matchResult = await intelligentQuestionMatch(searchQuery, questions);
         
-        if (match) {
-          setResult({ type: 'question', document: match, score: 1 }); // Score is not used in this model
+        if (matchResult.success && matchResult.topMatch) {
+          setResult({ type: 'question', document: matchResult.topMatch.question, score: matchResult.topMatch.totalScore });
         } else {
           setResult({ notFound: true });
           sendQuestionToAutomation(searchQuery);
