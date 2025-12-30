@@ -1,3 +1,4 @@
+
 // @ts-nocheck
 const DEEP_NOISE_PATTERNS = {
   // ============================================
@@ -1461,6 +1462,7 @@ const ENTITY_SEMANTIC_MAP = {
       "sd inspection", "shutdwn inspection"
     ]
   },
+
   "thickness_measurement": {
     coreTerms: ["thickness measurement"],
     partialTerms: ["thickness"],
@@ -2882,16 +2884,13 @@ function calculateSemanticSimilarity(userQuery, dbQuestion) {
       })
     }
   } else {
-    // Fallback: Direct keyword matching
+    // Fallback: Direct keyword matching from question text
     const userTokens = cleaned.split(' ').filter(w => w.length > 2)
-    const dbKeywords = [
-      ...(dbQuestion.keywords_en || []),
-      ...(dbQuestion.keywords_hi || [])
-    ].map(k => k.toLowerCase())
-    
+    const dbQuestionText = (dbQuestion.question_en + ' ' + dbQuestion.question_hi).toLowerCase();
+
     let matches = 0
     for (const token of userTokens) {
-      if (dbKeywords.some(kw => kw.includes(token) || token.includes(kw))) {
+      if (dbQuestionText.includes(token)) {
         matches++
       }
     }
@@ -2901,7 +2900,7 @@ function calculateSemanticSimilarity(userQuery, dbQuestion) {
       breakdown.push({
         component: 'ENTITY_MATCH',
         score: entityScore,
-        details: `Keyword fallback: ${matches}/${userTokens.length} matches`
+        details: `Keyword fallback from question text: ${matches}/${userTokens.length} matches`
       })
     }
   }
@@ -2971,15 +2970,12 @@ function calculateSemanticSimilarity(userQuery, dbQuestion) {
   const maxExpansionScore = 15
   
   for (const expandedQuery of expansionResult.expansions) {
-    const expandedTokens = expandedQuery.split(' ').filter(w => w.length > 2)
-    const dbKeywords = [
-      ...(dbQuestion.keywords_en || []),
-      ...(dbQuestion.keywords_hi || [])
-    ].map(k => k.toLowerCase());
-    
+    const expandedTokens = expandedQuery.split(' ').filter(w => w.length > 2);
+    const dbQuestionText = (dbQuestion.question_en + ' ' + dbQuestion.question_hi).toLowerCase();
+
     let matches = 0;
     for (const token of expandedTokens) {
-      if (dbKeywords.some(kw => kw.includes(token) || token.includes(kw))) {
+      if (dbQuestionText.includes(token)) {
         matches++;
       }
     }
@@ -3003,16 +2999,17 @@ function calculateSemanticSimilarity(userQuery, dbQuestion) {
   // SCORE 4: Fuzzy Keyword Overlap (10 points MAX)
   // ==========================================
   const userTokens = cleaned.split(' ').filter(w => w.length > 2)
-  const dbKeywords = [
-    ...(dbQuestion.keywords_en || []),
-    ...(dbQuestion.keywords_hi || [])
-  ].map(k => k.toLowerCase())
+  const dbQuestionTokens = (dbQuestion.question_en + ' ' + dbQuestion.question_hi)
+      .toLowerCase()
+      .split(' ')
+      .filter(w => w.length > 2);
+
   
   let fuzzyMatches = 0
   for (const token of userTokens) {
-    for (const keyword of dbKeywords) {
-      if (token.length > 3 && keyword.length > 3) {
-        if (levenshteinDistance(token, keyword) <= 2) {
+    for (const dbToken of dbQuestionTokens) {
+      if (token.length > 3 && dbToken.length > 3) {
+        if (levenshteinDistance(token, dbToken) <= 2) {
           fuzzyMatches++
           break
         }
@@ -3047,7 +3044,7 @@ function calculateSemanticSimilarity(userQuery, dbQuestion) {
       expansions: expansionResult.expansions
     },
     dbProcessing: {
-      entities: dbEntityResult.entities,
+      entities: dbEntityResult,
       intents: dbIntentResolution,
       contexts: dbContextResult
     },
@@ -3197,11 +3194,17 @@ export async function intelligentQuestionMatch(userQuery, dbQuestions) {
   // STEP 1: Score all questions
   // ==========================================
   for (const question of dbQuestions) {
-    let matchResult = calculateSemanticSimilarity(userQuery, question)
-    matchResult = contextualBoost(matchResult, userQuery, question)
+    // Ensure keywords are arrays before processing
+    const safeQuestion = {
+        ...question,
+        keywords_en: Array.isArray(question.keywords_en) ? question.keywords_en : [],
+        keywords_hi: Array.isArray(question.keywords_hi) ? question.keywords_hi : [],
+    };
+    let matchResult = calculateSemanticSimilarity(userQuery, safeQuestion)
+    matchResult = contextualBoost(matchResult, userQuery, safeQuestion)
     
     allScores.push({
-      question,
+      question: safeQuestion,
       ...matchResult
     })
   }
