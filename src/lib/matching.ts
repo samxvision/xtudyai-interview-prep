@@ -1,4 +1,5 @@
 
+
 // @ts-nocheck
 const DEEP_NOISE_PATTERNS = {
   // ============================================
@@ -1462,7 +1463,6 @@ const ENTITY_SEMANTIC_MAP = {
       "sd inspection", "shutdwn inspection"
     ]
   },
-
   "thickness_measurement": {
     coreTerms: ["thickness measurement"],
     partialTerms: ["thickness"],
@@ -2906,7 +2906,20 @@ function calculateSemanticSimilarity(userQuery, dbQuestion) {
   }
   
   totalScore += entityScore
-  
+
+  // **NEW LOGIC: Specificity Penalty**
+  const userEntityCount = entityResult.entities.length;
+  const dbEntityCount = dbEntityResult.entities.length;
+  if (userEntityCount === 1 && dbEntityCount > 1) {
+    const penalty = 25 * (dbEntityCount - userEntityCount); // Harsh penalty for extra specifics
+    totalScore -= penalty;
+    breakdown.push({
+      component: 'SPECIFICITY_PENALTY',
+      score: -penalty,
+      details: `User asked for general (${userEntityCount} entity), DB question is specific (${dbEntityCount} entities).`
+    });
+  }
+
   // ==========================================
   // SCORE 2: Intent Match (35 points MAX)
   // ==========================================
@@ -2970,13 +2983,13 @@ function calculateSemanticSimilarity(userQuery, dbQuestion) {
   const maxExpansionScore = 15
   
   for (const expandedQuery of expansionResult.expansions) {
-    const expandedTokens = expandedQuery.split(' ').filter(w => w.length > 2);
+    const expandedTokens = expandedQuery.split(' ').filter(w => w.length > 2)
     const dbQuestionText = (dbQuestion.question_en + ' ' + dbQuestion.question_hi).toLowerCase();
 
-    let matches = 0;
+    let matches = 0
     for (const token of expandedTokens) {
       if (dbQuestionText.includes(token)) {
-        matches++;
+        matches++
       }
     }
     
@@ -2999,22 +3012,13 @@ function calculateSemanticSimilarity(userQuery, dbQuestion) {
   // SCORE 4: Fuzzy Keyword Overlap (10 points MAX)
   // ==========================================
   const userTokens = cleaned.split(' ').filter(w => w.length > 2)
-  const dbQuestionTokens = (dbQuestion.question_en + ' ' + dbQuestion.question_hi)
-      .toLowerCase()
-      .split(' ')
-      .filter(w => w.length > 2);
-
+  const dbQuestionText = (dbQuestion.question_en + ' ' + dbQuestion.question_hi).toLowerCase();
   
   let fuzzyMatches = 0
   for (const token of userTokens) {
-    for (const dbToken of dbQuestionTokens) {
-      if (token.length > 3 && dbToken.length > 3) {
-        if (levenshteinDistance(token, dbToken) <= 2) {
-          fuzzyMatches++
-          break
-        }
+      if (dbQuestionText.includes(token)) {
+        fuzzyMatches++
       }
-    }
   }
   
   const fuzzyScore = userTokens.length > 0 
@@ -3031,7 +3035,7 @@ function calculateSemanticSimilarity(userQuery, dbQuestion) {
   // ==========================================
   // FINAL SCORE NORMALIZATION
   // ==========================================
-  totalScore = Math.min(totalScore, 100)
+  totalScore = Math.max(0, Math.min(totalScore, 100)) // Ensure score is between 0 and 100
   
   return {
     totalScore: Math.round(totalScore),
@@ -3044,7 +3048,7 @@ function calculateSemanticSimilarity(userQuery, dbQuestion) {
       expansions: expansionResult.expansions
     },
     dbProcessing: {
-      entities: dbEntityResult,
+      entities: dbEntityResult.entities,
       intents: dbIntentResolution,
       contexts: dbContextResult
     },
@@ -3184,7 +3188,7 @@ function contextualBoost(matchResult, userQuery, dbQuestion) {
   }
 }
 
-export async function intelligentQuestionMatch(userQuery, dbQuestions) {
+async function intelligentQuestionMatch(userQuery, dbQuestions) {
   console.log('🔍 Starting intelligent search for:', userQuery)
   
   const startTime = Date.now()
@@ -3271,3 +3275,6 @@ export async function intelligentQuestionMatch(userQuery, dbQuestions) {
   
   return result
 }
+export { intelligentQuestionMatch };
+
+    
