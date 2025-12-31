@@ -73,7 +73,7 @@ export function AnswerCard({ question, initialLang }: AnswerCardProps) {
   };
 
   return (
-    <Card className="w-full max-w-4xl mx-auto shadow-lg border-slate-200">
+    <Card className="w-full max-w-4xl mx-auto shadow-lg border-slate-200 mb-6">
       <CardHeader className="pb-4">
         <div className="flex flex-wrap items-center gap-2 mb-4">
           <Badge

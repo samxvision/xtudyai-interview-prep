@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useEffect, useTransition, useCallback } from 'react';
-import { Search, Loader2, AlertCircle, Tag, ArrowLeft, Database, Mic } from 'lucide-react';
+import { Search, Loader2, AlertCircle, Tag, ArrowLeft, Database, Mic, PlusCircle } from 'lucide-react';
 import { AcronymData, searchAcronym } from '@/lib/acronyms';
 import { intelligentQuestionMatch } from '@/lib/matching';
 import { useAppContext } from '@/context/AppContext';
@@ -22,12 +22,15 @@ type AcronymResult = {
   type: 'acronym';
   data: AcronymData & { acronym: string };
 };
+
 type QuestionResult = {
   type: 'question';
-  document: Question;
-  score: number;
+  topMatch: Question;
+  alternativeMatch: Question | null;
 };
-type NotFoundResult = { notFound: true };
+
+type NotFoundResult = { type: 'not-found' };
+
 type SearchResult = AcronymResult | QuestionResult | NotFoundResult | null;
 
 const exampleQuestions = [
@@ -94,9 +97,13 @@ export default function SmartQuestionSearch() {
         const matchResult = await intelligentQuestionMatch(searchQuery, questions);
         
         if (matchResult.success && matchResult.topMatch) {
-          setResult({ type: 'question', document: matchResult.topMatch.question, score: matchResult.topMatch.totalScore });
+          setResult({ 
+            type: 'question', 
+            topMatch: matchResult.topMatch.question, 
+            alternativeMatch: matchResult.alternativeMatches.length > 0 ? matchResult.alternativeMatches[0].question : null
+          });
         } else {
-          setResult({ notFound: true });
+          setResult({ type: 'not-found' });
           sendQuestionToAutomation(searchQuery);
         }
         setLoading(false);
@@ -177,7 +184,7 @@ export default function SmartQuestionSearch() {
       </header>
 
       <main className="flex-grow overflow-y-auto bg-slate-50">
-        <div className="container mx-auto p-4">
+        <div className="container mx-auto p-4 space-y-6">
           {/* Result - Acronym */}
           {result && result.type === 'acronym' && (
             <Card className="w-full max-w-4xl mx-auto shadow-lg border-slate-200">
@@ -206,13 +213,25 @@ export default function SmartQuestionSearch() {
           )}
 
 
-          {/* Result - Question */}
+          {/* Result - Question(s) */}
           {result && result.type === 'question' && (
-            <AnswerCard question={result.document} initialLang={uiLanguage} />
+            <div className="space-y-6">
+              <AnswerCard question={result.topMatch} initialLang={uiLanguage} />
+              
+              {result.alternativeMatch && (
+                <div>
+                  <div className="flex items-center justify-center gap-2 text-sm text-slate-500 font-medium mb-4">
+                    <PlusCircle className="h-4 w-4" />
+                    Related Result
+                  </div>
+                  <AnswerCard question={result.alternativeMatch} initialLang={uiLanguage} />
+                </div>
+              )}
+            </div>
           )}
 
           {/* Not Found */}
-          {result && 'notFound' in result && result.notFound && (
+          {result && result.type === 'not-found' && (
             <div className="bg-white rounded-xl border border-slate-200 p-8 text-center mt-4">
               <AlertCircle className="w-16 h-16 text-red-400 mx-auto mb-4" />
               <h3 className="text-xl font-bold text-slate-800 mb-2">
