@@ -1,3 +1,4 @@
+
 // @ts-nocheck
 
 const DEEP_NOISE_PATTERNS = {
@@ -2577,11 +2578,11 @@ function resolveIntentConflicts(detectedIntents) {
   return {
     finalIntent: primaryIntent,
     supportingIntents: supportingIntents,
-    confidence: primaryIntent ? primaryIntent.confidence : 0,
+    confidence: primaryIntent.confidence,
     intentCombination: [
-      primaryIntent?.intent,
+      primaryIntent.intent,
       ...supportingIntents.map(i => i.intent)
-    ].filter(Boolean).join(' + ')
+    ].join(' + ')
   }
 }
 
@@ -2900,160 +2901,216 @@ function calculateSemanticSimilarity(userQuery, dbQuestion) {
   let totalScore = 0
   const breakdown = []
   
+  // ==========================================
+  // STEP 1: Process user query through layers
+  // ==========================================
   const cleanedUserQuery = deepClean(userQuery)
+  const expansionResult = intelligentExpansion(cleanedUserQuery)
   const userEntityResult = resolveEntity(cleanedUserQuery)
-
-  const dbText = `${dbQuestion.question_en || ''} ${dbQuestion.question_hi || ''}`
-  const cleanedDbText = deepClean(dbText)
-  const dbEntityResult = resolveEntity(cleanedDbText)
-
-  // Strict Entity Count Matching
-  if (userEntityResult.entityCount > 0 && userEntityResult.entityCount !== dbEntityResult.entityCount) {
-    return {
-      totalScore: 0,
-      breakdown: [{
-        component: 'ENTITY_COUNT_MISMATCH',
-        score: 0,
-        details: `User entities: ${userEntityResult.entityCount}, DB entities: ${dbEntityResult.entityCount}`
-      }],
-      confidence: 'NO_MATCH'
-    };
+  const intentResult = detectIntentWithConfidence(cleanedUserQuery)
+  const intentResolution = resolveIntentConflicts(intentResult.intents)
+  const contextResult = detectContext(cleanedUserQuery)
+  
+  // ==========================================
+  // STEP 2: Process DB question
+  // ==========================================
+  const dbText = `${dbQuestion.question_en || ''} ${dbQuestion.question_hi || ''}`.toLowerCase()
+  const dbEntityResult = resolveEntity(dbText)
+  const dbIntentResult = detectIntentWithConfidence(dbText)
+  const dbIntentResolution = resolveIntentConflicts(dbIntentResult.intents)
+  const dbContextResult = detectContext(dbText)
+  
+  // ==========================================
+  // PENALTY 1: Entity Count Mismatch Penalty
+  // ==========================================
+  let complexityPenalty = 0;
+  if (userEntityResult.entityCount > 0 && dbEntityResult.entityCount > 0) {
+      const countDifference = Math.abs(userEntityResult.entityCount - dbEntityResult.entityCount);
+      if (countDifference > 0) {
+          // Penalize more heavily if user query is simple but DB query is complex
+          if (userEntityResult.entityCount < dbEntityResult.entityCount) {
+              complexityPenalty = countDifference * 15; // Higher penalty
+          } else {
+              complexityPenalty = countDifference * 10; // Lower penalty
+          }
+      }
   }
 
-  // If entity counts match (or no entities found in user query), proceed with scoring
-  const expansionResult = intelligentExpansion(cleanedUserQuery);
-  const intentResult = detectIntentWithConfidence(cleanedUserQuery);
-  const intentResolution = resolveIntentConflicts(intentResult.intents);
-  const contextResult = detectContext(cleanedUserQuery);
-
-  const dbIntentResult = detectIntentWithConfidence(cleanedDbText);
-  const dbIntentResolution = resolveIntentConflicts(dbIntentResult.intents);
-  const dbContextResult = detectContext(cleanedDbText);
-  
+  // ==========================================
   // SCORE 1: Entity Match (40 points MAX)
-  let entityScore = 0;
+  // ==========================================
+  let entityScore = 0
   if (userEntityResult.entities.length > 0 && dbEntityResult.entities.length > 0) {
-    const topUserEntity = userEntityResult.topEntity;
-    const topDbEntity = dbEntityResult.topEntity;
-
+    const topUserEntity = userEntityResult.topEntity
+    const topDbEntity = dbEntityResult.topEntity
+    
     if (topUserEntity.entity === topDbEntity.entity) {
-      const avgConfidence = (topUserEntity.confidence + topDbEntity.confidence) / 2;
-      entityScore = (avgConfidence / 100) * 40;
+      const avgConfidence = (topUserEntity.confidence + topDbEntity.confidence) / 2
+      entityScore = (avgConfidence / 100) * 40
+      
       breakdown.push({
         component: 'ENTITY_MATCH',
         score: entityScore,
         details: `Exact match: ${topUserEntity.displayName}`,
         userConfidence: topUserEntity.confidence,
-        dbConfidence: topDbEntity.confidence,
-      });
+        dbConfidence: topDbEntity.confidence
+      })
     } else {
+      entityScore = 0
       breakdown.push({
         component: 'ENTITY_MATCH',
         score: 0,
-        details: `No match: ${topUserEntity.displayName} vs ${topDbEntity.displayName}`,
-      });
+        details: `No match: ${topUserEntity.displayName} vs ${topDbEntity.displayName}`
+      })
     }
   } else {
-    // Fallback: Direct keyword matching using question text
-    const userTokens = cleanedUserQuery.split(' ').filter(w => w.length > 2);
-    const dbTokens = cleanedDbText.split(' ').filter(w => w.length > 2);
-    let matches = 0;
+    // Fallback: Direct keyword matching
+    const userTokens = cleanedUserQuery.split(' ').filter(w => w.length > 2)
+    const dbQuestionText = (`${dbQuestion.question_en || ''} ${dbQuestion.question_hi || ''}`).toLowerCase()
+
+    let matches = 0
     for (const token of userTokens) {
-      if (dbTokens.some(dbToken => dbToken.includes(token) || token.includes(dbToken))) {
-        matches++;
+      if (dbQuestionText.includes(token)) {
+        matches++
       }
     }
+    
     if (userTokens.length > 0) {
-      entityScore = (matches / userTokens.length) * 40;
+      entityScore = (matches / userTokens.length) * 40
       breakdown.push({
-        component: 'ENTITY_MATCH_KEYWORD',
+        component: 'ENTITY_MATCH',
         score: entityScore,
-        details: `Keyword fallback: ${matches}/${userTokens.length} matches`,
-      });
+        details: `Keyword fallback: ${matches}/${userTokens.length} matches`
+      })
     }
   }
-  totalScore += entityScore;
-
+  totalScore += entityScore
+  
+  // ==========================================
   // SCORE 2: Intent Match (35 points MAX)
-  let intentScore = 0;
+  // ==========================================
+  let intentScore = 0
   if (intentResolution.finalIntent && dbIntentResolution.finalIntent) {
-    const userIntent = intentResolution.finalIntent.intent;
-    const dbIntent = dbIntentResolution.finalIntent.intent;
-
+    const userIntent = intentResolution.finalIntent.intent
+    const dbIntent = dbIntentResolution.finalIntent.intent
+    
     if (userIntent === dbIntent) {
-      const avgConfidence = (intentResolution.finalIntent.confidence + dbIntentResolution.finalIntent.confidence) / 2;
-      intentScore = (avgConfidence / 100) * 35;
+      const avgConfidence = (
+        intentResolution.finalIntent.confidence + 
+        dbIntentResolution.finalIntent.confidence
+      ) / 2
+      intentScore = (avgConfidence / 100) * 35
+      
       breakdown.push({
         component: 'INTENT_MATCH_PRIMARY',
         score: intentScore,
         details: `Exact intent match: ${userIntent}`,
-      });
+        userConfidence: intentResolution.finalIntent.confidence,
+        dbConfidence: dbIntentResolution.finalIntent.confidence
+      })
     } else {
-      const userIntents = [userIntent, ...intentResolution.supportingIntents.map(i => i.intent)];
-      const dbIntents = [dbIntent, ...dbIntentResolution.supportingIntents.map(i => i.intent)];
-      const commonIntents = userIntents.filter(ui => dbIntents.includes(ui));
+      const userIntents = [
+        userIntent,
+        ...intentResolution.supportingIntents.map(i => i.intent)
+      ]
+      const dbIntents = [
+        dbIntent,
+        ...dbIntentResolution.supportingIntents.map(i => i.intent)
+      ]
+      
+      const commonIntents = userIntents.filter(ui => dbIntents.includes(ui))
+      
       if (commonIntents.length > 0) {
-        intentScore = (commonIntents.length / userIntents.length) * 20;
+        intentScore = (commonIntents.length / userIntents.length) * 20
         breakdown.push({
           component: 'INTENT_MATCH_PARTIAL',
           score: intentScore,
-          details: `Partial intent match: ${commonIntents.join(', ')}`,
-        });
+          details: `Partial intent match: ${commonIntents.join(', ')}`
+        })
+      } else {
+        breakdown.push({
+          component: 'INTENT_MATCH',
+          score: 0,
+          details: `No match: ${userIntent} vs ${dbIntent}`
+        })
       }
     }
   }
-  totalScore += intentScore;
-
+  totalScore += intentScore
+  
+  // ==========================================
   // SCORE 3: Query Expansion Match (15 points MAX)
-  let expansionScore = 0;
-  const maxExpansionScore = 15;
-  const dbTextForExpansion = cleanedDbText;
+  // ==========================================
+  let expansionScore = 0
+  const maxExpansionScore = 15
+  
   for (const expandedQuery of expansionResult.expansions) {
-    const expandedTokens = expandedQuery.split(' ').filter(w => w.length > 2);
-    let matches = 0;
+    const expandedTokens = expandedQuery.split(' ').filter(w => w.length > 2)
+    const dbQuestionText = (`${dbQuestion.question_en || ''} ${dbQuestion.question_hi || ''}`).toLowerCase()
+
+    let matches = 0
     for (const token of expandedTokens) {
-      if (dbTextForExpansion.includes(token)) {
-        matches++;
+      if (dbQuestionText.includes(token)) {
+        matches++
       }
     }
+    
     if (expandedTokens.length > 0) {
-      const score = (matches / expandedTokens.length) * maxExpansionScore;
+      const score = (matches / expandedTokens.length) * maxExpansionScore
       if (score > expansionScore) {
-        expansionScore = score;
+        expansionScore = score
       }
     }
   }
-  totalScore += expansionScore;
+  totalScore += expansionScore
   breakdown.push({
     component: 'EXPANSION_MATCH',
     score: expansionScore,
-    details: `Best of ${expansionResult.expansions.length} expansions`,
-  });
-
+    details: `Best of ${expansionResult.expansions.length} expansions`
+  })
+  
+  // ==========================================
   // SCORE 4: Fuzzy Keyword Overlap (10 points MAX)
-  const userTokens = cleanedUserQuery.split(' ').filter(w => w.length > 2);
-  const dbTokens = cleanedDbText.split(' ').filter(w => w.length > 2);
-  let fuzzyMatches = 0;
+  // ==========================================
+  const userTokens = cleanedUserQuery.split(' ').filter(w => w.length > 2)
+  const dbQuestionTextForFuzzy = (`${dbQuestion.question_en || ''} ${dbQuestion.question_hi || ''}`).toLowerCase().split(' ').filter(w => w.length > 2);
+
+  let fuzzyMatches = 0
   for (const token of userTokens) {
-    for (const dbToken of dbTokens) {
+    for (const dbToken of dbQuestionTextForFuzzy) {
       if (token.length > 3 && dbToken.length > 3) {
         if (levenshteinDistance(token, dbToken) <= 2) {
-          fuzzyMatches++;
-          break;
+          fuzzyMatches++
+          break
         }
       }
     }
   }
-  const fuzzyScore = userTokens.length > 0 ? (fuzzyMatches / userTokens.length) * 10 : 0;
-  totalScore += fuzzyScore;
+  
+  const fuzzyScore = userTokens.length > 0 
+    ? (fuzzyMatches / userTokens.length) * 10 
+    : 0
+    
+  totalScore += fuzzyScore
   breakdown.push({
     component: 'FUZZY_MATCH',
     score: fuzzyScore,
-    details: `${fuzzyMatches}/${userTokens.length} fuzzy matches`,
-  });
+    details: `${fuzzyMatches}/${userTokens.length} fuzzy matches`
+  })
 
-  totalScore = Math.min(totalScore, 100);
-
+  // Apply complexity penalty
+  totalScore -= complexityPenalty;
+  breakdown.push({
+    component: 'COMPLEXITY_PENALTY',
+    score: -complexityPenalty,
+    details: `Entity count diff: |${userEntityResult.entityCount} - ${dbEntityResult.entityCount}|`
+  })
+  
+  // ==========================================
+  // FINAL SCORE NORMALIZATION
+  // ==========================================
+  totalScore = Math.max(0, Math.min(totalScore, 100))
+  
   return {
     totalScore: Math.round(totalScore),
     breakdown,
@@ -3062,15 +3119,17 @@ function calculateSemanticSimilarity(userQuery, dbQuestion) {
       entities: userEntityResult.entities,
       intents: intentResolution,
       contexts: contextResult,
-      expansions: expansionResult.expansions,
+      expansions: expansionResult.expansions
     },
     dbProcessing: {
       entities: dbEntityResult.entities,
       intents: dbIntentResolution,
-      contexts: dbContextResult,
+      contexts: dbContextResult
     },
-    confidence: totalScore >= 85 ? 'VERY_HIGH' : totalScore >= 70 ? 'HIGH' : totalScore >= 55 ? 'MEDIUM' : 'LOW',
-  };
+    confidence: totalScore >= 85 ? 'VERY_HIGH' :
+                totalScore >= 70 ? 'HIGH' :
+                totalScore >= 55 ? 'MEDIUM' : 'LOW'
+  }
 }
 
 function adaptiveThreshold(allScores) {
@@ -3078,10 +3137,8 @@ function adaptiveThreshold(allScores) {
   
   const topScore = allScores[0].totalScore
   const secondScore = allScores.length > 1 ? allScores[1].totalScore : 0
-  const thirdScore = allScores.length > 2 ? allScores[2].totalScore : 0
   
   const gap1to2 = topScore - secondScore
-  const gap2to3 = secondScore - thirdScore
   
   // ==========================================
   // RULE 1: Clear winner with big gap
@@ -3137,7 +3194,7 @@ function contextualBoost(matchResult, userQuery, dbQuestion) {
   // BOOST 2: Question Complexity Match (3 points)
   // ==========================================
   const userComplexity = userQuery.split(' ').length
-  const dbComplexity = (dbQuestion.question_en || '').split(' ').length
+  const dbComplexity = (dbQuestion.question_en || "").split(' ').length
   const complexityDiff = Math.abs(userComplexity - dbComplexity)
   
   if (complexityDiff <= 2) {
@@ -3156,7 +3213,7 @@ function contextualBoost(matchResult, userQuery, dbQuestion) {
   
   const userHasHindi = hindiPattern.test(userQuery)
   const userHasHinglish = hinglishPattern.test(userQuery)
-  const dbHasHindi = hindiPattern.test(dbQuestion.question_hi || '')
+  const dbHasHindi = hindiPattern.test(dbQuestion.question_hi || "")
   
   if ((userHasHindi || userHasHinglish) && dbHasHindi) {
     boost += 2
@@ -3197,14 +3254,16 @@ function contextualBoost(matchResult, userQuery, dbQuestion) {
     }
   }
   
+  const newTotalScore = Math.max(0, Math.min(matchResult.totalScore + boost, 100))
+
   return {
     ...matchResult,
-    totalScore: Math.min(matchResult.totalScore + boost, 100),
+    totalScore: newTotalScore,
     boost,
     boostReasons,
-    finalConfidence: matchResult.totalScore + boost >= 85 ? 'VERY_HIGH' :
-                     matchResult.totalScore + boost >= 70 ? 'HIGH' :
-                     matchResult.totalScore + boost >= 55 ? 'MEDIUM' : 'LOW'
+    finalConfidence: newTotalScore >= 85 ? 'VERY_HIGH' :
+                     newTotalScore >= 70 ? 'HIGH' :
+                     newTotalScore >= 55 ? 'MEDIUM' : 'LOW'
   }
 }
 
@@ -3219,11 +3278,7 @@ export async function intelligentQuestionMatch(userQuery, dbQuestions) {
   // ==========================================
   for (const question of dbQuestions) {
     let matchResult = calculateSemanticSimilarity(userQuery, question)
-    
-    // Only boost if the score is not 0 (i.e., it passed the entity count check)
-    if (matchResult.totalScore > 0) {
-        matchResult = contextualBoost(matchResult, userQuery, question)
-    }
+    matchResult = contextualBoost(matchResult, userQuery, question)
     
     allScores.push({
       question,
@@ -3293,5 +3348,3 @@ export async function intelligentQuestionMatch(userQuery, dbQuestions) {
   
   return result
 }
-
-    
