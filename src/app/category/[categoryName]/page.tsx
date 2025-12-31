@@ -22,9 +22,15 @@ export default function CategoryPage() {
 
   useEffect(() => {
     if (!areQuestionsLoading && questions.length > 0) {
-      const filtered = questions.filter(q => 
-        q.category && typeof q.category === 'string' && q.category.toLowerCase().split(',').map(c => c.trim()).includes(categoryName.toLowerCase())
-      );
+      const lowerCaseCategoryName = categoryName.toLowerCase();
+      const filtered = questions.filter(q => {
+        if (!q.category || typeof q.category !== 'string') {
+          return false;
+        }
+        // Handle multiple categories separated by commas
+        const questionCategories = q.category.toLowerCase().split(',').map(c => c.trim());
+        return questionCategories.includes(lowerCaseCategoryName);
+      });
       setFilteredQuestions(filtered);
     }
   }, [categoryName, questions, areQuestionsLoading]);
@@ -80,5 +86,3 @@ export default function CategoryPage() {
     </div>
   );
 }
-
-    
