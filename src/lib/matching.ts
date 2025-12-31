@@ -646,6 +646,57 @@ const ENTITY_SEMANTIC_MAP = {
     ]
   },
 
+  "multi_pass_heat_exchanger": {
+    coreTerms: ["multi pass heat exchanger", "multi pass"],
+    partialTerms: ["multi pass"],
+    relatedTerms: ["multiple pass", "two pass", "four pass"],
+    abbreviations: [],
+    commonTypos: [
+      "multi pass exchanger", "multipass", "multi pas"
+    ]
+  },
+
+  "single_pass_heat_exchanger": {
+    coreTerms: ["single pass heat exchanger", "single pass"],
+    partialTerms: ["single pass", "one pass"],
+    relatedTerms: ["single pass flow"],
+    abbreviations: [],
+    commonTypos: [
+      "single pass exchanger", "singlepas", "single pas", "one pass"
+    ]
+  },
+
+  "cross_flow_heat_exchanger": {
+    coreTerms: ["cross flow heat exchanger", "cross flow"],
+    partialTerms: ["cross flow"],
+    relatedTerms: ["crossflow"],
+    abbreviations: [],
+    commonTypos: [
+      "cross flow exchanger", "crossflow"
+    ]
+  },
+
+  "parallel_flow_heat_exchanger": {
+    coreTerms: ["parallel flow heat exchanger", "parallel flow"],
+    partialTerms: ["parallel flow"],
+    relatedTerms: ["co-current flow"],
+    abbreviations: [],
+    commonTypos: [
+      "parallel flow exchanger", "parallelflow"
+    ]
+  },
+
+  "counter_flow_heat_exchanger": {
+    coreTerms: ["counter flow heat exchanger", "counter flow"],
+    partialTerms: ["counter flow"],
+    relatedTerms: ["counter-current flow", "countercurrent"],
+    abbreviations: [],
+    commonTypos: [
+      "counter flow exchanger", "counterflow", "counter current"
+    ]
+  },
+
+
   /* ========================================
      PRESSURE VESSELS & SEPARATORS
      ======================================== */
@@ -1206,6 +1257,16 @@ const ENTITY_SEMANTIC_MAP = {
     commonTypos: [
       "corosion", "corrossion", "corrusion",
       "corrosion damage", "rusting corrosion"
+    ]
+  },
+
+  "corrosion_under_insulation": {
+    coreTerms: ["corrosion under insulation"],
+    partialTerms: ["cui", "insulation corrosion"],
+    relatedTerms: ["corrosion", "insulation"],
+    abbreviations: ["cui"],
+    commonTypos: [
+      "cui corrosion", "corrosion under insulation", "corrosion below insulation"
     ]
   },
 
@@ -2516,11 +2577,11 @@ function resolveIntentConflicts(detectedIntents) {
   return {
     finalIntent: primaryIntent,
     supportingIntents: supportingIntents,
-    confidence: primaryIntent.confidence,
+    confidence: primaryIntent ? primaryIntent.confidence : 0,
     intentCombination: [
-      primaryIntent.intent,
+      primaryIntent?.intent,
       ...supportingIntents.map(i => i.intent)
-    ].join(' + ')
+    ].filter(Boolean).join(' + ')
   }
 }
 
@@ -2836,18 +2897,18 @@ function detectContext(text) {
 }
 
 function calculateSemanticSimilarity(userQuery, dbQuestion) {
-  let totalScore = 0;
-  const breakdown = [];
+  let totalScore = 0
+  const breakdown = []
+  
+  const cleanedUserQuery = deepClean(userQuery)
+  const userEntityResult = resolveEntity(cleanedUserQuery)
 
-  const cleanedUserQuery = deepClean(userQuery);
-  const userEntityResult = resolveEntity(cleanedUserQuery);
-
-  const dbText = `${dbQuestion.question_en || ''} ${dbQuestion.question_hi || ''}`;
-  const cleanedDbText = deepClean(dbText);
-  const dbEntityResult = resolveEntity(cleanedDbText);
+  const dbText = `${dbQuestion.question_en || ''} ${dbQuestion.question_hi || ''}`
+  const cleanedDbText = deepClean(dbText)
+  const dbEntityResult = resolveEntity(cleanedDbText)
 
   // Strict Entity Count Matching
-  if (userEntityResult.entityCount !== dbEntityResult.entityCount) {
+  if (userEntityResult.entityCount > 0 && userEntityResult.entityCount !== dbEntityResult.entityCount) {
     return {
       totalScore: 0,
       breakdown: [{
@@ -2859,7 +2920,7 @@ function calculateSemanticSimilarity(userQuery, dbQuestion) {
     };
   }
 
-  // If entity counts match, proceed with scoring
+  // If entity counts match (or no entities found in user query), proceed with scoring
   const expansionResult = intelligentExpansion(cleanedUserQuery);
   const intentResult = detectIntentWithConfidence(cleanedUserQuery);
   const intentResolution = resolveIntentConflicts(intentResult.intents);
