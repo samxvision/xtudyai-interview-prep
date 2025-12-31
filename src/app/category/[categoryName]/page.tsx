@@ -24,11 +24,17 @@ export default function CategoryPage() {
     if (!areQuestionsLoading && questions.length > 0) {
       const lowerCaseCategoryName = categoryName.toLowerCase();
       const filtered = questions.filter(q => {
-        if (!q.category || typeof q.category !== 'string') {
-          return false;
+        if (!q.category) return false;
+
+        let questionCategories: string[] = [];
+
+        // Handle both string (comma-separated) and array formats
+        if (typeof q.category === 'string') {
+          questionCategories = q.category.toLowerCase().split(',').map(c => c.trim());
+        } else if (Array.isArray(q.category)) {
+          questionCategories = q.category.map(c => typeof c === 'string' ? c.toLowerCase().trim() : '');
         }
-        // Handle multiple categories separated by commas
-        const questionCategories = q.category.toLowerCase().split(',').map(c => c.trim());
+
         return questionCategories.includes(lowerCaseCategoryName);
       });
       setFilteredQuestions(filtered);
