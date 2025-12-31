@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useEffect, useTransition, useCallback } from 'react';
-import { Search, Loader2, AlertCircle, Tag, ArrowLeft, Database, Mic, PlusCircle } from 'lucide-react';
+import { Search, Loader2, AlertCircle, Tag, ArrowLeft, Database, Mic } from 'lucide-react';
 import { AcronymData, searchAcronym } from '@/lib/acronyms';
 import { intelligentQuestionMatch } from '@/lib/matching';
 import { useAppContext } from '@/context/AppContext';
@@ -221,7 +221,7 @@ export default function SmartQuestionSearch() {
               {result.alternativeMatch && (
                 <div>
                   <div className="flex items-center justify-center gap-2 text-sm text-slate-500 font-medium mb-4">
-                    <PlusCircle className="h-4 w-4" />
+                    
                     Related Result
                   </div>
                   <AnswerCard question={result.alternativeMatch} initialLang={uiLanguage} />
@@ -315,3 +315,5 @@ export default function SmartQuestionSearch() {
     </div>
   );
 }
+
+    
