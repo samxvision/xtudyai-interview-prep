@@ -23,7 +23,7 @@ export default function CategoryPage() {
   useEffect(() => {
     if (!areQuestionsLoading && questions.length > 0) {
       const filtered = questions.filter(q => 
-        q.category && q.category.toLowerCase().split(',').map(c => c.trim()).includes(categoryName.toLowerCase())
+        q.category && typeof q.category === 'string' && q.category.toLowerCase().split(',').map(c => c.trim()).includes(categoryName.toLowerCase())
       );
       setFilteredQuestions(filtered);
     }
