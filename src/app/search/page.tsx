@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useEffect, useTransition, useCallback } from 'react';
-import { Search, Loader2, AlertCircle, Tag, ArrowLeft, Database, Mic } from 'lucide-react';
+import { Search, Loader2, AlertCircle, Tag, ArrowLeft, Database, Mic, Sparkles } from 'lucide-react';
 import { AcronymData, searchAcronym } from '@/lib/acronyms';
 import { intelligentQuestionMatch } from '@/lib/matching';
 import { useAppContext } from '@/context/AppContext';
@@ -16,7 +16,8 @@ import { AnswerCard } from '@/components/answer-card';
 import { useSpeechRecognition } from '@/hooks/use-speech-recognition';
 import { useToast } from '@/hooks/use-toast';
 import { sendQuestionToAutomation } from '@/lib/googleSheet';
-
+import { generateAiAnswer, type AIResponse } from '@/ai/flows/generate-ai-answer';
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 type AcronymResult = {
   type: 'acronym';
@@ -25,6 +26,7 @@ type AcronymResult = {
 
 type QuestionResult = {
   type: 'question';
+  source: 'db' | 'ai';
   topMatch: Question;
   alternativeMatch: Question | null;
 };
@@ -32,6 +34,7 @@ type QuestionResult = {
 type NotFoundResult = { type: 'not-found' };
 
 type SearchResult = AcronymResult | QuestionResult | NotFoundResult | null;
+type SearchMode = 'hybrid' | 'db' | 'ai';
 
 export default function SmartQuestionSearch() {
   const [query, setQuery] = useState('');
@@ -39,6 +42,8 @@ export default function SmartQuestionSearch() {
   const [loading, setLoading] = useState(false);
   const [uiLanguage, setUiLanguage] = useState<'en' | 'hi'>('hi');
   const [exampleQuestions, setExampleQuestions] = useState<string[]>([]);
+  const [searchMode, setSearchMode] = useState<SearchMode>('hybrid');
+
 
   const { areQuestionsLoading, questions } = useAppContext();
   const [isPending, startTransition] = useTransition();
@@ -77,6 +82,30 @@ export default function SmartQuestionSearch() {
     }
   }, [speechError, toast]);
 
+  const handleAiSearch = async (searchQuery: string) => {
+    try {
+        const aiResponse: AIResponse = await generateAiAnswer(searchQuery);
+        const questionData: Question = {
+            ...aiResponse,
+            id: aiResponse.id || `ai-${Date.now()}`,
+        };
+        setResult({
+            type: 'question',
+            source: 'ai',
+            topMatch: questionData,
+            alternativeMatch: null,
+        });
+    } catch (error) {
+        console.error("AI search failed:", error);
+        toast({
+            title: "AI Search Error",
+            description: "Sorry, the AI is unable to answer this question right now.",
+            variant: "destructive",
+        });
+        setResult({ type: 'not-found' });
+    }
+  };
+
   const handleSearch = async (searchQuery: string) => {
     if (!searchQuery.trim() || areQuestionsLoading) return;
 
@@ -96,17 +125,25 @@ export default function SmartQuestionSearch() {
     }
 
     startTransition(async () => {
-        const matchResult = await intelligentQuestionMatch(searchQuery, questions);
-        
-        if (matchResult.success && matchResult.topMatch) {
-          setResult({ 
-            type: 'question', 
-            topMatch: matchResult.topMatch.question, 
-            alternativeMatch: matchResult.alternativeMatches.length > 0 ? matchResult.alternativeMatches[0].question : null
-          });
+        if (searchMode === 'ai') {
+            await handleAiSearch(searchQuery);
         } else {
-          setResult({ type: 'not-found' });
-          sendQuestionToAutomation(searchQuery);
+            const matchResult = await intelligentQuestionMatch(searchQuery, questions);
+            
+            // Hybrid mode logic
+            if (searchMode === 'hybrid' && (!matchResult.success || !matchResult.topMatch || matchResult.topMatch.totalScore < 75)) {
+                await handleAiSearch(searchQuery);
+            } else if (matchResult.success && matchResult.topMatch) {
+                setResult({ 
+                    type: 'question', 
+                    source: 'db',
+                    topMatch: matchResult.topMatch.question, 
+                    alternativeMatch: matchResult.alternativeMatches.length > 0 ? matchResult.alternativeMatches[0].question : null
+                });
+            } else {
+                setResult({ type: 'not-found' });
+                sendQuestionToAutomation(searchQuery);
+            }
         }
         setLoading(false);
     });
@@ -178,10 +215,13 @@ export default function SmartQuestionSearch() {
             </Button>
              <Logo />
           </div>
-          <Badge variant="outline" className="border-blue-500/30 bg-blue-500/10 text-blue-500">
-            <Database className="mr-2 h-4 w-4" />
-            Database Search
-          </Badge>
+          <Tabs value={searchMode} onValueChange={(value) => setSearchMode(value as SearchMode)} className="w-auto">
+            <TabsList>
+                <TabsTrigger value="hybrid">Hybrid</TabsTrigger>
+                <TabsTrigger value="db">Database</TabsTrigger>
+                <TabsTrigger value="ai">AI</TabsTrigger>
+            </TabsList>
+          </Tabs>
         </div>
       </header>
 
@@ -218,12 +258,11 @@ export default function SmartQuestionSearch() {
           {/* Result - Question(s) */}
           {result && result.type === 'question' && (
             <div className="space-y-6">
-              <AnswerCard question={result.topMatch} initialLang={uiLanguage} />
+              <AnswerCard question={result.topMatch} initialLang={uiLanguage} isAiGenerated={result.source === 'ai'} />
               
               {result.alternativeMatch && (
                 <div>
                   <div className="flex items-center justify-center gap-2 text-sm text-slate-500 font-medium mb-4">
-                    
                     Related Result
                   </div>
                   <AnswerCard question={result.alternativeMatch} initialLang={uiLanguage} />
@@ -269,7 +308,9 @@ export default function SmartQuestionSearch() {
           {loading && (
              <div className="flex flex-col items-center gap-4 text-center mt-8">
                 <Loader2 className="h-10 w-10 animate-spin text-primary" />
-                <h2 className="text-lg font-semibold text-muted-foreground">Searching...</h2>
+                <h2 className="text-lg font-semibold text-muted-foreground">
+                    {searchMode === 'ai' ? "AI is thinking..." : "Searching..."}
+                </h2>
              </div>
           )}
         </div>
@@ -317,3 +358,5 @@ export default function SmartQuestionSearch() {
     </div>
   );
 }
+
+    
