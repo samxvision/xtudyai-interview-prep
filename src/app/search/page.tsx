@@ -259,7 +259,7 @@ export default function SmartQuestionSearch() {
                             className="justify-start h-auto py-3 text-left font-normal bg-white"
                             onClick={() => handleSearch(q)}
                         >
-                           <p className="text-slate-700">"{q}"</p>
+                           <p className="text-slate-700 whitespace-normal">"{q}"</p>
                         </Button>
                     ))}
                 </div>
@@ -317,5 +317,3 @@ export default function SmartQuestionSearch() {
     </div>
   );
 }
-
-    
