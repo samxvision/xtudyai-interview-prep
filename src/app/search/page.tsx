@@ -33,18 +33,12 @@ type NotFoundResult = { type: 'not-found' };
 
 type SearchResult = AcronymResult | QuestionResult | NotFoundResult | null;
 
-const exampleQuestions = [
-    "What is the difference between WPS and PQR?",
-    "Explain undercut acceptance criteria",
-    "Tell me about Radiography Testing",
-    "What are the different types of NDT?",
-];
-
 export default function SmartQuestionSearch() {
   const [query, setQuery] = useState('');
   const [result, setResult] = useState<SearchResult>(null);
   const [loading, setLoading] = useState(false);
   const [uiLanguage, setUiLanguage] = useState<'en' | 'hi'>('hi');
+  const [exampleQuestions, setExampleQuestions] = useState<string[]>([]);
 
   const { areQuestionsLoading, questions } = useAppContext();
   const [isPending, startTransition] = useTransition();
@@ -58,6 +52,14 @@ export default function SmartQuestionSearch() {
     isSupported: isSpeechSupported,
     error: speechError,
   } = useSpeechRecognition();
+
+  useEffect(() => {
+    if (!areQuestionsLoading && questions.length > 0) {
+      // Select 4 random questions for examples
+      const shuffled = [...questions].sort(() => 0.5 - Math.random());
+      setExampleQuestions(shuffled.slice(0, 4).map(q => q.question_en));
+    }
+  }, [areQuestionsLoading, questions]);
 
   useEffect(() => {
     if (transcript) {

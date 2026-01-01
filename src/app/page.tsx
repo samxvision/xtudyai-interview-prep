@@ -8,7 +8,7 @@ import { BookOpen, TrendingUp, ChevronRight, Crown, Sparkles, Menu, User, Messag
 import { Logo } from '@/components/logo';
 import { useAppContext } from '@/context/AppContext';
 import type { Question } from '@/types';
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 
 const categoryConfig = [
   {
@@ -62,15 +62,24 @@ const categoryConfig = [
   },
 ];
 
-const trendingQuestions = [
-    { rank: 1, text: 'What is the difference between WPS and PQR?' },
-    { rank: 2, text: 'Explain the acceptance criteria for Undercut in ASME B31.3' },
-    { rank: 3, text: 'What are the safety precautions for Radiography testing?' },
-    { rank: 4, text: 'How to identify electrode classification numbers?' },
-];
+type TrendingQuestion = { rank: number; text: string };
 
 export default function Home() {
   const { questions, areQuestionsLoading } = useAppContext();
+  const [trendingQuestions, setTrendingQuestions] = useState<TrendingQuestion[]>([]);
+
+  useEffect(() => {
+    if (!areQuestionsLoading && questions.length > 0) {
+      // Select 4 random questions for trending
+      const shuffled = [...questions].sort(() => 0.5 - Math.random());
+      const randomQuestions = shuffled.slice(0, 4).map((q, index) => ({
+        rank: index + 1,
+        text: q.question_en, // Or q.question_hi
+      }));
+      setTrendingQuestions(randomQuestions);
+    }
+  }, [areQuestionsLoading, questions]);
+
 
   const getCategoryCount = (categoryName: string) => {
     if (!questions || questions.length === 0) return 0;
