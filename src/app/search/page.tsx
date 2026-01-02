@@ -16,8 +16,7 @@ import { AnswerCard } from '@/components/answer-card';
 import { useSpeechRecognition } from '@/hooks/use-speech-recognition';
 import { useToast } from '@/hooks/use-toast';
 import { sendQuestionToAutomation } from '@/lib/googleSheet';
-import { generateAiAnswer, type AIResponse } from '@/ai/flows/generate-ai-answer';
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 type AcronymResult = {
   type: 'acronym';
@@ -35,6 +34,25 @@ type NotFoundResult = { type: 'not-found' };
 
 type SearchResult = AcronymResult | QuestionResult | NotFoundResult | null;
 type SearchMode = 'hybrid' | 'db' | 'ai';
+
+// Helper function to parse the AI's JSON response
+function parseAiResponse(responseText: string): Question | null {
+  try {
+    // Clean the response text to remove markdown and get the pure JSON
+    const jsonString = responseText.replace(/```json\n/g, '').replace(/```/g, '');
+    const aiData = JSON.parse(jsonString);
+
+    // Adapt the AI data to the Question type
+    const questionData: Question = {
+      ...aiData,
+      id: aiData.id || `ai-${Date.now()}`,
+    };
+    return questionData;
+  } catch (error) {
+    console.error("Failed to parse AI response:", error);
+    return null;
+  }
+}
 
 export default function SmartQuestionSearch() {
   const [query, setQuery] = useState('');
@@ -84,22 +102,36 @@ export default function SmartQuestionSearch() {
 
   const handleAiSearch = async (searchQuery: string) => {
     try {
-        const aiResponse: AIResponse = await generateAiAnswer(searchQuery);
-        const questionData: Question = {
-            ...aiResponse,
-            id: aiResponse.id || `ai-${Date.now()}`,
-        };
-        setResult({
-            type: 'question',
-            source: 'ai',
-            topMatch: questionData,
-            alternativeMatch: null,
-        });
-    } catch (error) {
+      const apiResponse = await fetch('/api/ai-answer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question: searchQuery }),
+      });
+
+      if (!apiResponse.ok) {
+        const errorData = await apiResponse.json();
+        throw new Error(errorData.error || "AI API request failed");
+      }
+
+      const { answer } = await apiResponse.json();
+      const questionData = parseAiResponse(answer);
+
+      if (!questionData) {
+        throw new Error("Failed to parse AI response.");
+      }
+
+      setResult({
+        type: 'question',
+        source: 'ai',
+        topMatch: questionData,
+        alternativeMatch: null,
+      });
+
+    } catch (error: any) {
         console.error("AI search failed:", error);
         toast({
             title: "AI Search Error",
-            description: "Sorry, the AI is unable to answer this question right now.",
+            description: error.message || "Sorry, the AI is unable to answer this question right now.",
             variant: "destructive",
         });
         setResult({ type: 'not-found' });
