@@ -216,7 +216,7 @@ export default function SmartQuestionSearch() {
              <Logo />
           </div>
           <Tabs value={searchMode} onValueChange={(value) => setSearchMode(value as SearchMode)} className="w-auto">
-            <TabsList>
+            <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="hybrid">Hybrid</TabsTrigger>
                 <TabsTrigger value="db">Database</TabsTrigger>
                 <TabsTrigger value="ai">AI</TabsTrigger>
@@ -358,5 +358,3 @@ export default function SmartQuestionSearch() {
     </div>
   );
 }
-
-    
