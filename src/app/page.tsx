@@ -9,6 +9,7 @@ import { Logo } from '@/components/logo';
 import { useAppContext } from '@/context/AppContext';
 import type { Question } from '@/types';
 import React, { useState, useEffect } from 'react';
+import { Badge } from '@/components/ui/badge';
 
 const categoryConfig = [
   {
@@ -66,26 +67,22 @@ const premiumFeatures = [
     {
         title: "Rexo Mode",
         description: "AI-powered, on-the-spot answers.",
-        Icon: BrainCircuit,
-        color: "text-purple-500"
+        Icon: BrainCircuit
     },
     {
         title: "Learning Arena",
         description: "Practice with mock tests & scenarios.",
-        Icon: SquareRadical,
-        color: "text-blue-500"
+        Icon: SquareRadical
     },
     {
         title: "Real Life Interview",
         description: "Simulate voice interviews with AI.",
-        Icon: Voicemail,
-        color: "text-green-500"
+        Icon: Voicemail
     },
     {
         title: "Real Work Simulator",
         description: "Solve practical, on-site problems.",
-        Icon: Briefcase,
-        color: "text-red-500"
+        Icon: Briefcase
     }
 ]
 
@@ -196,16 +193,21 @@ export default function Home() {
         </section>
 
         <section className="mb-10">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {premiumFeatures.map((feature) => (
                     <Card key={feature.title} className="bg-card border-border shadow-sm">
-                        <CardContent className="p-4 flex flex-col items-center text-center gap-2">
-                            <div className={`h-10 w-10 flex items-center justify-center rounded-lg bg-primary/10 ${feature.color}`}>
-                                <feature.Icon className="h-6 w-6" />
-                            </div>
-                            <div>
-                                <h4 className="font-semibold text-sm text-foreground">{feature.title}</h4>
-                                <p className="text-xs text-muted-foreground">{feature.description}</p>
+                        <CardContent className="p-4">
+                            <div className="flex justify-between items-start">
+                                <div className="space-y-1">
+                                    <div className="flex items-center gap-2">
+                                        <Crown className="h-4 w-4 text-primary" />
+                                        <h4 className="font-semibold text-sm text-foreground">{feature.title}</h4>
+                                    </div>
+                                    <p className="text-xs text-muted-foreground pl-6">{feature.description}</p>
+                                </div>
+                                <Badge variant="outline" className="text-xs text-amber-600 border-amber-500/30 bg-amber-500/10">
+                                    Coming Soon
+                                </Badge>
                             </div>
                         </CardContent>
                     </Card>
@@ -266,5 +268,7 @@ export default function Home() {
     </div>
   );
 }
+
+    
 
     
