@@ -1109,9 +1109,9 @@ const ENTITY_SEMANTIC_MAP = {
   "tube_bundle": {
     coreTerms: ["tube bundle"],
     partialTerms: ["bundle"],
-    relatedTerms: ["tube assembly", "heat exchanger bundle"],
+    relatedTerms: ["bundle removal", "tube bundle removal"],
     abbreviations: [],
-    commonTypos: ["tube bundel", "tube bungle", "tub bundle", "bundle tube", "tube bundal"]
+    commonTypos: ["tube bundel", "tube bungle", "tub bundle", "bundle tube", "tube bundal", "bundle extraction", "bundle pulling", "bundle pull out"]
   },
   "tube_sheet": {
     coreTerms: ["tube sheet", "tubesheet"],
@@ -1258,13 +1258,6 @@ const ENTITY_SEMANTIC_MAP = {
      OPERATIONS & MAINTENANCE
      ======================================== */
 
-  "bundle_extraction": {
-    coreTerms: ["bundle extraction", "bundle pulling"],
-    partialTerms: ["bundle pull"],
-    relatedTerms: ["bundle removal", "tube bundle removal"],
-    abbreviations: [],
-    commonTypos: ["bundle extraction", "bundle pulling", "tube bundle removal", "bundle pull out"]
-  },
   "retubing": {
     coreTerms: ["retubing"],
     partialTerms: ["re tubing"],
@@ -2923,15 +2916,88 @@ function contextualBoost(matchResult, userQuery, dbQuestion) {
   }
 }
 
+/**
+ * Calculates the similarity between two strings using the Sørensen-Dice coefficient.
+ * @param {string} str1 The first string.
+ * @param {string} str2 The second string.
+ * @returns {number} A value between 0 and 1, where 1 is a perfect match.
+ */
+function stringSimilarity(str1, str2) {
+  str1 = str1.replace(/\s+/g, '').toLowerCase();
+  str2 = str2.replace(/\s+/g, '').toLowerCase();
+
+  if (!str1.length && !str2.length) return 1;
+  if (!str1.length || !str2.length) return 0;
+  if (str1 === str2) return 1;
+  if (str1.length < 2 || str2.length < 2) return 0;
+
+  const firstBigrams = new Map();
+  for (let i = 0; i < str1.length - 1; i++) {
+    const bigram = str1.substring(i, i + 2);
+    const count = firstBigrams.has(bigram) ? firstBigrams.get(bigram) + 1 : 1;
+    firstBigrams.set(bigram, count);
+  }
+
+  let intersectionSize = 0;
+  for (let i = 0; i < str2.length - 1; i++) {
+    const bigram = str2.substring(i, i + 2);
+    const count = firstBigrams.has(bigram) ? firstBigrams.get(bigram) : 0;
+    if (count > 0) {
+      firstBigrams.set(bigram, count - 1);
+      intersectionSize++;
+    }
+  }
+
+  return (2.0 * intersectionSize) / (str1.length + str2.length - 2);
+}
+
+
 export async function intelligentQuestionMatch(userQuery, dbQuestions) {
-  console.log('🔍 Starting intelligent search for:', userQuery)
+  console.log('🔍 Starting intelligent search for:', userQuery);
+  const startTime = Date.now();
+  const cleanedUserQuery = deepClean(userQuery);
+
+  // STEP 1: Exact Match First (High Threshold)
+  const EXACT_MATCH_THRESHOLD = 0.90;
+  let exactMatches = [];
+  for (const question of dbQuestions) {
+      const simEn = stringSimilarity(cleanedUserQuery, question.question_en);
+      const simHi = stringSimilarity(cleanedUserQuery, question.question_hi);
+      const topSim = Math.max(simEn, simHi);
+
+      if (topSim >= EXACT_MATCH_THRESHOLD) {
+          exactMatches.push({
+              question,
+              totalScore: topSim * 100,
+              confidence: 'VERY_HIGH',
+              breakdown: [{ component: 'EXACT_MATCH', score: topSim * 100, details: `Direct string similarity: ${topSim.toFixed(2)}` }],
+          });
+      }
+  }
+
+  if (exactMatches.length > 0) {
+      exactMatches.sort((a, b) => b.totalScore - a.totalScore);
+      console.log(`✅ Found high-confidence exact match. Skipping 7-layer system. Top score: ${exactMatches[0].totalScore}`);
+      return {
+          success: true,
+          topMatch: exactMatches[0],
+          alternativeMatches: exactMatches.slice(1, 3),
+          totalScanned: dbQuestions.length,
+          totalMatched: exactMatches.length,
+          threshold: EXACT_MATCH_THRESHOLD * 100,
+          processingTime: `${Date.now() - startTime}ms`,
+          queryAnalysis: { cleaned: cleanedUserQuery },
+          debugInfo: { topScores: exactMatches.slice(0, 5) }
+      };
+  }
+
+  console.log('... No exact match found. Proceeding to 7-layer semantic search.');
   
-  const startTime = Date.now()
+  // ==========================================
+  // STEP 2: Fallback to 7-Layer Semantic Search
+  // ==========================================
   const allScores = []
   
-  // ==========================================
-  // STEP 1: Score all questions
-  // ==========================================
   for (const question of dbQuestions) {
     let matchResult = calculateSemanticSimilarity(userQuery, question)
     matchResult = contextualBoost(matchResult, userQuery, question)
@@ -2942,24 +3008,16 @@ export async function intelligentQuestionMatch(userQuery, dbQuestions) {
     })
   }
   
-  // ==========================================
-  // STEP 2: Sort by score
-  // ==========================================
+  // Sort by score
   allScores.sort((a, b) => b.totalScore - a.totalScore)
   
-  // ==========================================
-  // STEP 3: Calculate adaptive threshold
-  // ==========================================
+  // Calculate adaptive threshold
   const threshold = adaptiveThreshold(allScores)
   
-  // ==========================================
-  // STEP 4: Filter qualified matches
-  // ==========================================
+  // Filter qualified matches
   const qualifiedMatches = allScores.filter(s => s.totalScore >= threshold)
   
-  // ==========================================
-  // STEP 5: Prepare result
-  // ==========================================
+  // Prepare result
   const processingTime = Date.now() - startTime
   
   const result = {
@@ -2988,10 +3046,7 @@ export async function intelligentQuestionMatch(userQuery, dbQuestions) {
     }
   }
   
-  // ==========================================
-  // STEP 6: Log results
-  // ==========================================
-  console.log('📊 Search Results:')
+  console.log('📊 Semantic Search Results:')
   console.log(`   ├─ Threshold: ${threshold}`)
   console.log(`   ├─ Matched: ${qualifiedMatches.length}/${dbQuestions.length}`)
   console.log(`   ├─ Processing time: ${processingTime}ms`)
