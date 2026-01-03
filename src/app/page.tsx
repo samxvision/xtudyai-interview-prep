@@ -4,7 +4,7 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { BookOpen, TrendingUp, ChevronRight, Crown, Sparkles, Menu, User, MessageSquare, Loader2 } from 'lucide-react';
+import { BookOpen, TrendingUp, ChevronRight, Crown, Sparkles, Menu, User, MessageSquare, Loader2, BrainCircuit, Voicemail, Briefcase, SquareRadical } from 'lucide-react';
 import { Logo } from '@/components/logo';
 import { useAppContext } from '@/context/AppContext';
 import type { Question } from '@/types';
@@ -61,6 +61,33 @@ const categoryConfig = [
     glowColor: 'bg-yellow-500/10',
   },
 ];
+
+const premiumFeatures = [
+    {
+        title: "Rexo Mode",
+        description: "AI-powered, on-the-spot answers.",
+        Icon: BrainCircuit,
+        color: "text-purple-500"
+    },
+    {
+        title: "Learning Arena",
+        description: "Practice with mock tests & scenarios.",
+        Icon: SquareRadical,
+        color: "text-blue-500"
+    },
+    {
+        title: "Real Life Interview",
+        description: "Simulate voice interviews with AI.",
+        Icon: Voicemail,
+        color: "text-green-500"
+    },
+    {
+        title: "Real Work Simulator",
+        description: "Solve practical, on-site problems.",
+        Icon: Briefcase,
+        color: "text-red-500"
+    }
+]
 
 type TrendingQuestion = { rank: number; text: string };
 
@@ -166,6 +193,24 @@ export default function Home() {
                     </Button>
                 </div>
             </Card>
+        </section>
+
+        <section className="mb-10">
+            <div className="grid grid-cols-2 gap-4">
+                {premiumFeatures.map((feature) => (
+                    <Card key={feature.title} className="bg-card border-border shadow-sm">
+                        <CardContent className="p-4 flex flex-col items-center text-center gap-2">
+                            <div className={`h-10 w-10 flex items-center justify-center rounded-lg bg-primary/10 ${feature.color}`}>
+                                <feature.Icon className="h-6 w-6" />
+                            </div>
+                            <div>
+                                <h4 className="font-semibold text-sm text-foreground">{feature.title}</h4>
+                                <p className="text-xs text-muted-foreground">{feature.description}</p>
+                            </div>
+                        </CardContent>
+                    </Card>
+                ))}
+            </div>
         </section>
 
         <section className="mb-10">
