@@ -53,7 +53,8 @@ export default function CategoryHierarchyPage() {
 
     if (!module) {
       currentLevel = 'modules';
-      items = getUniqueValues(questions, 'module', baseFilters);
+      const modules = getUniqueValues(questions, 'module', baseFilters);
+      items = ['All Questions', ...modules]; // Add "All Questions" at the beginning
     } else if (module && !section) {
       if (module.toLowerCase() === 'all questions') {
          currentLevel = 'questions';
