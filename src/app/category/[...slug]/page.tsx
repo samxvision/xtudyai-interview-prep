@@ -21,9 +21,11 @@ const getUniqueValuesForLevel = (
   const filtered = questions.filter(q =>
     Object.entries(parentFilters).every(([filterKey, filterValue]) => {
       const questionValue = q[filterKey as keyof Question];
-      return Array.isArray(questionValue)
-        ? (questionValue as string[]).includes(filterValue)
-        : questionValue === filterValue;
+      // Handle array categories if needed, though hierarchy fields are likely strings
+      if (Array.isArray(questionValue)) {
+        return (questionValue as string[]).includes(filterValue);
+      }
+      return String(questionValue) === filterValue;
     })
   );
 
@@ -55,6 +57,7 @@ const getUniqueValuesForLevel = (
     });
 };
 
+const HIERARCHY_KEYS: (keyof Question)[] = ['primaryDomain', 'module', 'section', 'topic'];
 
 export default function CategoryHierarchyPage() {
   const params = useParams();
@@ -66,7 +69,7 @@ export default function CategoryHierarchyPage() {
   const decodedSlug = useMemo(() => (Array.isArray(slug) ? slug.map(s => decodeURIComponent(s)) : [decodeURIComponent(slug as string)]), [slug]);
   
   const currentPathParts = decodedSlug;
-  const [primaryDomain, module, section, topic] = currentPathParts;
+  const currentLevelIndex = currentPathParts.length;
 
   const breadcrumbs = useMemo(() => {
     let path = '/category';
@@ -77,89 +80,56 @@ export default function CategoryHierarchyPage() {
     return crumbs;
   }, [currentPathParts]);
 
-  const { currentLevel, items, filteredQuestions, pageTitle } = useMemo(() => {
+  const { items, filteredQuestions, pageTitle } = useMemo(() => {
     if (areQuestionsLoading) {
-      return { currentLevel: 'loading', items: [], filteredQuestions: [], pageTitle: 'Loading...' };
+      return { items: [], filteredQuestions: [], pageTitle: 'Loading...' };
     }
 
     const filters: Record<string, string> = {};
-    let nextLevelKey: keyof Question | null = null;
-    let currentItems: { name: string, order: number }[] = [];
-    let finalQuestions: Question[] = [];
-    let level: 'modules' | 'sections' | 'topics' | 'subTopics' | 'questions' = 'modules';
-    let title = 'Browse';
-
-    if (primaryDomain) {
-      filters.primaryDomain = primaryDomain;
-      title = `Modules in ${primaryDomain}`;
-      nextLevelKey = 'module';
-      level = 'modules';
-    }
-
-    if (module) {
-      if (module.toLowerCase() === 'all questions') {
-        level = 'questions';
-        finalQuestions = questions.filter(q => q.primaryDomain === primaryDomain)
-                                  .sort((a, b) => (a.order || 0) - (b.order || 0));
-        title = `All Questions in ${primaryDomain}`;
-      } else {
-        filters.module = module;
-        level = 'sections';
-        nextLevelKey = 'section';
-        title = `Sections in ${module}`;
+    currentPathParts.forEach((part, index) => {
+      const key = HIERARCHY_KEYS[index];
+      if (key) {
+        filters[key] = part;
       }
-    }
+    });
+
+    let finalQuestions: Question[] = [];
+    let listItems: { name: string, order: number }[] = [];
     
-    if (section) {
-        filters.section = section;
-        level = 'topics';
-        nextLevelKey = 'topic';
-        title = `Topics in ${section}`;
-    }
+    const currentFilterKey = HIERARCHY_KEYS[currentLevelIndex - 1];
+    const currentFilterValue = currentPathParts[currentLevelIndex - 1];
+    const title = currentFilterValue || 'Browse';
 
-    if (topic) {
-        filters.topic = topic;
-        level = 'questions'; // Assuming this is the last level before questions
-        nextLevelKey = null; // No further sub-levels
-        title = `Questions in ${topic}`;
-    }
+    // Special case for "All Questions" module
+    if (currentFilterValue?.toLowerCase() === 'all questions' && currentFilterKey === 'module') {
+        const domainFilter = { primaryDomain: filters.primaryDomain };
+        finalQuestions = questions.filter(q => q.primaryDomain === domainFilter.primaryDomain)
+                                  .sort((a, b) => (a.order || 0) - (b.order || 0));
+    } else {
+        const nextLevelKey = HIERARCHY_KEYS[currentLevelIndex];
+        if (nextLevelKey) {
+            listItems = getUniqueValuesForLevel(questions, nextLevelKey, filters);
+        }
 
-    if (level !== 'questions' && nextLevelKey) {
-        let uniqueValues = getUniqueValuesForLevel(questions, nextLevelKey, filters);
-        if (level === 'modules') {
-             // Manually add "All Questions" option at the module level
-            const allQuestionsOption = { name: 'All Questions', order: 0 };
-            const moduleItems = uniqueValues;
-            
-            // Check if "All Questions" is already present to avoid duplicates
-            if (!moduleItems.some(item => item.name.toLowerCase() === 'all questions')) {
-                currentItems = [allQuestionsOption, ...moduleItems];
-            } else {
-                currentItems = moduleItems;
-            }
-        } else {
-            currentItems = uniqueValues;
+        // If there are no more sub-levels or no items in the next level, show questions
+        if (!nextLevelKey || listItems.length === 0) {
+            finalQuestions = questions.filter(q =>
+                Object.entries(filters).every(([key, value]) => {
+                  const qValue = q[key as keyof Question];
+                  return Array.isArray(qValue) ? qValue.includes(value) : String(qValue) === value;
+                })
+            ).sort((a, b) => (a.order || 0) - (b.order || 0));
+        }
+
+        // Add "All Questions" option at the module level (first level after domain)
+        if (currentLevelIndex === 1 && !listItems.some(item => item.name.toLowerCase() === 'all questions')) {
+            listItems.unshift({ name: 'All Questions', order: 0 });
         }
     }
 
+    return { items: listItems, filteredQuestions: finalQuestions, pageTitle: title };
 
-    if (level !== 'questions' && currentItems.length === 0) {
-        // If there are no sub-items, show questions for the current level
-        level = 'questions';
-        finalQuestions = questions.filter(q =>
-            Object.entries(filters).every(([key, value]) => q[key as keyof Question] === value)
-        ).sort((a, b) => (a.order || 0) - (b.order || 0));
-        title = `Questions in ${topic || section || module || primaryDomain}`;
-    } else if (level === 'questions' && !finalQuestions.length) {
-       // If we're at question level but no questions were explicitly filtered (e.g. from 'All Questions'), filter them now.
-        finalQuestions = questions.filter(q =>
-            Object.entries(filters).every(([key, value]) => q[key as keyof Question] === value)
-        ).sort((a, b) => (a.order || 0) - (b.order || 0));
-    }
-
-    return { currentLevel: level, items: currentItems, filteredQuestions: finalQuestions, pageTitle: title };
-
-  }, [decodedSlug, questions, areQuestionsLoading, primaryDomain, module, section, topic]);
+  }, [decodedSlug, questions, areQuestionsLoading, currentLevelIndex]);
 
   if (areQuestionsLoading) {
     return (
@@ -222,28 +192,18 @@ export default function CategoryHierarchyPage() {
 
       <main className="flex-grow overflow-y-auto bg-slate-50">
         <div className="container mx-auto p-4 space-y-6">
-          {currentLevel !== 'questions' && items.length > 0 && renderList(pageTitle, items)}
+          {items.length > 0 && renderList(pageTitle, items)}
           
-          {currentLevel === 'questions' && (
+          {filteredQuestions.length > 0 && (
             <>
               <h2 className="text-2xl font-bold text-slate-800 mb-4">{pageTitle}</h2>
-              {filteredQuestions.length > 0 ? (
-                filteredQuestions.map(question => (
-                  <AnswerCard key={question.id} question={question} initialLang={'hi'} />
-                ))
-              ) : (
-                <div className="bg-white rounded-xl border border-slate-200 p-8 text-center mt-8">
-                  <AlertCircle className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
-                  <h3 className="text-xl font-bold text-slate-800 mb-2">No Questions Found</h3>
-                  <p className="text-slate-500">
-                    There are currently no questions available for this selection.
-                  </p>
-                </div>
-              )}
+              {filteredQuestions.map(question => (
+                <AnswerCard key={question.id} question={question} initialLang={'hi'} />
+              ))}
             </>
           )}
 
-          {currentLevel !== 'questions' && items.length === 0 && (
+          {items.length === 0 && filteredQuestions.length === 0 && (
               <div className="bg-white rounded-xl border border-slate-200 p-8 text-center mt-8">
                 <AlertCircle className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
                 <h3 className="text-xl font-bold text-slate-800 mb-2">No Content Found</h3>
@@ -257,5 +217,3 @@ export default function CategoryHierarchyPage() {
     </div>
   );
 }
-
-    
