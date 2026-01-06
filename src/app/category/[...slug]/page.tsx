@@ -13,31 +13,47 @@ import type { Question } from '@/types';
 import { Card } from '@/components/ui/card';
 
 // Helper function to get unique values for a specific level, respecting parent filters
-const getUniqueValuesForLevel = (questions: Question[], levelKey: keyof Question, parentFilters: Record<string, string>): string[] => {
-  const filtered = questions.filter(q => 
+const getUniqueValuesForLevel = (
+  questions: Question[],
+  levelKey: keyof Question,
+  parentFilters: Record<string, string>
+): string[] => {
+  const filtered = questions.filter(q =>
     Object.entries(parentFilters).every(([filterKey, filterValue]) => {
       const questionValue = q[filterKey as keyof Question];
-      return Array.isArray(questionValue) 
+      return Array.isArray(questionValue)
         ? (questionValue as string[]).includes(filterValue)
         : questionValue === filterValue;
     })
   );
-  
-  const values = new Set<string>();
+
+  const values = new Map<string, number>();
   filtered.forEach(q => {
     const value = q[levelKey];
+    const order = q.order || 9999;
     if (typeof value === 'string' && value) {
-      values.add(value);
+      if (!values.has(value) || (values.get(value) ?? 9999) > order) {
+        values.set(value, order);
+      }
     } else if (Array.isArray(value)) {
-      value.forEach(v => v && values.add(v));
+      value.forEach(v => {
+        if (v && (!values.has(v) || (values.get(v) ?? 9999) > order)) {
+            values.set(v, order);
+        }
+      });
     }
   });
 
-  // Sort values, potentially based on an associated order field if available
-  // For now, simple alphabetical sort is fine.
-  return [...values].sort((a, b) => a.localeCompare(b));
+  // Sort values based on the associated order, then alphabetically
+  return [...values.entries()]
+    .sort((a, b) => {
+        if (a[1] !== b[1]) {
+            return a[1] - b[1];
+        }
+        return a[0].localeCompare(b[0]);
+    })
+    .map(entry => entry[0]);
 };
-
 
 export default function CategoryHierarchyPage() {
   const params = useParams();
@@ -60,61 +76,68 @@ export default function CategoryHierarchyPage() {
     return crumbs;
   }, [currentPathParts]);
 
-  const { currentLevel, items, filteredQuestions } = useMemo(() => {
+  const { currentLevel, items, filteredQuestions, pageTitle } = useMemo(() => {
     if (areQuestionsLoading) {
-      return { currentLevel: 'loading', items: [], filteredQuestions: [] };
+      return { currentLevel: 'loading', items: [], filteredQuestions: [], pageTitle: 'Loading...' };
     }
 
     const filters: Record<string, string> = {};
     let nextLevelKey: keyof Question | null = null;
-    let items: string[] = [];
-    let filteredQuestions: Question[] = [];
-    let currentLevel: 'modules' | 'sections' | 'topics' | 'questions' = 'modules';
+    let currentItems: string[] = [];
+    let finalQuestions: Question[] = [];
+    let level: 'modules' | 'sections' | 'topics' | 'questions' = 'modules';
+    let title = 'Browse';
 
-    if (primaryDomain) filters.primaryDomain = primaryDomain;
+    if (primaryDomain) {
+        filters.primaryDomain = primaryDomain;
+        title = `Modules in ${primaryDomain}`;
+    }
 
     if (!module) {
-      currentLevel = 'modules';
-      nextLevelKey = 'module';
-      items = ['All Questions', ...getUniqueValuesForLevel(questions, nextLevelKey, filters)];
+        level = 'modules';
+        nextLevelKey = 'module';
+        currentItems = ['All Questions', ...getUniqueValuesForLevel(questions, nextLevelKey, filters)];
+    } else if (module && module.toLowerCase() === 'all questions') {
+        level = 'questions';
+        finalQuestions = questions.filter(q => q.primaryDomain === primaryDomain)
+                                  .sort((a, b) => (a.order || 0) - (b.order || 0));
+        title = `All Questions in ${primaryDomain}`;
     } else if (module && !section) {
-       if (module.toLowerCase() === 'all questions') {
-         currentLevel = 'questions';
-         filteredQuestions = questions.filter(q => q.primaryDomain === primaryDomain).sort((a,b) => (a.order || 0) - (b.order || 0));
-       } else {
         filters.module = module;
-        currentLevel = 'sections';
+        level = 'sections';
         nextLevelKey = 'section';
-        items = getUniqueValuesForLevel(questions, nextLevelKey, filters);
-       }
+        currentItems = getUniqueValuesForLevel(questions, nextLevelKey, filters);
+        title = `Sections in ${module}`;
     } else if (section && !topic) {
         filters.module = module;
         filters.section = section;
-        currentLevel = 'topics';
+        level = 'topics';
         nextLevelKey = 'topic';
-        items = getUniqueValuesForLevel(questions, nextLevelKey, filters);
-    } else {
-        currentLevel = 'questions';
-        filters.module = module;
-        filters.section = section;
+        currentItems = getUniqueValuesForLevel(questions, nextLevelKey, filters);
+        title = `Topics in ${section}`;
+    } else { // All path parts are present or topic is the last part
+        level = 'questions';
+        if (module) filters.module = module;
+        if (section) filters.section = section;
         if (topic) filters.topic = topic;
         
-        filteredQuestions = questions.filter(q =>
+        finalQuestions = questions.filter(q =>
             Object.entries(filters).every(([key, value]) => q[key as keyof Question] === value)
         ).sort((a, b) => (a.order || 0) - (b.order || 0));
+        title = `Questions in ${topic || section || module}`;
     }
     
     // If we are at a listing level (modules, sections, topics) but there are no sub-items,
     // we should show the questions for the current level instead.
-    if (items.length === 0 && currentLevel !== 'questions' && currentLevel !== 'loading') {
-        currentLevel = 'questions';
-        filteredQuestions = questions.filter(q =>
+    if (currentItems.length === 0 && level !== 'questions' && level !== 'loading') {
+        level = 'questions';
+        finalQuestions = questions.filter(q =>
             Object.entries(filters).every(([key, value]) => q[key as keyof Question] === value)
         ).sort((a, b) => (a.order || 0) - (b.order || 0));
+        title = `Questions in ${section || module}`;
     }
 
-
-    return { currentLevel, items, filteredQuestions };
+    return { currentLevel: level, items: currentItems, filteredQuestions: finalQuestions, pageTitle: title };
 
   }, [decodedSlug, questions, areQuestionsLoading, primaryDomain, module, section, topic]);
 
@@ -156,16 +179,6 @@ export default function CategoryHierarchyPage() {
     );
   }
 
-  const getPageTitle = () => {
-    switch(currentLevel) {
-      case 'modules': return `Modules in ${primaryDomain}`;
-      case 'sections': return `Sections in ${module}`;
-      case 'topics': return `Topics in ${section}`;
-      case 'questions': return `Questions`;
-      default: return 'Browse';
-    }
-  }
-
   return (
     <div className="flex flex-col h-screen bg-white">
       <header className="sticky top-0 z-20 bg-white shadow-sm">
@@ -191,10 +204,11 @@ export default function CategoryHierarchyPage() {
 
       <main className="flex-grow overflow-y-auto bg-slate-50">
         <div className="container mx-auto p-4 space-y-6">
-          {currentLevel !== 'questions' && items.length > 0 && renderList(getPageTitle(), items)}
+          {currentLevel !== 'questions' && items.length > 0 && renderList(pageTitle, items)}
           
           {currentLevel === 'questions' && (
             <>
+              <h2 className="text-2xl font-bold text-slate-800 mb-4">{pageTitle}</h2>
               {filteredQuestions.length > 0 ? (
                 filteredQuestions.map(question => (
                   <AnswerCard key={question.id} question={question} initialLang={'hi'} />
@@ -216,7 +230,7 @@ export default function CategoryHierarchyPage() {
                 <AlertCircle className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
                 <h3 className="text-xl font-bold text-slate-800 mb-2">No Content Found</h3>
                 <p className="text-slate-500">
-                  There are currently no sub-categories available here.
+                  There are currently no sub-categories or questions available here.
                 </p>
               </div>
           )}
