@@ -5,21 +5,37 @@ import React, { useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAppContext } from '@/context/AppContext';
 import { AnswerCard } from '@/components/answer-card';
-import { Loader2, ArrowLeft, BookOpen, AlertCircle, ChevronRight, Folder, FileText } from 'lucide-react';
+import { Loader2, ArrowLeft, AlertCircle, ChevronRight, Folder, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/logo';
 import Link from 'next/link';
 import type { Question } from '@/types';
 import { Card } from '@/components/ui/card';
 
-// Helper function to get unique values for a specific level
-const getUniqueValues = (questions: Question[], key: keyof Question, parentFilters: Record<string, string>): string[] => {
-  const filtered = questions.filter(q => {
-    return Object.entries(parentFilters).every(([filterKey, filterValue]) => q[filterKey as keyof Question] === filterValue);
+// Helper function to get unique values for a specific level, respecting parent filters
+const getUniqueValuesForLevel = (questions: Question[], levelKey: keyof Question, parentFilters: Record<string, string>): string[] => {
+  const filtered = questions.filter(q => 
+    Object.entries(parentFilters).every(([filterKey, filterValue]) => {
+      const questionValue = q[filterKey as keyof Question];
+      return Array.isArray(questionValue) 
+        ? (questionValue as string[]).includes(filterValue)
+        : questionValue === filterValue;
+    })
+  );
+  
+  const values = new Set<string>();
+  filtered.forEach(q => {
+    const value = q[levelKey];
+    if (typeof value === 'string' && value) {
+      values.add(value);
+    } else if (Array.isArray(value)) {
+      value.forEach(v => v && values.add(v));
+    }
   });
-  const values = filtered.map(q => q[key] as string).filter(Boolean);
-  return [...new Set(values)].sort((a, b) => a.localeCompare(b));
+
+  return [...values].sort((a, b) => a.localeCompare(b));
 };
+
 
 export default function CategoryHierarchyPage() {
   const params = useParams();
@@ -28,57 +44,74 @@ export default function CategoryHierarchyPage() {
 
   const { questions, areQuestionsLoading } = useAppContext();
 
-  const decodedSlug = useMemo(() => (Array.isArray(slug) ? slug.map(s => decodeURIComponent(s)) : [decodeURIComponent(slug)]), [slug]);
-
-  const [primaryDomain, module, section, topic] = decodedSlug;
+  const decodedSlug = useMemo(() => (Array.isArray(slug) ? slug.map(s => decodeURIComponent(s)) : [decodeURIComponent(slug as string)]), [slug]);
+  
+  const currentPathParts = decodedSlug;
+  const [primaryDomain, module, section, topic] = currentPathParts;
 
   const breadcrumbs = useMemo(() => {
-    const crumbs = [{ name: primaryDomain, href: `/category/${primaryDomain}` }];
-    if (module) crumbs.push({ name: module, href: `/category/${primaryDomain}/${module}` });
-    if (section) crumbs.push({ name: section, href: `/category/${primaryDomain}/${module}/${section}` });
-    if (topic) crumbs.push({ name: topic, href: `/category/${primaryDomain}/${module}/${section}/${topic}` });
+    let path = '/category';
+    const crumbs = currentPathParts.map(part => {
+      path += `/${encodeURIComponent(part)}`;
+      return { name: part, href: path };
+    });
     return crumbs;
-  }, [primaryDomain, module, section, topic]);
+  }, [currentPathParts]);
 
   const { currentLevel, items, filteredQuestions } = useMemo(() => {
     if (areQuestionsLoading) {
       return { currentLevel: 'loading', items: [], filteredQuestions: [] };
     }
 
+    const filters: Record<string, string> = {};
+    let nextLevelKey: keyof Question | null = null;
     let items: string[] = [];
     let filteredQuestions: Question[] = [];
-    let currentLevel: 'modules' | 'sections' | 'topics' | 'questions' = 'questions';
+    let currentLevel: 'modules' | 'sections' | 'topics' | 'questions' = 'modules';
 
-    const baseFilters: Record<string, string> = { primaryDomain };
+    if (primaryDomain) filters.primaryDomain = primaryDomain;
 
     if (!module) {
       currentLevel = 'modules';
-      const modules = getUniqueValues(questions, 'module', baseFilters);
-      items = ['All Questions', ...modules]; // Add "All Questions" at the beginning
+      nextLevelKey = 'module';
+      items = ['All Questions', ...getUniqueValuesForLevel(questions, nextLevelKey, filters)];
     } else if (module && !section) {
-      if (module.toLowerCase() === 'all questions') {
+       if (module.toLowerCase() === 'all questions') {
          currentLevel = 'questions';
          filteredQuestions = questions.filter(q => q.primaryDomain === primaryDomain).sort((a,b) => (a.order || 0) - (b.order || 0));
-      } else {
+       } else {
+        filters.module = module;
         currentLevel = 'sections';
-        baseFilters.module = module;
-        items = getUniqueValues(questions, 'section', baseFilters);
-      }
+        nextLevelKey = 'section';
+        items = getUniqueValuesForLevel(questions, nextLevelKey, filters);
+       }
     } else if (section && !topic) {
-      currentLevel = 'topics';
-      baseFilters.module = module;
-      baseFilters.section = section;
-      items = getUniqueValues(questions, 'topic', baseFilters);
+        filters.module = module;
+        filters.section = section;
+        currentLevel = 'topics';
+        nextLevelKey = 'topic';
+        items = getUniqueValuesForLevel(questions, nextLevelKey, filters);
     } else {
-      currentLevel = 'questions';
-      filteredQuestions = questions.filter(q => 
-        q.primaryDomain === primaryDomain &&
-        q.module === module &&
-        q.section === section &&
-        q.topic === topic
-      ).sort((a,b) => (a.order || 0) - (b.order || 0));
+        currentLevel = 'questions';
+        filters.module = module;
+        filters.section = section;
+        if (topic) filters.topic = topic;
+        
+        filteredQuestions = questions.filter(q =>
+            Object.entries(filters).every(([key, value]) => q[key as keyof Question] === value)
+        ).sort((a, b) => (a.order || 0) - (b.order || 0));
     }
     
+    // If we are at a listing level (modules, sections, topics) but there are no sub-items,
+    // we should show the questions for the current level instead.
+    if (items.length === 0 && currentLevel !== 'questions' && currentLevel !== 'loading') {
+        currentLevel = 'questions';
+        filteredQuestions = questions.filter(q =>
+            Object.entries(filters).every(([key, value]) => q[key as keyof Question] === value)
+        ).sort((a, b) => (a.order || 0) - (b.order || 0));
+    }
+
+
     return { currentLevel, items, filteredQuestions };
 
   }, [decodedSlug, questions, areQuestionsLoading, primaryDomain, module, section, topic]);
@@ -95,30 +128,41 @@ export default function CategoryHierarchyPage() {
     );
   }
 
-  const renderList = (title: string, listItems: string[], levelIcon: React.ElementType) => (
-    <>
-      <h2 className="text-2xl font-bold text-slate-800 mb-4 flex items-center gap-2">
-        <Icon className="h-6 w-6 text-primary" />
-        {title}
-      </h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {listItems.map(item => (
-          <Link key={item} href={`/category/${decodedSlug.join('/')}/${encodeURIComponent(item)}`} className="group">
-            <Card className="hover:border-primary/40 transition-all shadow-sm hover:shadow-md border-border h-full bg-card">
-              <div className="p-4 flex items-center justify-between">
-                <span className="font-semibold text-slate-700">{item}</span>
-                <ChevronRight className="h-5 w-5 text-slate-400 group-hover:translate-x-1 transition-transform" />
-              </div>
-            </Card>
-          </Link>
-        ))}
-      </div>
-    </>
-  );
+  const renderList = (title: string, listItems: string[]) => {
+    const Icon = currentLevel === 'modules' ? Folder : 
+                 currentLevel === 'sections' ? Folder : 
+                 FileText;
+    return (
+        <>
+            <h2 className="text-2xl font-bold text-slate-800 mb-4 flex items-center gap-2">
+                <Icon className="h-6 w-6 text-primary" />
+                {title}
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {listItems.map(item => (
+                    <Link key={item} href={`/category/${currentPathParts.join('/')}/${encodeURIComponent(item)}`} className="group">
+                        <Card className="hover:border-primary/40 transition-all shadow-sm hover:shadow-md border-border h-full bg-card">
+                            <div className="p-4 flex items-center justify-between">
+                                <span className="font-semibold text-slate-700">{item}</span>
+                                <ChevronRight className="h-5 w-5 text-slate-400 group-hover:translate-x-1 transition-transform" />
+                            </div>
+                        </Card>
+                    </Link>
+                ))}
+            </div>
+        </>
+    );
+  }
 
-  const Icon = currentLevel === 'modules' ? Folder : 
-               currentLevel === 'sections' ? Folder : 
-               currentLevel === 'topics' ? Folder : FileText;
+  const getPageTitle = () => {
+    switch(currentLevel) {
+      case 'modules': return `Modules in ${primaryDomain}`;
+      case 'sections': return `Sections in ${module}`;
+      case 'topics': return `Topics in ${section}`;
+      case 'questions': return `Questions`;
+      default: return 'Browse';
+    }
+  }
 
   return (
     <div className="flex flex-col h-screen bg-white">
@@ -130,13 +174,13 @@ export default function CategoryHierarchyPage() {
             </Button>
             <Logo />
           </div>
-          <div className="flex items-center gap-1 text-sm font-medium text-slate-500 self-start sm:self-center ml-10 sm:ml-0">
+          <div className="flex items-center gap-1 text-sm font-medium text-slate-500 self-start sm:self-center ml-10 sm:ml-0 overflow-x-auto whitespace-nowrap py-1">
             {breadcrumbs.map((crumb, index) => (
               <React.Fragment key={crumb.name}>
                 <Link href={crumb.href} className="hover:text-primary transition-colors">
                   {crumb.name}
                 </Link>
-                {index < breadcrumbs.length - 1 && <ChevronRight className="h-4 w-4" />}
+                {index < breadcrumbs.length - 1 && <ChevronRight className="h-4 w-4 shrink-0" />}
               </React.Fragment>
             ))}
           </div>
@@ -145,9 +189,7 @@ export default function CategoryHierarchyPage() {
 
       <main className="flex-grow overflow-y-auto bg-slate-50">
         <div className="container mx-auto p-4 space-y-6">
-          {currentLevel === 'modules' && renderList(`Modules in ${primaryDomain}`, items, Folder)}
-          {currentLevel === 'sections' && renderList(`Sections in ${module}`, items, Folder)}
-          {currentLevel === 'topics' && renderList(`Topics in ${section}`, items, FileText)}
+          {currentLevel !== 'questions' && items.length > 0 && renderList(getPageTitle(), items)}
           
           {currentLevel === 'questions' && (
             <>
@@ -167,12 +209,12 @@ export default function CategoryHierarchyPage() {
             </>
           )}
 
-          {items.length === 0 && currentLevel !== 'questions' && (
+          {currentLevel !== 'questions' && items.length === 0 && (
               <div className="bg-white rounded-xl border border-slate-200 p-8 text-center mt-8">
                 <AlertCircle className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
                 <h3 className="text-xl font-bold text-slate-800 mb-2">No Content Found</h3>
                 <p className="text-slate-500">
-                  There are currently no sub-sections available here.
+                  There are currently no sub-categories available here.
                 </p>
               </div>
           )}
@@ -181,3 +223,5 @@ export default function CategoryHierarchyPage() {
     </div>
   );
 }
+
+    
