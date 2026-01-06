@@ -33,6 +33,8 @@ const getUniqueValuesForLevel = (questions: Question[], levelKey: keyof Question
     }
   });
 
+  // Sort values, potentially based on an associated order field if available
+  // For now, simple alphabetical sort is fine.
   return [...values].sort((a, b) => a.localeCompare(b));
 };
 
@@ -51,10 +53,10 @@ export default function CategoryHierarchyPage() {
 
   const breadcrumbs = useMemo(() => {
     let path = '/category';
-    const crumbs = currentPathParts.map(part => {
+    const crumbs = [{ name: 'Categories', href: '/#categories' }, ...currentPathParts.map(part => {
       path += `/${encodeURIComponent(part)}`;
       return { name: part, href: path };
-    });
+    })];
     return crumbs;
   }, [currentPathParts]);
 
@@ -223,5 +225,3 @@ export default function CategoryHierarchyPage() {
     </div>
   );
 }
-
-    
