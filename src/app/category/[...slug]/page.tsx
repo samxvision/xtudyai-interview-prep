@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, 'useMemo' from 'react';
+import React, { useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAppContext } from '@/context/AppContext';
 import { AnswerCard } from '@/components/answer-card';
