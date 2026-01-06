@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useMemo } from 'react';
+import React, 'useMemo' from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAppContext } from '@/context/AppContext';
 import { AnswerCard } from '@/components/answer-card';
@@ -17,7 +17,7 @@ const getUniqueValuesForLevel = (
   questions: Question[],
   levelKey: keyof Question,
   parentFilters: Record<string, string>
-): string[] => {
+): { name: string, order: number }[] => {
   const filtered = questions.filter(q =>
     Object.entries(parentFilters).every(([filterKey, filterValue]) => {
       const questionValue = q[filterKey as keyof Question];
@@ -46,14 +46,15 @@ const getUniqueValuesForLevel = (
 
   // Sort values based on the associated order, then alphabetically
   return [...values.entries()]
+    .map(([name, order]) => ({ name, order }))
     .sort((a, b) => {
-        if (a[1] !== b[1]) {
-            return a[1] - b[1];
+        if (a.order !== b.order) {
+            return a.order - b.order;
         }
-        return a[0].localeCompare(b[0]);
-    })
-    .map(entry => entry[0]);
+        return a.name.localeCompare(b.name);
+    });
 };
+
 
 export default function CategoryHierarchyPage() {
   const params = useParams();
@@ -83,58 +84,77 @@ export default function CategoryHierarchyPage() {
 
     const filters: Record<string, string> = {};
     let nextLevelKey: keyof Question | null = null;
-    let currentItems: string[] = [];
+    let currentItems: { name: string, order: number }[] = [];
     let finalQuestions: Question[] = [];
-    let level: 'modules' | 'sections' | 'topics' | 'questions' = 'modules';
+    let level: 'modules' | 'sections' | 'topics' | 'subTopics' | 'questions' = 'modules';
     let title = 'Browse';
 
     if (primaryDomain) {
-        filters.primaryDomain = primaryDomain;
-        title = `Modules in ${primaryDomain}`;
+      filters.primaryDomain = primaryDomain;
+      title = `Modules in ${primaryDomain}`;
+      nextLevelKey = 'module';
+      level = 'modules';
     }
 
-    if (!module) {
-        level = 'modules';
-        nextLevelKey = 'module';
-        currentItems = ['All Questions', ...getUniqueValuesForLevel(questions, nextLevelKey, filters)];
-    } else if (module && module.toLowerCase() === 'all questions') {
+    if (module) {
+      if (module.toLowerCase() === 'all questions') {
         level = 'questions';
         finalQuestions = questions.filter(q => q.primaryDomain === primaryDomain)
                                   .sort((a, b) => (a.order || 0) - (b.order || 0));
         title = `All Questions in ${primaryDomain}`;
-    } else if (module && !section) {
+      } else {
         filters.module = module;
         level = 'sections';
         nextLevelKey = 'section';
-        currentItems = getUniqueValuesForLevel(questions, nextLevelKey, filters);
         title = `Sections in ${module}`;
-    } else if (section && !topic) {
-        filters.module = module;
+      }
+    }
+    
+    if (section) {
         filters.section = section;
         level = 'topics';
         nextLevelKey = 'topic';
-        currentItems = getUniqueValuesForLevel(questions, nextLevelKey, filters);
         title = `Topics in ${section}`;
-    } else { // All path parts are present or topic is the last part
-        level = 'questions';
-        if (module) filters.module = module;
-        if (section) filters.section = section;
-        if (topic) filters.topic = topic;
-        
-        finalQuestions = questions.filter(q =>
-            Object.entries(filters).every(([key, value]) => q[key as keyof Question] === value)
-        ).sort((a, b) => (a.order || 0) - (b.order || 0));
-        title = `Questions in ${topic || section || module}`;
     }
-    
-    // If we are at a listing level (modules, sections, topics) but there are no sub-items,
-    // we should show the questions for the current level instead.
-    if (currentItems.length === 0 && level !== 'questions' && level !== 'loading') {
+
+    if (topic) {
+        filters.topic = topic;
+        level = 'questions'; // Assuming this is the last level before questions
+        nextLevelKey = null; // No further sub-levels
+        title = `Questions in ${topic}`;
+    }
+
+    if (level !== 'questions' && nextLevelKey) {
+        let uniqueValues = getUniqueValuesForLevel(questions, nextLevelKey, filters);
+        if (level === 'modules') {
+             // Manually add "All Questions" option at the module level
+            const allQuestionsOption = { name: 'All Questions', order: 0 };
+            const moduleItems = uniqueValues;
+            
+            // Check if "All Questions" is already present to avoid duplicates
+            if (!moduleItems.some(item => item.name.toLowerCase() === 'all questions')) {
+                currentItems = [allQuestionsOption, ...moduleItems];
+            } else {
+                currentItems = moduleItems;
+            }
+        } else {
+            currentItems = uniqueValues;
+        }
+    }
+
+
+    if (level !== 'questions' && currentItems.length === 0) {
+        // If there are no sub-items, show questions for the current level
         level = 'questions';
         finalQuestions = questions.filter(q =>
             Object.entries(filters).every(([key, value]) => q[key as keyof Question] === value)
         ).sort((a, b) => (a.order || 0) - (b.order || 0));
-        title = `Questions in ${section || module}`;
+        title = `Questions in ${topic || section || module || primaryDomain}`;
+    } else if (level === 'questions' && !finalQuestions.length) {
+       // If we're at question level but no questions were explicitly filtered (e.g. from 'All Questions'), filter them now.
+        finalQuestions = questions.filter(q =>
+            Object.entries(filters).every(([key, value]) => q[key as keyof Question] === value)
+        ).sort((a, b) => (a.order || 0) - (b.order || 0));
     }
 
     return { currentLevel: level, items: currentItems, filteredQuestions: finalQuestions, pageTitle: title };
@@ -153,10 +173,8 @@ export default function CategoryHierarchyPage() {
     );
   }
 
-  const renderList = (title: string, listItems: string[]) => {
-    const Icon = currentLevel === 'modules' ? Folder : 
-                 currentLevel === 'sections' ? Folder : 
-                 FileText;
+  const renderList = (title: string, listItems: {name: string}[]) => {
+    const Icon = Folder;
     return (
         <>
             <h2 className="text-2xl font-bold text-slate-800 mb-4 flex items-center gap-2">
@@ -165,10 +183,10 @@ export default function CategoryHierarchyPage() {
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {listItems.map(item => (
-                    <Link key={item} href={`/category/${currentPathParts.join('/')}/${encodeURIComponent(item)}`} className="group">
+                    <Link key={item.name} href={`/category/${currentPathParts.join('/')}/${encodeURIComponent(item.name)}`} className="group">
                         <Card className="hover:border-primary/40 transition-all shadow-sm hover:shadow-md border-border h-full bg-card">
                             <div className="p-4 flex items-center justify-between">
-                                <span className="font-semibold text-slate-700">{item}</span>
+                                <span className="font-semibold text-slate-700">{item.name}</span>
                                 <ChevronRight className="h-5 w-5 text-slate-400 group-hover:translate-x-1 transition-transform" />
                             </div>
                         </Card>
