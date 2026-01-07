@@ -12,19 +12,23 @@ import Link from 'next/link';
 import type { Question } from '@/types';
 import { Card } from '@/components/ui/card';
 
+// Helper to normalize strings for comparison (lowercase, trim spaces)
+const normalizeValue = (value: string) => value.toLowerCase().trim();
+
 // Helper function to get unique values for a specific level, respecting parent filters
 const getUniqueValuesForLevel = (
   questions: Question[],
   levelKey: keyof Question,
   parentFilters: Record<string, string>
 ): { name: string, order: number }[] => {
+
   const filtered = questions.filter(q =>
     Object.entries(parentFilters).every(([filterKey, filterValue]) => {
       const questionValue = q[filterKey as keyof Question];
       if (Array.isArray(questionValue)) {
-        return (questionValue as string[]).includes(filterValue);
+        return (questionValue as string[]).map(normalizeValue).includes(normalizeValue(filterValue));
       }
-      return String(questionValue) === filterValue;
+      return normalizeValue(String(questionValue)) === normalizeValue(filterValue);
     })
   );
 
@@ -35,14 +39,19 @@ const getUniqueValuesForLevel = (
     
     const processValue = (val: string) => {
         if (!val) return;
-        const lowerVal = val.toLowerCase();
-        if (!values.has(lowerVal) || (values.get(lowerVal)!.order) > order) {
-            values.set(lowerVal, { originalName: val, order: order });
+        const normalizedVal = normalizeValue(val);
+        if (!values.has(normalizedVal) || (values.get(normalizedVal)!.order) > order) {
+            values.set(normalizedVal, { originalName: val.trim(), order: order });
         }
     };
     
     if (typeof value === 'string' && value) {
-      processValue(value);
+      // Handle comma-separated values for section level
+      if (levelKey === 'section') {
+        value.split(',').forEach(v => processValue(v));
+      } else {
+        processValue(value);
+      }
     } else if (Array.isArray(value)) {
       value.forEach(v => processValue(String(v)));
     }
@@ -109,17 +118,18 @@ export default function CategoryHierarchyPage() {
         // Filter out modules/sections that have no questions, except "All Questions"
         if(currentLevelIndex > 0) {
              listItems = listItems.filter(item => {
-                if (item.name.toLowerCase() === 'all questions') return true;
+                const normalizedItemName = normalizeValue(item.name);
+                if (normalizedItemName === 'all questions') return true;
                 
                 const itemHasQuestions = questions.some(q => {
-                    const allParentFiltersMatch = Object.entries(filters).every(([key, value]) => String(q[key as keyof Question]) === value);
+                    const allParentFiltersMatch = Object.entries(filters).every(([key, value]) => normalizeValue(String(q[key as keyof Question])) === normalizeValue(value));
                     const levelValue = q[nextLevelKey as keyof Question];
 
                     if (typeof levelValue === 'string') {
-                       return allParentFiltersMatch && levelValue.split(',').map(s => s.trim()).includes(item.name);
+                       return allParentFiltersMatch && levelValue.split(',').map(normalizeValue).includes(normalizedItemName);
                     }
                     if(Array.isArray(levelValue)) {
-                       return allParentFiltersMatch && levelValue.includes(item.name);
+                       return allParentFiltersMatch && levelValue.map(v => normalizeValue(String(v))).includes(normalizedItemName);
                     }
                     return false;
                 });
@@ -129,30 +139,29 @@ export default function CategoryHierarchyPage() {
     }
 
     // If there are no more sub-levels or no items in the next level, show questions
-    if (!nextLevelKey || (listItems.length === 0 && currentFilterValue?.toLowerCase() !== 'all questions')) {
+    if (!nextLevelKey) {
         finalQuestions = questions.filter(q =>
             Object.entries(filters).every(([key, value]) => {
               const qValue = q[key as keyof Question];
               if (typeof qValue === 'string') {
-                return qValue.split(',').map(s => s.trim()).includes(value);
+                return qValue.split(',').map(normalizeValue).includes(normalizeValue(value));
               }
-              return Array.isArray(qValue) ? qValue.includes(value) : String(qValue) === value;
+              return Array.isArray(qValue) ? qValue.map(normalizeValue).includes(normalizeValue(value)) : normalizeValue(String(qValue)) === normalizeValue(value);
             })
         ).sort((a, b) => (a.order || 9999) - (b.order || 9999));
     }
     
     // Special case for "All Questions" module
-    if (currentFilterValue?.toLowerCase() === 'all questions' && currentFilterKey === 'module') {
+    if (normalizeValue(currentFilterValue) === 'all questions' && currentFilterKey === 'module') {
         const domainFilter = { primaryDomain: filters.primaryDomain };
-        finalQuestions = questions.filter(q => q.primaryDomain === domainFilter.primaryDomain)
+        finalQuestions = questions.filter(q => normalizeValue(q.primaryDomain) === normalizeValue(domainFilter.primaryDomain))
                                   .sort((a, b) => (a.order || 9999) - (b.order || 9999));
     }
 
-
     // Add "All Questions" option and apply custom sort at the module level
-    if (currentLevelIndex === 1) { // Module level
-        const hasAllQuestionsOption = listItems.some(item => item.name.toLowerCase() === 'all questions');
-        if (!hasAllQuestionsOption && questions.some(q => q.primaryDomain === filters.primaryDomain)) {
+    if (currentLevelIndex === 1) {
+        const hasAllQuestionsOption = listItems.some(item => normalizeValue(item.name) === 'all questions');
+        if (!hasAllQuestionsOption && questions.some(q => normalizeValue(q.primaryDomain) === normalizeValue(filters.primaryDomain))) {
              listItems.unshift({ name: 'All Questions', order: -Infinity });
         }
 
@@ -166,8 +175,8 @@ export default function CategoryHierarchyPage() {
         ];
         
         listItems.sort((a, b) => {
-            const aNameLower = a.name.toLowerCase();
-            const bNameLower = b.name.toLowerCase();
+            const aNameLower = normalizeValue(a.name);
+            const bNameLower = normalizeValue(b.name);
             const aIndex = customOrder.indexOf(aNameLower);
             const bIndex = customOrder.indexOf(bNameLower);
 
