@@ -21,7 +21,6 @@ const getUniqueValuesForLevel = (
   const filtered = questions.filter(q =>
     Object.entries(parentFilters).every(([filterKey, filterValue]) => {
       const questionValue = q[filterKey as keyof Question];
-      // Handle array categories if needed, though hierarchy fields are likely strings
       if (Array.isArray(questionValue)) {
         return (questionValue as string[]).includes(filterValue);
       }
@@ -29,26 +28,29 @@ const getUniqueValuesForLevel = (
     })
   );
 
-  const values = new Map<string, number>();
+  const values = new Map<string, { originalName: string, order: number }>();
   filtered.forEach(q => {
     const value = q[levelKey];
     const order = q.order || 9999;
-    if (typeof value === 'string' && value) {
-      if (!values.has(value) || (values.get(value) ?? 9999) > order) {
-        values.set(value, order);
-      }
-    } else if (Array.isArray(value)) {
-      value.forEach(v => {
-        if (v && (!values.has(v) || (values.get(v) ?? 9999) > order)) {
-            values.set(v, order);
+    
+    const processValue = (val: string) => {
+        if (!val) return;
+        const lowerVal = val.toLowerCase();
+        if (!values.has(lowerVal) || (values.get(lowerVal)!.order) > order) {
+            values.set(lowerVal, { originalName: val, order: order });
         }
-      });
+    };
+    
+    if (typeof value === 'string' && value) {
+      processValue(value);
+    } else if (Array.isArray(value)) {
+      value.forEach(v => processValue(String(v)));
     }
   });
 
   // Sort values based on the associated order, then alphabetically
-  return [...values.entries()]
-    .map(([name, order]) => ({ name, order }))
+  return [...values.values()]
+    .map(({ originalName, order }) => ({ name: originalName, order }))
     .sort((a, b) => {
         if (a.order !== b.order) {
             return a.order - b.order;
@@ -100,76 +102,81 @@ export default function CategoryHierarchyPage() {
     const currentFilterValue = currentPathParts[currentLevelIndex - 1];
     const title = currentFilterValue || 'Browse';
 
+    const nextLevelKey = HIERARCHY_KEYS[currentLevelIndex];
+    if (nextLevelKey) {
+        listItems = getUniqueValuesForLevel(questions, nextLevelKey, filters);
+        
+        // Filter out modules/sections that have no questions, except "All Questions"
+        if(currentLevelIndex > 0) {
+             listItems = listItems.filter(item => {
+                if (item.name.toLowerCase() === 'all questions') return true;
+                
+                const itemHasQuestions = questions.some(q => {
+                    const allParentFiltersMatch = Object.entries(filters).every(([key, value]) => String(q[key as keyof Question]) === value);
+                    const levelValue = q[nextLevelKey as keyof Question];
+
+                    if (typeof levelValue === 'string') {
+                       return allParentFiltersMatch && levelValue.split(',').map(s => s.trim()).includes(item.name);
+                    }
+                    if(Array.isArray(levelValue)) {
+                       return allParentFiltersMatch && levelValue.includes(item.name);
+                    }
+                    return false;
+                });
+                return itemHasQuestions;
+            });
+        }
+    }
+
+    // If there are no more sub-levels or no items in the next level, show questions
+    if (!nextLevelKey || (listItems.length === 0 && currentFilterValue?.toLowerCase() !== 'all questions')) {
+        finalQuestions = questions.filter(q =>
+            Object.entries(filters).every(([key, value]) => {
+              const qValue = q[key as keyof Question];
+              if (typeof qValue === 'string') {
+                return qValue.split(',').map(s => s.trim()).includes(value);
+              }
+              return Array.isArray(qValue) ? qValue.includes(value) : String(qValue) === value;
+            })
+        ).sort((a, b) => (a.order || 9999) - (b.order || 9999));
+    }
+    
     // Special case for "All Questions" module
     if (currentFilterValue?.toLowerCase() === 'all questions' && currentFilterKey === 'module') {
         const domainFilter = { primaryDomain: filters.primaryDomain };
         finalQuestions = questions.filter(q => q.primaryDomain === domainFilter.primaryDomain)
-                                  .sort((a, b) => (a.order || 0) - (b.order || 0));
-    } else {
-        const nextLevelKey = HIERARCHY_KEYS[currentLevelIndex];
-        if (nextLevelKey) {
-            listItems = getUniqueValuesForLevel(questions, nextLevelKey, filters);
+                                  .sort((a, b) => (a.order || 9999) - (b.order || 9999));
+    }
 
-            // Filter out modules/sections that have no questions
-            if(currentLevelIndex > 0) { // Only apply this filtering for modules and sections, not domains
-                 listItems = listItems.filter(item => {
-                    const itemHasQuestions = questions.some(q => {
-                        const allParentFiltersMatch = Object.entries(filters).every(([key, value]) => String(q[key as keyof Question]) === value);
-                        return allParentFiltersMatch && String(q[nextLevelKey as keyof Question]) === item.name;
-                    });
-                    return itemHasQuestions;
-                });
-            }
+
+    // Add "All Questions" option and apply custom sort at the module level
+    if (currentLevelIndex === 1) { // Module level
+        const hasAllQuestionsOption = listItems.some(item => item.name.toLowerCase() === 'all questions');
+        if (!hasAllQuestionsOption && questions.some(q => q.primaryDomain === filters.primaryDomain)) {
+             listItems.unshift({ name: 'All Questions', order: -Infinity });
         }
 
-        // If there are no more sub-levels or no items in the next level, show questions
-        if (!nextLevelKey || listItems.length === 0) {
-            finalQuestions = questions.filter(q =>
-                Object.entries(filters).every(([key, value]) => {
-                  const qValue = q[key as keyof Question];
-                  return Array.isArray(qValue) ? qValue.includes(value) : String(qValue) === value;
-                })
-            ).sort((a, b) => (a.order || 0) - (b.order || 0));
-        }
+        const customOrder = [
+            'all questions',
+            'introduction',
+            'ultrasonic testing (ut)',
+            'magnetic particle testing (mpt)',
+            'dye penetrant testing (dpt)',
+            'radiographic testing (rt)',
+        ];
+        
+        listItems.sort((a, b) => {
+            const aNameLower = a.name.toLowerCase();
+            const bNameLower = b.name.toLowerCase();
+            const aIndex = customOrder.indexOf(aNameLower);
+            const bIndex = customOrder.indexOf(bNameLower);
 
-        // Add "All Questions" option and apply custom sort at the module level
-        if (currentLevelIndex === 1) { // Module level
-            if (!listItems.some(item => item.name.toLowerCase() === 'all questions')) {
-                listItems.unshift({ name: 'All Questions', order: -Infinity });
-            }
-
-            const customOrder = [
-                'all questions',
-                'introduction',
-                'ultrasonic testing (ut)',
-                'magnetic particle testing (mpt)',
-                'dye penetrant testing (dpt)',
-                'radiographic testing (rt)',
-            ];
-            
-            listItems.sort((a, b) => {
-                const aNameLower = a.name.toLowerCase();
-                const bNameLower = b.name.toLowerCase();
-                const aIndex = customOrder.indexOf(aNameLower);
-                const bIndex = customOrder.indexOf(bNameLower);
-
-                if (aIndex !== -1 && bIndex !== -1) {
-                    return aIndex - bIndex; // Both are in custom order
-                }
-                if (aIndex !== -1) {
-                    return -1; // a is in custom order, b is not
-                }
-                if (bIndex !== -1) {
-                    return 1; // b is in custom order, a is not
-                }
-                // Neither are in custom order, sort by their original 'order' property
-                 if (a.order !== b.order) {
-                    return (a.order ?? 999) - (b.order ?? 999);
-                }
-                // Fallback to alphabetical if order is the same
-                return a.name.localeCompare(b.name);
-            });
-        }
+            if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
+            if (aIndex !== -1) return -1;
+            if (bIndex !== -1) return 1;
+            if (a.order !== b.order) return (a.order ?? 999) - (b.order ?? 999);
+            return a.name.localeCompare(b.name);
+        });
     }
 
     return { items: listItems, filteredQuestions: finalQuestions, pageTitle: title };
