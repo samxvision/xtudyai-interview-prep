@@ -109,6 +109,17 @@ export default function CategoryHierarchyPage() {
         const nextLevelKey = HIERARCHY_KEYS[currentLevelIndex];
         if (nextLevelKey) {
             listItems = getUniqueValuesForLevel(questions, nextLevelKey, filters);
+
+            // Filter out modules/sections that have no questions
+            if(currentLevelIndex > 0) { // Only apply this filtering for modules and sections, not domains
+                 listItems = listItems.filter(item => {
+                    const itemHasQuestions = questions.some(q => {
+                        const allParentFiltersMatch = Object.entries(filters).every(([key, value]) => String(q[key as keyof Question]) === value);
+                        return allParentFiltersMatch && String(q[nextLevelKey as keyof Question]) === item.name;
+                    });
+                    return itemHasQuestions;
+                });
+            }
         }
 
         // If there are no more sub-levels or no items in the next level, show questions
@@ -122,7 +133,7 @@ export default function CategoryHierarchyPage() {
         }
 
         // Add "All Questions" option and apply custom sort at the module level
-        if (currentLevelIndex === 1) {
+        if (currentLevelIndex === 1) { // Module level
             if (!listItems.some(item => item.name.toLowerCase() === 'all questions')) {
                 listItems.unshift({ name: 'All Questions', order: -Infinity });
             }
@@ -151,7 +162,11 @@ export default function CategoryHierarchyPage() {
                 if (bIndex !== -1) {
                     return 1; // b is in custom order, a is not
                 }
-                // Neither are in custom order, sort alphabetically
+                // Neither are in custom order, sort by their original 'order' property
+                 if (a.order !== b.order) {
+                    return (a.order ?? 999) - (b.order ?? 999);
+                }
+                // Fallback to alphabetical if order is the same
                 return a.name.localeCompare(b.name);
             });
         }
@@ -174,7 +189,7 @@ export default function CategoryHierarchyPage() {
   }
 
   const renderList = (title: string, listItems: {name: string}[]) => {
-    const Icon = Folder;
+    const Icon = HIERARCHY_KEYS[currentLevelIndex] ? Folder : FileText;
     return (
         <>
             <h2 className="text-2xl font-bold text-slate-800 mb-4 flex items-center gap-2">
