@@ -57,7 +57,7 @@ const getUniqueValuesForLevel = (
     });
 };
 
-const HIERARCHY_KEYS: (keyof Question)[] = ['primaryDomain', 'module', 'section', 'topic'];
+const HIERARCHY_KEYS: (keyof Question)[] = ['primaryDomain', 'module', 'section'];
 
 export default function CategoryHierarchyPage() {
   const params = useParams();
@@ -217,5 +217,3 @@ export default function CategoryHierarchyPage() {
     </div>
   );
 }
-
-    
