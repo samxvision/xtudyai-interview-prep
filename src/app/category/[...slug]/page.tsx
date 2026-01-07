@@ -121,9 +121,39 @@ export default function CategoryHierarchyPage() {
             ).sort((a, b) => (a.order || 0) - (b.order || 0));
         }
 
-        // Add "All Questions" option at the module level (first level after domain)
-        if (currentLevelIndex === 1 && !listItems.some(item => item.name.toLowerCase() === 'all questions')) {
-            listItems.unshift({ name: 'All Questions', order: 0 });
+        // Add "All Questions" option and apply custom sort at the module level
+        if (currentLevelIndex === 1) {
+            if (!listItems.some(item => item.name.toLowerCase() === 'all questions')) {
+                listItems.unshift({ name: 'All Questions', order: -Infinity });
+            }
+
+            const customOrder = [
+                'all questions',
+                'introduction',
+                'ultrasonic testing (ut)',
+                'magnetic particle testing (mpt)',
+                'dye penetrant testing (dpt)',
+                'radiographic testing (rt)',
+            ];
+            
+            listItems.sort((a, b) => {
+                const aNameLower = a.name.toLowerCase();
+                const bNameLower = b.name.toLowerCase();
+                const aIndex = customOrder.indexOf(aNameLower);
+                const bIndex = customOrder.indexOf(bNameLower);
+
+                if (aIndex !== -1 && bIndex !== -1) {
+                    return aIndex - bIndex; // Both are in custom order
+                }
+                if (aIndex !== -1) {
+                    return -1; // a is in custom order, b is not
+                }
+                if (bIndex !== -1) {
+                    return 1; // b is in custom order, a is not
+                }
+                // Neither are in custom order, sort alphabetically
+                return a.name.localeCompare(b.name);
+            });
         }
     }
 
