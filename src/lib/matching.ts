@@ -21,6 +21,19 @@ export async function intelligentQuestionMatch(userQuery, dbQuestions) {
   if (!cleanedUserQuery) {
     return { success: false, topMatch: null, alternativeMatches: [] };
   }
+  
+  // Acronym search is synchronous and fast - it's a good first check.
+  const acronymResult = searchAcronym(cleanedUserQuery);
+  if (acronymResult && acronymResult.matchType === 'exact' && cleanedUserQuery.trim().split(/\s+/).length <= 3) {
+      // This is a special case for a direct acronym match. 
+      // We don't have a question, but we can treat the acronym data as a result.
+      // The calling function needs to handle this special 'acronym' type.
+      return {
+          success: true,
+          type: 'acronym',
+          result: { ...acronymResult, acronym: acronymResult.acronym },
+      };
+  }
 
   // Step 2: Calculate similarity score for each question in the database
   const allScores = dbQuestions.map(question => {

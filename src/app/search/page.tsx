@@ -154,37 +154,38 @@ export default function SmartQuestionSearch() {
     }
 
     startTransition(async () => {
-        // Acronym search is synchronous and fast - it's a good first check.
-        const acronymResult = searchAcronym(finalQuery);
-        if (acronymResult && acronymResult.matchType === 'exact' && finalQuery.trim().split(/\s+/).length <= 3) {
-          setResult({
-            type: 'acronym',
-            data: { ...acronymResult, acronym: acronymResult.acronym },
-          });
-          setLoading(false);
-          return;
-        }
-
         if (searchMode === 'ai') {
             await handleAiSearch(finalQuery);
+            setLoading(false);
+            return;
+        }
+
+        const matchResult = await intelligentQuestionMatch(finalQuery, questions);
+
+        // Handle direct acronym match from the matching function
+        if (matchResult.success && matchResult.type === 'acronym') {
+             setResult({
+                type: 'acronym',
+                data: matchResult.result,
+            });
+        }
+        // Hybrid mode logic: if DB match is weak, fallback to AI
+        else if (searchMode === 'hybrid' && (!matchResult.success || !matchResult.topMatch || matchResult.topMatch.totalScore < 75)) {
+            await handleAiSearch(finalQuery);
+        } else if (matchResult.success && matchResult.topMatch) {
+            setResult({ 
+                type: 'question', 
+                source: 'db',
+                topMatch: matchResult.topMatch.question, 
+                alternativeMatch: matchResult.alternativeMatches.length > 0 ? matchResult.alternativeMatches[0].question : null
+            });
         } else {
-            const matchResult = await intelligentQuestionMatch(finalQuery, questions);
-            
-            // Hybrid mode logic: if DB match is weak, fallback to AI
-            if (searchMode === 'hybrid' && (!matchResult.success || !matchResult.topMatch || matchResult.topMatch.totalScore < 75)) {
-                await handleAiSearch(finalQuery);
-            } else if (matchResult.success && matchResult.topMatch) {
-                setResult({ 
-                    type: 'question', 
-                    source: 'db',
-                    topMatch: matchResult.topMatch.question, 
-                    alternativeMatch: matchResult.alternativeMatches.length > 0 ? matchResult.alternativeMatches[0].question : null
-                });
-            } else {
-                setResult({ type: 'not-found' });
-                sendQuestionToAutomation(finalQuery);
+            setResult({ type: 'not-found' });
+            if (searchMode === 'db') { // Only send to automation if we are in DB only mode and fail
+               sendQuestionToAutomation(finalQuery);
             }
         }
+        
         setLoading(false);
     });
   };
