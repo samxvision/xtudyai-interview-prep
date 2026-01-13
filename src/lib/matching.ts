@@ -1,6 +1,8 @@
+
 // @ts-nocheck
 import type { Question } from '@/types';
 import { ENTITY_SEMANTIC_MAP } from './acronyms';
+import { stringSimilarity } from './string-similarity';
 
 // Shared Helper function from Layer 2
 function levenshteinDistance(str1, str2) {
@@ -20,37 +22,6 @@ function levenshteinDistance(str1, str2) {
     }
   }
   return dp[m][n];
-}
-
-
-// Shared string similarity function
-function stringSimilarity(str1, str2) {
-  str1 = str1.replace(/\s+/g, '').toLowerCase();
-  str2 = str2.replace(/\s+/g, '').toLowerCase();
-
-  if (!str1.length && !str2.length) return 1;
-  if (!str1.length || !str2.length) return 0;
-  if (str1 === str2) return 1;
-  if (str1.length < 2 || str2.length < 2) return 0;
-
-  const firstBigrams = new Map();
-  for (let i = 0; i < str1.length - 1; i++) {
-    const bigram = str1.substring(i, i + 2);
-    const count = firstBigrams.has(bigram) ? firstBigrams.get(bigram) + 1 : 1;
-    firstBigrams.set(bigram, count);
-  }
-
-  let intersectionSize = 0;
-  for (let i = 0; i < str2.length - 1; i++) {
-    const bigram = str2.substring(i, i + 2);
-    const count = firstBigrams.has(bigram) ? firstBigrams.get(bigram) : 0;
-    if (count > 0) {
-      firstBigrams.set(bigram, count - 1);
-      intersectionSize++;
-    }
-  }
-
-  return (2.0 * intersectionSize) / (str1.length + str2.length - 2);
 }
 
 
@@ -226,6 +197,110 @@ const QUERY_EXPANSION_MAP = {
   }
 };
 
+const ADVANCED_INTENT_PATTERNS = {
+    DEFINITION: {
+        strongPatterns: [/\b(kya hai|kya hota hai|what is|define)\b/i, /\b(definition|meaning|matlab)\b/i, /\b(explain\s+what\s+is)\b/i, /\b(can\s+you\s+define|please\s+define)\b/i, /\b(what\s+do\s+you\s+mean\s+by)\b/i, /\b(meaning\s+of)\b/i, /\b(ka\s+arth|ka\s+matlab\s+kya)\b/i, /\b(iska\s+matlab\s+kya\s+hai)\b/i, /\b(define\s+karo|define\s+kijiye)\b/i],
+        weakPatterns: [/\b(bataiye|batao|explain|describe)\b/i, /\b(samjhao|samjhaiye|tell\s+me)\b/i, /\b(about|regarding)\b/i, /\b(introduction|intro)\b/i, /\b(basic\s+idea|basic\s+knowledge|basic\s+concept)\b/i, /\b(short\s+note|brief\s+note)\b/i, /\b(overview)\b/i, /\b(yeh\s+kya\s+hai|ye\s+kya\s+hota)\b/i, /\b(iska\s+matlab|uska\s+matlab)\b/i, /\b(iske\s+baare\s+me|uske\s+baare\s+me)\b/i, /\b(kya\s+cheez\s+hai)\b/i],
+        contextualClues: [/\bkya\s+(hai|hota|hoti)\b/i, /\bka\s+matlab\b/i, /\bmeaning\s+of\b/i, /\bdefine\s+/i, /\bwhat\s+is\s+/i, /\bintroduction\s+(of|to)\b/i, /\babout\s+the\b/i, /\bexplain\s+the\s+term\b/i],
+        weight: 50
+    },
+    WORKING: {
+        strongPatterns: [/\b(kaise\s+kaam\s+karta|kaise\s+kaam\s+karti)\b/i, /\b(how\s+it\s+works|how\s+does\s+it\s+work)\b/i, /\b(working\s+principle|operating\s+principle)\b/i, /\b(function\s+kya|kaam\s+kya\s+hai)\b/i, /\b(principle\s+of\s+working|principle\s+of\s+operation)\b/i, /\b(functioning\s+of)\b/i, /\b(mechanism\s+of)\b/i, /\b(kaam\s+kaise\s+karta|kaam\s+kaise\s+karti)\b/i, /\b(operate\s+kaise\s+hota)\b/i],
+        weakPatterns: [/\b(mechanism|logic|concept)\b/i, /\b(work\s+kaise)\b/i, /\b(flow\s+kaise)\b/i, /\b(process\s+behind)\b/i, /\b(system\s+kaise)\b/i, /\b(operate\s+kaise)\b/i, /\b(internal\s+working)\b/i, /\b(andar\s+kaise\s+kaam)\b/i, /\b(kaam\s+karne\s+ka\s+tarika)\b/i, /\b(chalti\s+kaise)\b/i, /\b(kaam\s+karne\s+ki\s+vidhi)\b/i],
+        contextualClues: [/\bkaam\s+(kaise|kya)\b/i, /\bworking\s+principle\b/i, /\bhow\s+it\s+operates\b/i, /\boperate\s+kaise\b/i, /\bflow\s+mechanism\b/i, /\bfunction\s+of\b/i, /\binside\s+working\b/i, /\bhow\s+does\s+this\s+system\b/i],
+        weight: 48
+    },
+    PROCEDURE: {
+        strongPatterns: [/\b(kaise\s+kare|kaise\s+karte|kaise\s+kiya)\b/i, /\b(how\s+to|how\s+do\s+we|how\s+to\s+perform)\b/i, /\b(step\s+by\s+step|stepwise|step\s+wise)\b/i, /\b(procedure|process|method|steps)\b/i, /\b(inspection\s+procedure|testing\s+procedure)\b/i, /\b(repair\s+procedure|installation\s+procedure)\b/i, /\b(cleaning\s+procedure|maintenance\s+procedure)\b/i, /\b(removal\s+procedure|assembly\s+procedure)\b/i, /\b(vidhi|pranali|tarika\s+kya\s+hai)\b/i, /\b(procedure\s+kya\s+hai)\b/i],
+        weakPatterns: [/\b(tarika|tareeka)\b/i, /\b(process\s+samjhao)\b/i, /\b(complete\s+process|full\s+process|puri\s+process)\b/i, /\b(sequence)\b/i, /\b(kaam\s+ka\s+tarika)\b/i, /\b(standard\s+method)\b/i, /\b(start\s+kaise|shuru\s+kaise)\b/i, /\b(kaise\s+shuru\s+kare)\b/i, /\b(pehle\s+kya\s+phir\s+kya)\b/i],
+        contextualClues: [/\bkaise\s+(kare|karte|kiya|karein)\b/i, /\bstep\s+wise\b/i, /\bpehle\s+kya\s+phir\s+kya\b/i, /\bstart\s+to\s+end\b/i, /\bfollow\s+the\s+steps\b/i, /\bprocedure\s+follow\b/i, /\bone\s+by\s+one\b/i, /\bek\s+ek\s+karke\b/i],
+        weight: 40
+    },
+    REPAIR: {
+        strongPatterns: [/\b(repair|fix|thik\s+kar|theek\s+kar)\b/i, /\b(kaise\s+repair|how\s+to\s+repair)\b/i, /\b(rectify|rectification|sudhar)\b/i, /\b(repair\s+kaise|thik\s+kaise)\b/i, /\b(maintenance|maintain\s+kaise)\b/i, /\b(corrective\s+action|remedial\s+action)\b/i, /\b(kaise\s+theek\s+kare|kaise\s+thik\s+ho)\b/i, /\b(sudharna|sudharne\s+ka\s+tarika)\b/i, /\b(repair\s+karenge|fix\s+karenge)\b/i],
+        weakPatterns: [/\b(resolve|solve|solution)\b/i, /\b(restore|restoration)\b/i, /\b(overhaul|rework)\b/i, /\b(rebuild|refurbish)\b/i, /\b(ठीक\s+karna|ठीक\s+kare)\b/i, /\b(maintenance\s+ka\s+tarika)\b/i],
+        contextualClues: [/\brepair\s+(method|procedure|process)\b/i, /\bthik\s+(kare|karna|karein)\b/i, /\bkaise\s+theek\b/i, /\bfix\s+kaise\b/i, /\bsudhar\s+(kaise|kare)\b/i, /\brepair\s+karna\b/i],
+        weight: 45
+    },
+    PROBLEM: {
+        strongPatterns: [/\b(problem|issue|fault|failure)\b/i, /\b(kharab|damage|defect|galti)\b/i, /\b(leak|leakage|crack|corrosion)\b/i, /\b(fail\s+ho|kharab\s+ho|damage\s+ho)\b/i, /\b(not\s+working|work\s+nahi\s+kar\s+raha)\b/i, /\b(kharabi|खराबी|problem\s+aa\s+raha)\b/i, /\b(issue\s+aa\s+rahi)\b/i],
+        weakPatterns: [/\b(breakdown|malfunction)\b/i, /\b(abnormal|unusual)\b/i, /\b(deterioration|degradation)\b/i, /\b(wear|erosion|pitting)\b/i, /\b(kharab\s+hona|damage\s+hona)\b/i, /\b(galti\s+hona)\b/i],
+        contextualClues: [/\bkharab\s+(ho|hai|hota)\b/i, /\bproblem\s+(aa|hai)\b/i, /\bissue\s+(hai|aa)\b/i, /\bfailure\s+of\b/i, /\bdamage\s+(in|to)\b/i, /\bdefect\s+in\b/i],
+        weight: 35
+    },
+    IDENTIFICATION: {
+        strongPatterns: [/\b(identify|identification|pehchan)\b/i, /\b(kaise\s+pata|how\s+to\s+identify)\b/i, /\b(inspect|inspection|check|examine)\b/i, /\b(detect|detection|find)\b/i, /\b(kaise\s+check|kaise\s+inspect)\b/i, /\b(verify|verification)\b/i, /\b(kaise\s+dekhte|kaise\s+dekhe|kaise\s+pata\s+kare)\b/i, /\b(pehchan\s+kaise)\b/i],
+        weakPatterns: [/\b(recognition|locate|location)\b/i, /\b(testing|test\s+kaise)\b/i, /\b(measurement|measure)\b/i, /\b(dekhna|dekhte|check\s+karna)\b/i, /\b(pata\s+lagana|pata\s+lagaye)\b/i],
+        contextualClues: [/\bkaise\s+(pata|check|detect|identify)\b/i, /\binspect\s+kaise\b/i, /\bhow\s+to\s+(identify|detect|inspect)\b/i, /\bcheck\s+(kare|karna)\b/i, /\bpehchan\s+(kaise|kare)\b/i],
+        weight: 30
+    },
+    DECISION: {
+        strongPatterns: [/\b(acceptable|acceptance\s+criteria|accept)\b/i, /\b(reject|rejection\s+criteria|rejection\s+limit)\b/i, /\b(pass|fail|pass\s+or\s+fail)\b/i, /\b(limit|allowable\s+limit|tolerance\s+limit)\b/i, /\b(as\s+per\s+code|as\s+per\s+standard|code\s+requirement)\b/i, /\b(acceptable\s+hai\s+ya\s+nahi|chal\s+jayega\s+ya\s+nahi)\b/i, /\b(use\s+kar\s+sakte\s+ya\s+nahi)\b/i, /\b(standard\s+ke\s+according|code\s+ke\s+hisab\s+se)\b/i],
+        weakPatterns: [/\b(criteria|requirement|specification)\b/i, /\b(allowable|permissible|maximum|minimum)\b/i, /\b(tolerance|threshold)\b/i, /\b(limit\s+kya\s+hai|kitna\s+allowable)\b/i],
+        contextualClues: [/\bacceptable\s+(hai|limit|range)\b/i, /\brejection\s+(criteria|limit)\b/i, /\bas\s+per\s+(code|standard|asme|api)\b/i, /\bpass\s+or\s+fail\b/i, /\bchal\s+jayega\b/i, /\buse\s+kar\s+sakte\b/i],
+        weight: 32
+    },
+    COMPARISON: {
+        strongPatterns: [/\b(difference\s+between|farak\s+kya)\b/i, /\b(compare|comparison|versus|vs)\b/i, /\b(which\s+is\s+better|konsa\s+better)\b/i, /\b(advantage|disadvantage|pros\s+and\s+cons)\b/i, /\b(benefit|limitation|drawback)\b/i, /\b(konsa\s+best|which\s+one\s+is\s+better)\b/i, /\b(kisme\s+farak|kya\s+difference)\b/i],
+        weakPatterns: [/\b(better\s+than|worse\s+than)\b/i, /\b(selection\s+criteria|choose|choice)\b/i, /\b(preference|prefer)\b/i, /\b(best\s+kaun|acha\s+kaun)\b/i],
+        contextualClues: [/\bdifference\s+between\b/i, /\bcompare\s+(with|to)\b/i, /\bvs\s+/i, /\bversus\s+/i, /\bkonsa\s+(better|best|acha)\b/i, /\bfarak\s+(kya|hai)\b/i],
+        weight: 28
+    },
+    APPLICATION: {
+        strongPatterns: [/\b(use|usage|application)\b/i, /\b(kaha\s+use\s+hota|where\s+used|where\s+is\s+it\s+used)\b/i, /\b(purpose|function|role)\b/i, /\b(kis\s+liye|kyu\s+use)\b/i, /\b(used\s+for|used\s+in)\b/i, /\b(kaha\s+lagta|kaha\s+use\s+karte)\b/i, /\b(upyog|istemal)\b/i],
+        weakPatterns: [/\b(practical\s+use|real\s+world\s+use)\b/i, /\b(industry\s+use|plant\s+use)\b/i, /\b(field\s+use)\b/i, /\b(lagta\s+kaha|use\s+hota\s+kaise)\b/i],
+        contextualClues: [/\bkaha\s+(use|lagta|istemal)\b/i, /\bwhere\s+(used|is\s+it\s+used)\b/i, /\bused\s+(for|in)\b/i, /\bpurpose\s+of\b/i, /\bfunction\s+of\b/i, /\bkis\s+liye\b/i],
+        weight: 26
+    },
+    TYPES: {
+        strongPatterns: [/\b(types|types\s+of|kitne\s+type)\b/i, /\b(classification|categories|kinds)\b/i, /\b(prakar|kya\s+kya\s+types)\b/i, /\b(varieties|how\s+many\s+types)\b/i, /\b(different\s+types)\b/i, /\b(kitne\s+prakar|kitni\s+category)\b/i],
+        weakPatterns: [/\b(category|class)\b/i, /\b(variant|version)\b/i, /\b(kitne\s+hote|kya\s+kya\s+hote)\b/i],
+        contextualClues: [/\btypes\s+of\b/i, /\bhow\s+many\s+types\b/i, /\bkitne\s+(type|prakar)\b/i, /\bclassification\s+of\b/i, /\bkya\s+kya\s+types\b/i],
+        weight: 38
+    },
+    CAUSES: {
+        strongPatterns: [/\b(reason|cause|causes|why)\b/i, /\b(kyu\s+hota|kyun\s+hota|karan)\b/i, /\b(why\s+does\s+it\s+happen|root\s+cause)\b/i, /\b(wajah|kaaran)\b/i, /\b(kyu\s+ho\s+jata|kyun\s+aa\s+jata)\b/i],
+        weakPatterns: [/\b(because|due\s+to)\b/i, /\b(factor|source)\b/i, /\b(kaise\s+hota|kaise\s+ho\s+jata)\b/i],
+        contextualClues: [/\bwhy\s+(does|is)\b/i, /\breason\s+(for|of)\b/i, /\bkyu\s+(hota|hai)\b/i, /\bcause\s+of\b/i, /\bkaran\s+kya\b/i],
+        weight: 33
+    },
+    SAFETY: {
+        strongPatterns: [/\b(safety|precaution|risk|hazard)\b/i, /\b(danger|safety\s+measure|safety\s+precaution)\b/i, /\b(risk\s+involved|precaution\s+lena)\b/i, /\b(safe\s+hai\s+ya\s+nahi)\b/i, /\b(suraksha|kya\s+risk\s+hai)\b/i],
+        weakPatterns: [/\b(unsafe|unsafe\s+condition)\b/i, /\b(safe\s+practice|safe\s+procedure)\b/i, /\b(safety\s+ke\s+liye|risk\s+kya)\b/i],
+        contextualClues: [/\bsafety\s+(measure|precaution|risk)\b/i, /\brisk\s+(involved|hai)\b/i, /\bprecaution\s+(lena|kare)\b/i, /\bhazard\s+of\b/i],
+        weight: 25
+    },
+    COST_TIME: {
+        strongPatterns: [/\b(cost|expense|kharcha|kitna\s+paisa)\b/i, /\b(time\s+lagega|kitna\s+time|duration)\b/i, /\b(downtime|budget|economical)\b/i, /\b(feasible|practical\s+hai|possible\s+hai)\b/i, /\b(viable)\b/i],
+        weakPatterns: [/\b(affordable|cheap|expensive)\b/i, /\b(quick|fast|slow)\b/i, /\b(jaldi\s+hoga|time\s+kitna)\b/i],
+        contextualClues: [/\bcost\s+of\b/i, /\bhow\s+much\s+(time|cost)\b/i, /\bkitna\s+(time|paisa)\b/i, /\beconomical\s+hai\b/i],
+        weight: 22
+    },
+    REPORTING: {
+        strongPatterns: [/\b(report|reporting|format)\b/i, /\b(kaise\s+likhe|kaise\s+banaye|how\s+to\s+write)\b/i, /\b(documentation|record)\b/i, /\b(inspection\s+report|repair\s+report|ndt\s+report)\b/i, /\b(report\s+kaise\s+banaye|observation\s+kaise\s+likhe)\b/i, /\b(remark\s+kaise\s+likhe|comment\s+kaise\s+likhe)\b/i],
+        weakPatterns: [/\b(document|paperwork)\b/i, /\b(form|template)\b/i, /\b(kaise\s+fill\s+kare|format\s+kya)\b/i],
+        contextualClues: [/\breport\s+(format|kaise|banaye)\b/i, /\bhow\s+to\s+write\s+report\b/i, /\bdocumentation\s+(process|kaise)\b/i, /\bkaise\s+(likhe|banaye)\b/i],
+        weight: 24
+    }
+};
+
+const CONTEXT_PATTERNS = {
+    IF_DAMAGED: { patterns: [/\b(agar\s+kharab|if\s+damaged|if\s+broken)\b/i, /\b(agar\s+damage|agar\s+fail|if\s+fail)\b/i, /\b(kharab\s+ho\s+jaye|damage\s+ho\s+jaye)\b/i, /\b(kharab\s+ho\s+gaya|damage\s+ho\s+gaya)\b/i, /\b(fail\s+ho\s+jaye)\b/i], modifier: "CONDITIONAL_DAMAGE" },
+    IF_LEAK: { patterns: [/\b(agar\s+leak|if\s+leak|if\s+leaking)\b/i, /\b(leak\s+ho\s+jaye|leakage\s+ho)\b/i, /\b(leak\s+aa\s+jaye|leak\s+aa\s+gaya)\b/i], modifier: "CONDITIONAL_LEAK" },
+    IF_CRACK: { patterns: [/\b(agar\s+crack|if\s+crack)\b/i, /\b(crack\s+aa\s+jaye|crack\s+ho\s+jaye)\b/i, /\b(crack\s+dikhe)\b/i], modifier: "CONDITIONAL_CRACK" },
+    DURING_OPERATION: { patterns: [/\b(operation\s+mein|during\s+operation)\b/i, /\b(running\s+mein|during\s+running)\b/i, /\b(chalne\s+par|chalte\s+samay)\b/i, /\b(service\s+mein|in\s+service)\b/i, /\b(working\s+condition)\b/i], modifier: "DURING_OPERATION" },
+    DURING_SHUTDOWN: { patterns: [/\b(shutdown\s+mein|during\s+shutdown)\b/i, /\b(turnaround\s+mein|ta\s+mein)\b/i, /\b(outage\s+mein|plant\s+shutdown)\b/i, /\b(band\s+hone\s+par|shutdown\s+ke\s+time)\b/i], modifier: "DURING_SHUTDOWN" },
+    BEFORE_INSTALL: { patterns: [/\b(installation\s+se\s+pehle|before\s+installation)\b/i, /\b(lagane\s+se\s+pehle|before\s+fitting)\b/i, /\b(assembly\s+se\s+pehle)\b/i, /\b(pehle|before)\b/i], modifier: "BEFORE_INSTALLATION" },
+    AFTER_INSTALL: { patterns: [/\b(installation\s+ke\s+baad|after\s+installation)\b/i, /\b(lagane\s+ke\s+baad|after\s+fitting)\b/i, /\b(assembly\s+ke\s+baad)\b/i, /\b(baad\s+mein|after)\b/i], modifier: "AFTER_INSTALLATION" },
+    PRE_CLEANING: { patterns: [/\b(pre\s+cleaning|cleaning\s+se\s+pehle)\b/i, /\b(before\s+cleaning|saaf\s+karne\s+se\s+pehle)\b/i, /\b(pre\s+inspection)\b/i], modifier: "PRE_CLEANING" },
+    POST_CLEANING: { patterns: [/\b(post\s+cleaning|cleaning\s+ke\s+baad)\b/i, /\b(after\s+cleaning|saaf\s+karne\s+ke\s+baad)\b/i, /\b(post\s+inspection)\b/i], modifier: "POST_CLEANING" },
+    PRE_SHUTDOWN: { patterns: [/\b(pre\s+shutdown|shutdown\s+se\s+pehle)\b/i, /\b(before\s+shutdown)\b/i, /\b(band\s+karne\s+se\s+pehle)\b/i], modifier: "PRE_SHUTDOWN" },
+    POST_SHUTDOWN: { patterns: [/\b(post\s+shutdown|shutdown\s+ke\s+baad)\b/i, /\b(after\s+shutdown)\b/i, /\b(band\s+karne\s+ke\s+baad)\b/i], modifier: "POST_SHUTDOWN" },
+    WHEN_NEW: { patterns: [/\b(naya|new|fresh)\b/i, /\b(first\s+time|pehli\s+baar)\b/i, /\b(commissioning\s+time)\b/i], modifier: "WHEN_NEW" },
+    WHEN_OLD: { patterns: [/\b(purana|old|aged)\b/i, /\b(long\s+service|bahut\s+time\s+se)\b/i, /\b(deteriorated)\b/i], modifier: "WHEN_OLD" },
+    REGULAR: { patterns: [/\b(regular|routine|daily)\b/i, /\b(har\s+baar|har\s+din|regular)\b/i, /\b(normally|usually)\b/i], modifier: "REGULAR_CHECK" },
+    FIRST_TIME: { patterns: [/\b(first\s+time|pehli\s+baar)\b/i, /\b(initially|pehle)\b/i, /\b(baseline)\b/i], modifier: "FIRST_TIME" }
+};
 
 function deepClean(text) {
   let cleaned = text.toLowerCase().trim();
@@ -353,22 +428,6 @@ function intelligentExpansion(cleaned) {
   };
 }
 
-function layer1Processing(userQuery) {
-  const cleaned = deepClean(userQuery);
-  const expansionResult = intelligentExpansion(cleaned);
-  return {
-    original: userQuery,
-    cleaned: cleaned,
-    expansions: expansionResult.expansions,
-    expansionLog: expansionResult.log
-  };
-}
-
-
-// ##################################################################
-// #  LAYER 2: ADVANCED SEMANTIC ENTITY RESOLUTION
-// ##################################################################
-
 function resolveEntity(text) {
   const resolvedEntities = [];
   const textLower = text.toLowerCase();
@@ -484,98 +543,6 @@ function resolveEntity(text) {
   };
 }
 
-
-// ##################################################################
-// #  LAYER 3: ADVANCED MULTI-INTENT DETECTION
-// ##################################################################
-
-const ADVANCED_INTENT_PATTERNS = {
-    DEFINITION: {
-        strongPatterns: [/\b(kya hai|kya hota hai|what is|define)\b/i, /\b(definition|meaning|matlab)\b/i, /\b(explain\s+what\s+is)\b/i, /\b(can\s+you\s+define|please\s+define)\b/i, /\b(what\s+do\s+you\s+mean\s+by)\b/i, /\b(meaning\s+of)\b/i, /\b(ka\s+arth|ka\s+matlab\s+kya)\b/i, /\b(iska\s+matlab\s+kya\s+hai)\b/i, /\b(define\s+karo|define\s+kijiye)\b/i],
-        weakPatterns: [/\b(bataiye|batao|explain|describe)\b/i, /\b(samjhao|samjhaiye|tell\s+me)\b/i, /\b(about|regarding)\b/i, /\b(introduction|intro)\b/i, /\b(basic\s+idea|basic\s+knowledge|basic\s+concept)\b/i, /\b(short\s+note|brief\s+note)\b/i, /\b(overview)\b/i, /\b(yeh\s+kya\s+hai|ye\s+kya\s+hota)\b/i, /\b(iska\s+matlab|uska\s+matlab)\b/i, /\b(iske\s+baare\s+me|uske\s+baare\s+me)\b/i, /\b(kya\s+cheez\s+hai)\b/i],
-        contextualClues: [/\bkya\s+(hai|hota|hoti)\b/i, /\bka\s+matlab\b/i, /\bmeaning\s+of\b/i, /\bdefine\s+/i, /\bwhat\s+is\s+/i, /\bintroduction\s+(of|to)\b/i, /\babout\s+the\b/i, /\bexplain\s+the\s+term\b/i],
-        weight: 50
-    },
-    WORKING: {
-        strongPatterns: [/\b(kaise\s+kaam\s+karta|kaise\s+kaam\s+karti)\b/i, /\b(how\s+it\s+works|how\s+does\s+it\s+work)\b/i, /\b(working\s+principle|operating\s+principle)\b/i, /\b(function\s+kya|kaam\s+kya\s+hai)\b/i, /\b(principle\s+of\s+working|principle\s+of\s+operation)\b/i, /\b(functioning\s+of)\b/i, /\b(mechanism\s+of)\b/i, /\b(kaam\s+kaise\s+karta|kaam\s+kaise\s+karti)\b/i, /\b(operate\s+kaise\s+hota)\b/i],
-        weakPatterns: [/\b(mechanism|logic|concept)\b/i, /\b(work\s+kaise)\b/i, /\b(flow\s+kaise)\b/i, /\b(process\s+behind)\b/i, /\b(system\s+kaise)\b/i, /\b(operate\s+kaise)\b/i, /\b(internal\s+working)\b/i, /\b(andar\s+kaise\s+kaam)\b/i, /\b(kaam\s+karne\s+ka\s+tarika)\b/i, /\b(chalti\s+kaise)\b/i, /\b(kaam\s+karne\s+ki\s+vidhi)\b/i],
-        contextualClues: [/\bkaam\s+(kaise|kya)\b/i, /\bworking\s+principle\b/i, /\bhow\s+it\s+operates\b/i, /\boperate\s+kaise\b/i, /\bflow\s+mechanism\b/i, /\bfunction\s+of\b/i, /\binside\s+working\b/i, /\bhow\s+does\s+this\s+system\b/i],
-        weight: 48
-    },
-    PROCEDURE: {
-        strongPatterns: [/\b(kaise\s+kare|kaise\s+karte|kaise\s+kiya)\b/i, /\b(how\s+to|how\s+do\s+we|how\s+to\s+perform)\b/i, /\b(step\s+by\s+step|stepwise|step\s+wise)\b/i, /\b(procedure|process|method|steps)\b/i, /\b(inspection\s+procedure|testing\s+procedure)\b/i, /\b(repair\s+procedure|installation\s+procedure)\b/i, /\b(cleaning\s+procedure|maintenance\s+procedure)\b/i, /\b(removal\s+procedure|assembly\s+procedure)\b/i, /\b(vidhi|pranali|tarika\s+kya\s+hai)\b/i, /\b(procedure\s+kya\s+hai)\b/i],
-        weakPatterns: [/\b(tarika|tareeka)\b/i, /\b(process\s+samjhao)\b/i, /\b(complete\s+process|full\s+process|puri\s+process)\b/i, /\b(sequence)\b/i, /\b(kaam\s+ka\s+tarika)\b/i, /\b(standard\s+method)\b/i, /\b(start\s+kaise|shuru\s+kaise)\b/i, /\b(kaise\s+shuru\s+kare)\b/i, /\b(pehle\s+kya\s+phir\s+kya)\b/i],
-        contextualClues: [/\bkaise\s+(kare|karte|kiya|karein)\b/i, /\bstep\s+wise\b/i, /\bpehle\s+kya\s+phir\s+kya\b/i, /\bstart\s+to\s+end\b/i, /\bfollow\s+the\s+steps\b/i, /\bprocedure\s+follow\b/i, /\bone\s+by\s+one\b/i, /\bek\s+ek\s+karke\b/i],
-        weight: 40
-    },
-    REPAIR: {
-        strongPatterns: [/\b(repair|fix|thik\s+kar|theek\s+kar)\b/i, /\b(kaise\s+repair|how\s+to\s+repair)\b/i, /\b(rectify|rectification|sudhar)\b/i, /\b(repair\s+kaise|thik\s+kaise)\b/i, /\b(maintenance|maintain\s+kaise)\b/i, /\b(corrective\s+action|remedial\s+action)\b/i, /\b(kaise\s+theek\s+kare|kaise\s+thik\s+ho)\b/i, /\b(sudharna|sudharne\s+ka\s+tarika)\b/i, /\b(repair\s+karenge|fix\s+karenge)\b/i],
-        weakPatterns: [/\b(resolve|solve|solution)\b/i, /\b(restore|restoration)\b/i, /\b(overhaul|rework)\b/i, /\b(rebuild|refurbish)\b/i, /\b(ठीक\s+karna|ठीक\s+kare)\b/i, /\b(maintenance\s+ka\s+tarika)\b/i],
-        contextualClues: [/\brepair\s+(method|procedure|process)\b/i, /\bthik\s+(kare|karna|karein)\b/i, /\bkaise\s+theek\b/i, /\bfix\s+kaise\b/i, /\bsudhar\s+(kaise|kare)\b/i, /\brepair\s+karna\b/i],
-        weight: 45
-    },
-    PROBLEM: {
-        strongPatterns: [/\b(problem|issue|fault|failure)\b/i, /\b(kharab|damage|defect|galti)\b/i, /\b(leak|leakage|crack|corrosion)\b/i, /\b(fail\s+ho|kharab\s+ho|damage\s+ho)\b/i, /\b(not\s+working|work\s+nahi\s+kar\s+raha)\b/i, /\b(kharabi|खराबी|problem\s+aa\s+raha)\b/i, /\b(issue\s+aa\s+rahi)\b/i],
-        weakPatterns: [/\b(breakdown|malfunction)\b/i, /\b(abnormal|unusual)\b/i, /\b(deterioration|degradation)\b/i, /\b(wear|erosion|pitting)\b/i, /\b(kharab\s+hona|damage\s+hona)\b/i, /\b(galti\s+hona)\b/i],
-        contextualClues: [/\bkharab\s+(ho|hai|hota)\b/i, /\bproblem\s+(aa|hai)\b/i, /\bissue\s+(hai|aa)\b/i, /\bfailure\s+of\b/i, /\bdamage\s+(in|to)\b/i, /\bdefect\s+in\b/i],
-        weight: 35
-    },
-    IDENTIFICATION: {
-        strongPatterns: [/\b(identify|identification|pehchan)\b/i, /\b(kaise\s+pata|how\s+to\s+identify)\b/i, /\b(inspect|inspection|check|examine)\b/i, /\b(detect|detection|find)\b/i, /\b(kaise\s+check|kaise\s+inspect)\b/i, /\b(verify|verification)\b/i, /\b(kaise\s+dekhte|kaise\s+dekhe|kaise\s+pata\s+kare)\b/i, /\b(pehchan\s+kaise)\b/i],
-        weakPatterns: [/\b(recognition|locate|location)\b/i, /\b(testing|test\s+kaise)\b/i, /\b(measurement|measure)\b/i, /\b(dekhna|dekhte|check\s+karna)\b/i, /\b(pata\s+lagana|pata\s+lagaye)\b/i],
-        contextualClues: [/\bkaise\s+(pata|check|detect|identify)\b/i, /\binspect\s+kaise\b/i, /\bhow\s+to\s+(identify|detect|inspect)\b/i, /\bcheck\s+(kare|karna)\b/i, /\bpehchan\s+(kaise|kare)\b/i],
-        weight: 30
-    },
-    DECISION: {
-        strongPatterns: [/\b(acceptable|acceptance\s+criteria|accept)\b/i, /\b(reject|rejection\s+criteria|rejection\s+limit)\b/i, /\b(pass|fail|pass\s+or\s+fail)\b/i, /\b(limit|allowable\s+limit|tolerance\s+limit)\b/i, /\b(as\s+per\s+code|as\s+per\s+standard|code\s+requirement)\b/i, /\b(acceptable\s+hai\s+ya\s+nahi|chal\s+jayega\s+ya\s+nahi)\b/i, /\b(use\s+kar\s+sakte\s+ya\s+nahi)\b/i, /\b(standard\s+ke\s+according|code\s+ke\s+hisab\s+se)\b/i],
-        weakPatterns: [/\b(criteria|requirement|specification)\b/i, /\b(allowable|permissible|maximum|minimum)\b/i, /\b(tolerance|threshold)\b/i, /\b(limit\s+kya\s+hai|kitna\s+allowable)\b/i],
-        contextualClues: [/\bacceptable\s+(hai|limit|range)\b/i, /\brejection\s+(criteria|limit)\b/i, /\bas\s+per\s+(code|standard|asme|api)\b/i, /\bpass\s+or\s+fail\b/i, /\bchal\s+jayega\b/i, /\buse\s+kar\s+sakte\b/i],
-        weight: 32
-    },
-    COMPARISON: {
-        strongPatterns: [/\b(difference\s+between|farak\s+kya)\b/i, /\b(compare|comparison|versus|vs)\b/i, /\b(which\s+is\s+better|konsa\s+better)\b/i, /\b(advantage|disadvantage|pros\s+and\s+cons)\b/i, /\b(benefit|limitation|drawback)\b/i, /\b(konsa\s+best|which\s+one\s+is\s+better)\b/i, /\b(kisme\s+farak|kya\s+difference)\b/i],
-        weakPatterns: [/\b(better\s+than|worse\s+than)\b/i, /\b(selection\s+criteria|choose|choice)\b/i, /\b(preference|prefer)\b/i, /\b(best\s+kaun|acha\s+kaun)\b/i],
-        contextualClues: [/\bdifference\s+between\b/i, /\bcompare\s+(with|to)\b/i, /\bvs\s+/i, /\bversus\s+/i, /\bkonsa\s+(better|best|acha)\b/i, /\bfarak\s+(kya|hai)\b/i],
-        weight: 28
-    },
-    APPLICATION: {
-        strongPatterns: [/\b(use|usage|application)\b/i, /\b(kaha\s+use\s+hota|where\s+used|where\s+is\s+it\s+used)\b/i, /\b(purpose|function|role)\b/i, /\b(kis\s+liye|kyu\s+use)\b/i, /\b(used\s+for|used\s+in)\b/i, /\b(kaha\s+lagta|kaha\s+use\s+karte)\b/i, /\b(upyog|istemal)\b/i],
-        weakPatterns: [/\b(practical\s+use|real\s+world\s+use)\b/i, /\b(industry\s+use|plant\s+use)\b/i, /\b(field\s+use)\b/i, /\b(lagta\s+kaha|use\s+hota\s+kaise)\b/i],
-        contextualClues: [/\bkaha\s+(use|lagta|istemal)\b/i, /\bwhere\s+(used|is\s+it\s+used)\b/i, /\bused\s+(for|in)\b/i, /\bpurpose\s+of\b/i, /\bfunction\s+of\b/i, /\bkis\s+liye\b/i],
-        weight: 26
-    },
-    TYPES: {
-        strongPatterns: [/\b(types|types\s+of|kitne\s+type)\b/i, /\b(classification|categories|kinds)\b/i, /\b(prakar|kya\s+kya\s+types)\b/i, /\b(varieties|how\s+many\s+types)\b/i, /\b(different\s+types)\b/i, /\b(kitne\s+prakar|kitni\s+category)\b/i],
-        weakPatterns: [/\b(category|class)\b/i, /\b(variant|version)\b/i, /\b(kitne\s+hote|kya\s+kya\s+hote)\b/i],
-        contextualClues: [/\btypes\s+of\b/i, /\bhow\s+many\s+types\b/i, /\bkitne\s+(type|prakar)\b/i, /\bclassification\s+of\b/i, /\bkya\s+kya\s+types\b/i],
-        weight: 38
-    },
-    CAUSES: {
-        strongPatterns: [/\b(reason|cause|causes|why)\b/i, /\b(kyu\s+hota|kyun\s+hota|karan)\b/i, /\b(why\s+does\s+it\s+happen|root\s+cause)\b/i, /\b(wajah|kaaran)\b/i, /\b(kyu\s+ho\s+jata|kyun\s+aa\s+jata)\b/i],
-        weakPatterns: [/\b(because|due\s+to)\b/i, /\b(factor|source)\b/i, /\b(kaise\s+hota|kaise\s+ho\s+jata)\b/i],
-        contextualClues: [/\bwhy\s+(does|is)\b/i, /\breason\s+(for|of)\b/i, /\bkyu\s+(hota|hai)\b/i, /\bcause\s+of\b/i, /\bkaran\s+kya\b/i],
-        weight: 33
-    },
-    SAFETY: {
-        strongPatterns: [/\b(safety|precaution|risk|hazard)\b/i, /\b(danger|safety\s+measure|safety\s+precaution)\b/i, /\b(risk\s+involved|precaution\s+lena)\b/i, /\b(safe\s+hai\s+ya\s+nahi)\b/i, /\b(suraksha|kya\s+risk\s+hai)\b/i],
-        weakPatterns: [/\b(unsafe|unsafe\s+condition)\b/i, /\b(safe\s+practice|safe\s+procedure)\b/i, /\b(safety\s+ke\s+liye|risk\s+kya)\b/i],
-        contextualClues: [/\bsafety\s+(measure|precaution|risk)\b/i, /\brisk\s+(involved|hai)\b/i, /\bprecaution\s+(lena|kare)\b/i, /\bhazard\s+of\b/i],
-        weight: 25
-    },
-    COST_TIME: {
-        strongPatterns: [/\b(cost|expense|kharcha|kitna\s+paisa)\b/i, /\b(time\s+lagega|kitna\s+time|duration)\b/i, /\b(downtime|budget|economical)\b/i, /\b(feasible|practical\s+hai|possible\s+hai)\b/i, /\b(viable)\b/i],
-        weakPatterns: [/\b(affordable|cheap|expensive)\b/i, /\b(quick|fast|slow)\b/i, /\b(jaldi\s+hoga|time\s+kitna)\b/i],
-        contextualClues: [/\bcost\s+of\b/i, /\bhow\s+much\s+(time|cost)\b/i, /\bkitna\s+(time|paisa)\b/i, /\beconomical\s+hai\b/i],
-        weight: 22
-    },
-    REPORTING: {
-        strongPatterns: [/\b(report|reporting|format)\b/i, /\b(kaise\s+likhe|kaise\s+banaye|how\s+to\s+write)\b/i, /\b(documentation|record)\b/i, /\b(inspection\s+report|repair\s+report|ndt\s+report)\b/i, /\b(report\s+kaise\s+banaye|observation\s+kaise\s+likhe)\b/i, /\b(remark\s+kaise\s+likhe|comment\s+kaise\s+likhe)\b/i],
-        weakPatterns: [/\b(document|paperwork)\b/i, /\b(form|template)\b/i, /\b(kaise\s+fill\s+kare|format\s+kya)\b/i],
-        contextualClues: [/\breport\s+(format|kaise|banaye)\b/i, /\bhow\s+to\s+write\s+report\b/i, /\bdocumentation\s+(process|kaise)\b/i, /\bkaise\s+(likhe|banaye)\b/i],
-        weight: 24
-    }
-};
-
 function detectIntentWithConfidence(text) {
   const detectedIntents = [];
   const cleanedText = text.toLowerCase();
@@ -630,7 +597,11 @@ function detectIntentWithConfidence(text) {
 
 function resolveIntentConflicts(detectedIntents) {
   if (!detectedIntents || detectedIntents.length === 0) {
-    return { finalIntent: null, supportingIntents: [], confidence: 0 };
+    return {
+      finalIntent: null,
+      supportingIntents: [],
+      confidence: 0
+    };
   }
   const filtered = detectedIntents.filter(i => i.intent !== 'PROBLEM');
   const problemIntent = detectedIntents.find(i => i.intent === 'PROBLEM');
@@ -663,28 +634,6 @@ function resolveIntentConflicts(detectedIntents) {
     intentCombination: [primaryIntent.intent, ...supportingIntents.map(i => i.intent)].join(' + ')
   };
 }
-
-// ##################################################################
-// #  LAYER 4, 5, 6, 7: MATCHING, SCORING, AND ROUTING
-// ##################################################################
-
-const CONTEXT_PATTERNS = {
-    IF_DAMAGED: { patterns: [/\b(agar\s+kharab|if\s+damaged|if\s+broken)\b/i, /\b(agar\s+damage|agar\s+fail|if\s+fail)\b/i, /\b(kharab\s+ho\s+jaye|damage\s+ho\s+jaye)\b/i, /\b(kharab\s+ho\s+gaya|damage\s+ho\s+gaya)\b/i, /\b(fail\s+ho\s+jaye)\b/i], modifier: "CONDITIONAL_DAMAGE" },
-    IF_LEAK: { patterns: [/\b(agar\s+leak|if\s+leak|if\s+leaking)\b/i, /\b(leak\s+ho\s+jaye|leakage\s+ho)\b/i, /\b(leak\s+aa\s+jaye|leak\s+aa\s+gaya)\b/i], modifier: "CONDITIONAL_LEAK" },
-    IF_CRACK: { patterns: [/\b(agar\s+crack|if\s+crack)\b/i, /\b(crack\s+aa\s+jaye|crack\s+ho\s+jaye)\b/i, /\b(crack\s+dikhe)\b/i], modifier: "CONDITIONAL_CRACK" },
-    DURING_OPERATION: { patterns: [/\b(operation\s+mein|during\s+operation)\b/i, /\b(running\s+mein|during\s+running)\b/i, /\b(chalne\s+par|chalte\s+samay)\b/i, /\b(service\s+mein|in\s+service)\b/i, /\b(working\s+condition)\b/i], modifier: "DURING_OPERATION" },
-    DURING_SHUTDOWN: { patterns: [/\b(shutdown\s+mein|during\s+shutdown)\b/i, /\b(turnaround\s+mein|ta\s+mein)\b/i, /\b(outage\s+mein|plant\s+shutdown)\b/i, /\b(band\s+hone\s+par|shutdown\s+ke\s+time)\b/i], modifier: "DURING_SHUTDOWN" },
-    BEFORE_INSTALL: { patterns: [/\b(installation\s+se\s+pehle|before\s+installation)\b/i, /\b(lagane\s+se\s+pehle|before\s+fitting)\b/i, /\b(assembly\s+se\s+pehle)\b/i, /\b(pehle|before)\b/i], modifier: "BEFORE_INSTALLATION" },
-    AFTER_INSTALL: { patterns: [/\b(installation\s+ke\s+baad|after\s+installation)\b/i, /\b(lagane\s+ke\s+baad|after\s+fitting)\b/i, /\b(assembly\s+ke\s+baad)\b/i, /\b(baad\s+mein|after)\b/i], modifier: "AFTER_INSTALLATION" },
-    PRE_CLEANING: { patterns: [/\b(pre\s+cleaning|cleaning\s+se\s+pehle)\b/i, /\b(before\s+cleaning|saaf\s+karne\s+se\s+pehle)\b/i, /\b(pre\s+inspection)\b/i], modifier: "PRE_CLEANING" },
-    POST_CLEANING: { patterns: [/\b(post\s+cleaning|cleaning\s+ke\s+baad)\b/i, /\b(after\s+cleaning|saaf\s+karne\s+ke\s+baad)\b/i, /\b(post\s+inspection)\b/i], modifier: "POST_CLEANING" },
-    PRE_SHUTDOWN: { patterns: [/\b(pre\s+shutdown|shutdown\s+se\s+pehle)\b/i, /\b(before\s+shutdown)\b/i, /\b(band\s+karne\s+se\s+pehle)\b/i], modifier: "PRE_SHUTDOWN" },
-    POST_SHUTDOWN: { patterns: [/\b(post\s+shutdown|shutdown\s+ke\s+baad)\b/i, /\b(after\s+shutdown)\b/i, /\b(band\s+karne\s+ke\s+baad)\b/i], modifier: "POST_SHUTDOWN" },
-    WHEN_NEW: { patterns: [/\b(naya|new|fresh)\b/i, /\b(first\s+time|pehli\s+baar)\b/i, /\b(commissioning\s+time)\b/i], modifier: "WHEN_NEW" },
-    WHEN_OLD: { patterns: [/\b(purana|old|aged)\b/i, /\b(long\s+service|bahut\s+time\s+se)\b/i, /\b(deteriorated)\b/i], modifier: "WHEN_OLD" },
-    REGULAR: { patterns: [/\b(regular|routine|daily)\b/i, /\b(har\s+baar|har\s+din|regular)\b/i, /\b(normally|usually)\b/i], modifier: "REGULAR_CHECK" },
-    FIRST_TIME: { patterns: [/\b(first\s+time|pehli\s+baar)\b/i, /\b(initially|pehle)\b/i, /\b(baseline)\b/i], modifier: "FIRST_TIME" }
-};
 
 function detectContext(text) {
   const cleanedText = text.toLowerCase();
@@ -892,7 +841,6 @@ function contextualBoost(matchResult, userQuery, dbQuestion) {
 
 /**
  * Expands acronyms in a query string based on the ENTITY_SEMANTIC_MAP.
- * Example: "what is dpt" -> "what is dye penetrant test"
  * @param {string} query The user's search query.
  * @returns {string} The query with acronyms expanded.
  */
@@ -903,7 +851,6 @@ function expandAcronyms(query) {
     for (const word of words) {
         for (const entity of Object.values(ENTITY_SEMANTIC_MAP)) {
             if (entity.abbreviations.includes(word)) {
-                // Replace the abbreviation with the first core term
                 const acronymRegex = new RegExp(`\\b${word}\\b`, 'gi');
                 expandedQuery = expandedQuery.replace(acronymRegex, entity.coreTerms[0]);
             }
@@ -949,8 +896,6 @@ export async function intelligentQuestionMatch(userQuery, dbQuestions) {
   const processingTime = Date.now() - startTime;
 
   if (qualifiedMatches.length === 0 && allScores.length > 0 && allScores[0].totalScore > 50) {
-      // If no match passes the adaptive threshold, but the top score is decent,
-      // return it as a "medium-confidence" match.
       qualifiedMatches.push(allScores[0]);
   }
 
@@ -979,5 +924,3 @@ export async function intelligentQuestionMatch(userQuery, dbQuestions) {
 
   return result;
 }
-```
-
