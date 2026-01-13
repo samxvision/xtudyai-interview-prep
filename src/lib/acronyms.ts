@@ -748,15 +748,21 @@ export interface AcronymMatch extends AcronymData {
 
 export function expandAcronyms(query: string): string {
     let expandedQuery = query;
-    const words = query.split(/\s+/);
+    const words = query.toLowerCase().split(/\s+/);
     
-    for (const word of words) {
-        const upperWord = word.toUpperCase();
-        if (OilGasAcronyms[upperWord]) {
-            const fullForm = OilGasAcronyms[upperWord].full;
-            // Replace only the acronym word with its full form
-            // Use a regex with word boundaries to avoid replacing parts of other words
-            const regex = new RegExp(`\\b${word}\\b`, 'gi');
+    // Create a copy to iterate over while modifying the original
+    const queryParts = expandedQuery.split(/\s+/);
+
+    // Sort acronyms by length descending to match longer ones first (e.g., "PAUT" before "UT")
+    const sortedAcronyms = Object.keys(OilGasAcronyms).sort((a, b) => b.length - a.length);
+
+    for (const acronym of sortedAcronyms) {
+        const acronymLower = acronym.toLowerCase();
+        // Use a regex to find the acronym as a whole word
+        const regex = new RegExp(`\\b${acronymLower}\\b`, 'gi');
+        
+        if (regex.test(expandedQuery.toLowerCase())) {
+            const fullForm = OilGasAcronyms[acronym].full;
             expandedQuery = expandedQuery.replace(regex, fullForm);
         }
     }
@@ -828,4 +834,4 @@ export function getRelatedAcronyms(acronym: string) {
 // Export total count
 export const TOTAL_ACRONYMS = Object.keys(OilGasAcronyms).length;
 
-console.log(`✅ Loaded ${TOTAL_ACRONYMS} Oil & Gas acronyms`);
+    

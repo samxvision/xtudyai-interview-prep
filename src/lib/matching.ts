@@ -1,7 +1,8 @@
 // @ts-nocheck
 import { stringSimilarity } from './string-similarity';
-import { OilGasAcronyms, AcronymData } from './acronyms';
+import { expandAcronyms } from './acronyms';
 import type { Question } from '@/types';
+
 
 // ===============================================
 // LAYER 1: ADVANCED NOISE CANCELLATION
@@ -113,27 +114,6 @@ function calculateSemanticSimilarity(userQuery, dbQuestion) {
   };
 }
 
-/**
- * Expands acronyms within a query string.
- * E.g., "what is dpt" becomes "what is dye penetrant test".
- */
-function expandAcronymsInQuery(query) {
-    let expandedQuery = query;
-    const words = query.split(/\s+/);
-    
-    for (const word of words) {
-        const upperWord = word.toUpperCase();
-        if (OilGasAcronyms[upperWord]) {
-            const fullForm = OilGasAcronyms[upperWord].full;
-            // Use a regex with word boundaries to avoid replacing parts of other words
-            const regex = new RegExp(`\\b${word}\\b`, 'gi');
-            expandedQuery = expandedQuery.replace(regex, fullForm);
-        }
-    }
-    return expandedQuery;
-}
-
-
 // ===============================================
 // FINAL INTELLIGENT MATCHING ENGINE
 // ===============================================
@@ -142,7 +122,7 @@ export async function intelligentQuestionMatch(userQuery: string, dbQuestions: Q
 
   // --- STEP 1: High-Confidence Direct Match (with Acronym Expansion) ---
   const DIRECT_MATCH_THRESHOLD = 0.90;
-  const expandedUserQuery = expandAcronymsInQuery(userQuery.toLowerCase().trim());
+  const expandedUserQuery = expandAcronyms(userQuery.toLowerCase().trim());
 
   const directMatchScores = dbQuestions.map(question => {
     const simEn = stringSimilarity(expandedUserQuery, question.normalized_en || "");
@@ -217,3 +197,5 @@ export async function intelligentQuestionMatch(userQuery: string, dbQuestions: Q
 
   return result;
 }
+
+    
