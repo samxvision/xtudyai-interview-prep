@@ -122,7 +122,7 @@ export async function intelligentQuestionMatch(userQuery: string, dbQuestions: Q
 
   // --- STEP 1: High-Confidence Direct Match (with Acronym Expansion) ---
   const DIRECT_MATCH_THRESHOLD = 0.90;
-  const expandedUserQuery = expandAcronyms(userQuery.toLowerCase().trim());
+  const expandedUserQuery = expandAcronyms(userQuery);
 
   const directMatchScores = dbQuestions.map(question => {
     const simEn = stringSimilarity(expandedUserQuery, question.normalized_en || "");

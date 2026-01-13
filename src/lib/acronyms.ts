@@ -747,12 +747,8 @@ export interface AcronymMatch extends AcronymData {
 // ============================================
 
 export function expandAcronyms(query: string): string {
-    let expandedQuery = query;
-    const words = query.toLowerCase().split(/\s+/);
+    let expandedQuery = query.toLowerCase();
     
-    // Create a copy to iterate over while modifying the original
-    const queryParts = expandedQuery.split(/\s+/);
-
     // Sort acronyms by length descending to match longer ones first (e.g., "PAUT" before "UT")
     const sortedAcronyms = Object.keys(OilGasAcronyms).sort((a, b) => b.length - a.length);
 
@@ -761,7 +757,7 @@ export function expandAcronyms(query: string): string {
         // Use a regex to find the acronym as a whole word
         const regex = new RegExp(`\\b${acronymLower}\\b`, 'gi');
         
-        if (regex.test(expandedQuery.toLowerCase())) {
+        if (regex.test(expandedQuery)) {
             const fullForm = OilGasAcronyms[acronym].full;
             expandedQuery = expandedQuery.replace(regex, fullForm);
         }
@@ -809,29 +805,5 @@ export function searchAcronym(query: string): AcronymMatch | null {
   
   return null;
 }
-
-export function getAllAcronymsByCategory(category: string) {
-  return Object.entries(OilGasAcronyms)
-    .filter(([_, data]) => data.category === category)
-    .map(([acronym, data]) => ({ acronym, ...data }));
-}
-
-export function getRelatedAcronyms(acronym: string) {
-  const data = OilGasAcronyms[acronym];
-  if (!data || !data.related) return [];
-  
-  return data.related.map(rel => {
-    if (OilGasAcronyms[rel]) {
-        return {
-            acronym: rel,
-            ...OilGasAcronyms[rel]
-        }
-    }
-    return null;
-  }).filter(Boolean) as (AcronymData & {acronym: string})[];
-}
-
-// Export total count
-export const TOTAL_ACRONYMS = Object.keys(OilGasAcronyms).length;
 
     
