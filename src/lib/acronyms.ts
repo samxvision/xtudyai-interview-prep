@@ -746,6 +746,24 @@ export interface AcronymMatch extends AcronymData {
 // ACRONYM SEARCH FUNCTIONS
 // ============================================
 
+export function expandAcronyms(query: string): string {
+    let expandedQuery = query;
+    const words = query.split(/\s+/);
+    
+    for (const word of words) {
+        const upperWord = word.toUpperCase();
+        if (OilGasAcronyms[upperWord]) {
+            const fullForm = OilGasAcronyms[upperWord].full;
+            // Replace only the acronym word with its full form
+            // Use a regex with word boundaries to avoid replacing parts of other words
+            const regex = new RegExp(`\\b${word}\\b`, 'gi');
+            expandedQuery = expandedQuery.replace(regex, fullForm);
+        }
+    }
+    return expandedQuery;
+}
+
+
 export function searchAcronym(query: string): AcronymMatch | null {
   const normalized = query.toUpperCase().trim();
   
