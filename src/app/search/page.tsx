@@ -17,6 +17,7 @@ import { useSpeechRecognition } from '@/hooks/use-speech-recognition';
 import { useToast } from '@/hooks/use-toast';
 import { sendQuestionToAutomation } from '@/lib/googleSheet';
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { correctVoiceQuery } from '@/lib/voice-corrector';
 
 type AcronymResult = {
   type: 'acronym';
@@ -138,16 +139,23 @@ export default function SmartQuestionSearch() {
     }
   };
 
-  const handleSearch = async (searchQuery: string) => {
+  const handleSearch = async (searchQuery: string, isVoiceSearch: boolean = false) => {
     if (!searchQuery.trim() || areQuestionsLoading) return;
 
-    setQuery(searchQuery);
+    let finalQuery = searchQuery;
+    if (isVoiceSearch) {
+      finalQuery = correctVoiceQuery(searchQuery);
+      console.log(`🎤 Voice Corrected Query: "${searchQuery}" -> "${finalQuery}"`);
+      setQuery(finalQuery); // Update the input box with the corrected query
+    }
+
+
     setLoading(true);
     setResult(null);
 
     // Acronym search is synchronous and fast
-    const acronymResult = searchAcronym(searchQuery);
-    if (acronymResult && acronymResult.matchType === 'exact' && searchQuery.trim().split(/\s+/).length <= 3) {
+    const acronymResult = searchAcronym(finalQuery);
+    if (acronymResult && acronymResult.matchType === 'exact' && finalQuery.trim().split(/\s+/).length <= 3) {
       setResult({
         type: 'acronym',
         data: { ...acronymResult, acronym: acronymResult.acronym },
@@ -158,13 +166,13 @@ export default function SmartQuestionSearch() {
 
     startTransition(async () => {
         if (searchMode === 'ai') {
-            await handleAiSearch(searchQuery);
+            await handleAiSearch(finalQuery);
         } else {
-            const matchResult = await intelligentQuestionMatch(searchQuery, questions);
+            const matchResult = await intelligentQuestionMatch(finalQuery, questions);
             
             // Hybrid mode logic
             if (searchMode === 'hybrid' && (!matchResult.success || !matchResult.topMatch || matchResult.topMatch.totalScore < 75)) {
-                await handleAiSearch(searchQuery);
+                await handleAiSearch(finalQuery);
             } else if (matchResult.success && matchResult.topMatch) {
                 setResult({ 
                     type: 'question', 
@@ -174,7 +182,7 @@ export default function SmartQuestionSearch() {
                 });
             } else {
                 setResult({ type: 'not-found' });
-                sendQuestionToAutomation(searchQuery);
+                sendQuestionToAutomation(finalQuery);
             }
         }
         setLoading(false);
@@ -219,7 +227,7 @@ export default function SmartQuestionSearch() {
     stopListening();
     // A slight delay to ensure the final transcript is processed
     setTimeout(() => {
-        handleSearch(transcript || query);
+        handleSearch(transcript || query, true);
     }, 300);
   };
   
