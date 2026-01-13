@@ -3,7 +3,6 @@
 
 import React, { useState, useEffect, useTransition, useCallback } from 'react';
 import { Search, Loader2, AlertCircle, Tag, ArrowLeft, Database, Mic, Sparkles } from 'lucide-react';
-import { AcronymData, searchAcronym } from '@/lib/acronyms';
 import { intelligentQuestionMatch } from '@/lib/matching';
 import { useAppContext } from '@/context/AppContext';
 import type { Question } from '@/types';
@@ -21,7 +20,12 @@ import { correctVoiceQuery } from '@/lib/voice-corrector';
 
 type AcronymResult = {
   type: 'acronym';
-  data: AcronymData & { acronym: string };
+  data: {
+    acronym: string;
+    full: string;
+    full_hi: string;
+    category: string;
+  };
 };
 
 type QuestionResult = {
@@ -161,16 +165,8 @@ export default function SmartQuestionSearch() {
         }
 
         const matchResult = await intelligentQuestionMatch(finalQuery, questions);
-
-        // Handle direct acronym match from the matching function
-        if (matchResult.success && matchResult.type === 'acronym') {
-             setResult({
-                type: 'acronym',
-                data: matchResult.result,
-            });
-        }
-        // Hybrid mode logic: if DB match is weak, fallback to AI
-        else if (searchMode === 'hybrid' && (!matchResult.success || !matchResult.topMatch || matchResult.topMatch.totalScore < 75)) {
+        
+        if (searchMode === 'hybrid' && (!matchResult.success || (matchResult.topMatch && matchResult.topMatch.totalScore < 70))) {
             await handleAiSearch(finalQuery);
         } else if (matchResult.success && matchResult.topMatch) {
             setResult({ 

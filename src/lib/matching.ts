@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { stringSimilarity } from './string-similarity';
-import { expandAcronyms } from './acronyms';
+import { OilGasAcronyms, AcronymData } from './acronyms';
 import type { Question } from '@/types';
 
 // ===============================================
@@ -64,18 +64,15 @@ function levenshteinDistance(str1, str2) {
 // ===============================================
 function calculateSemanticSimilarity(userQuery, dbQuestion) {
   const cleanedQuery = deepClean(userQuery);
-  const expandedQuery = expandAcronyms(cleanedQuery);
   
   let totalScore = 0;
   const breakdown = [];
 
-  // Layer 1 & 2 are implicitly handled by cleaning and expansion
-  
   // Layer 3: Keyword Extraction & Matching
-  const userKeywords = expandedQuery.split(' ').filter(w => w.length > 2);
+  const userKeywords = cleanedQuery.split(' ').filter(w => w.length > 2);
   const dbKeywordsEn = dbQuestion.keywords_en?.map(k => k.toLowerCase()) || [];
   const dbKeywordsHi = dbQuestion.keywords_hi?.map(k => k.toLowerCase()) || [];
-  const allDbKeywords = [...dbKeywordsEn, ...dbKeywordsHi];
+  const allDbKeywords = [...new Set([...dbKeywordsEn, ...dbKeywordsHi])];
   
   let keywordMatches = 0;
   userKeywords.forEach(uk => {
@@ -88,8 +85,8 @@ function calculateSemanticSimilarity(userQuery, dbQuestion) {
   breakdown.push({ component: 'KEYWORD_MATCH', score: keywordScore, details: `${keywordMatches}/${userKeywords.length} keywords matched` });
 
   // Layer 4 & 5: Semantic & String Similarity
-  const simEn = stringSimilarity(expandedQuery, dbQuestion.normalized_en || "");
-  const simHi = stringSimilarity(expandedQuery, dbQuestion.normalized_hi || "");
+  const simEn = stringSimilarity(cleanedQuery, dbQuestion.normalized_en || "");
+  const simHi = stringSimilarity(cleanedQuery, dbQuestion.normalized_hi || "");
   const topSim = Math.max(simEn, simHi);
   const similarityScore = topSim * 35;
   totalScore += similarityScore;
@@ -97,20 +94,14 @@ function calculateSemanticSimilarity(userQuery, dbQuestion) {
 
   // Layer 6: Contextual Boosting (Simplified)
   let boost = 0;
-  const boostReasons = [];
   if (dbQuestion.category) {
-      const categoryKeywords = { 'ndt': ['test', 'testing', 'inspection'], 'welding': ['weld', 'wps', 'pqr'] };
-      const catKeywords = categoryKeywords[dbQuestion.category] || [];
-      if (catKeywords.some(k => expandedQuery.includes(k))) {
+      const catKeywords = Array.isArray(dbQuestion.category) ? dbQuestion.category : [dbQuestion.category];
+      if (catKeywords.some(k => cleanedQuery.includes(k.toLowerCase()))) {
           boost += 5;
-          boostReasons.push('Category match');
       }
   }
-  if (dbQuestion.difficulty) {
-      if (expandedQuery.includes(dbQuestion.difficulty)) {
-          boost += 5;
-          boostReasons.push('Difficulty match');
-      }
+  if (dbQuestion.difficulty && cleanedQuery.includes(dbQuestion.difficulty)) {
+      boost += 5;
   }
   totalScore += boost;
   
@@ -118,11 +109,30 @@ function calculateSemanticSimilarity(userQuery, dbQuestion) {
   return {
     totalScore: Math.min(totalScore, 100),
     breakdown,
-    boost,
-    boostReasons,
     confidence: totalScore >= 85 ? 'VERY_HIGH' : totalScore >= 70 ? 'HIGH' : totalScore >= 55 ? 'MEDIUM' : 'LOW'
   };
 }
+
+/**
+ * Expands acronyms within a query string.
+ * E.g., "what is dpt" becomes "what is dye penetrant test".
+ */
+function expandAcronymsInQuery(query) {
+    let expandedQuery = query;
+    const words = query.split(/\s+/);
+    
+    for (const word of words) {
+        const upperWord = word.toUpperCase();
+        if (OilGasAcronyms[upperWord]) {
+            const fullForm = OilGasAcronyms[upperWord].full;
+            // Use a regex with word boundaries to avoid replacing parts of other words
+            const regex = new RegExp(`\\b${word}\\b`, 'gi');
+            expandedQuery = expandedQuery.replace(regex, fullForm);
+        }
+    }
+    return expandedQuery;
+}
+
 
 // ===============================================
 // FINAL INTELLIGENT MATCHING ENGINE
@@ -132,7 +142,7 @@ export async function intelligentQuestionMatch(userQuery: string, dbQuestions: Q
 
   // --- STEP 1: High-Confidence Direct Match (with Acronym Expansion) ---
   const DIRECT_MATCH_THRESHOLD = 0.90;
-  const expandedUserQuery = expandAcronyms(userQuery.toLowerCase().trim());
+  const expandedUserQuery = expandAcronymsInQuery(userQuery.toLowerCase().trim());
 
   const directMatchScores = dbQuestions.map(question => {
     const simEn = stringSimilarity(expandedUserQuery, question.normalized_en || "");
@@ -148,7 +158,7 @@ export async function intelligentQuestionMatch(userQuery: string, dbQuestions: Q
     return {
       success: true,
       topMatch: { question: bestDirectMatch.question, totalScore: bestDirectMatch.score * 100 },
-      alternativeMatches: directMatchScores.slice(1, 3).map(m => ({ question: m.question, totalScore: m.score * 100 })),
+      alternativeMatches: directMatchScores.slice(1, 3).filter(m => m.score > 0.7).map(m => ({ question: m.question, totalScore: m.score * 100 })),
       processingTime: `${Date.now() - startTime}ms`,
       matchType: 'Direct',
     };
@@ -165,13 +175,10 @@ export async function intelligentQuestionMatch(userQuery: string, dbQuestions: Q
     };
   }).sort((a, b) => b.totalScore - a.totalScore);
   
-  // Adaptive Threshold
   const topScore = allScores[0]?.totalScore || 0;
-  let threshold = 80; // Stricter default
-  if (topScore > 95) threshold = 85;
-  else if (topScore > 90) threshold = 80;
-  else if (topScore > 80) threshold = 75;
-  else threshold = 65;
+  let threshold = 65; 
+  if (topScore > 90) threshold = 80;
+  else if (topScore > 80) threshold = 70;
 
 
   const qualifiedMatches = allScores.filter(s => s.totalScore >= threshold);
@@ -180,7 +187,7 @@ export async function intelligentQuestionMatch(userQuery: string, dbQuestions: Q
   const result = {
     success: qualifiedMatches.length > 0,
     topMatch: qualifiedMatches[0] || null,
-    alternativeMatches: qualifiedMatches.slice(1, 3),
+    alternativeMatches: qualifiedMatches.slice(1, 3).filter(m => m.totalScore > threshold - 15),
     totalScanned: dbQuestions.length,
     totalMatched: qualifiedMatches.length,
     threshold,
@@ -192,9 +199,7 @@ export async function intelligentQuestionMatch(userQuery: string, dbQuestions: Q
         questionEn: s.question.question_en,
         score: s.totalScore,
         confidence: s.confidence,
-        breakdown: s.breakdown,
-        boost: s.boost,
-        boostReasons: s.boostReasons
+        breakdown: s.breakdown
       }))
     }
   };
