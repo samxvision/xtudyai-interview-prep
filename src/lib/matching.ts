@@ -3,6 +3,7 @@
 // @ts-nocheck
 
 import { stringSimilarity } from './string-similarity';
+import { searchAcronym } from './acronyms';
 
 const DEEP_NOISE_PATTERNS = {
   // ============================================
