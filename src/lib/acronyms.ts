@@ -1,809 +1,1067 @@
-// ============================================
-// COMPREHENSIVE OIL & GAS ACRONYMS DATABASE
-// 200+ Industry Terms with Variations
-// ============================================
 
-export const OilGasAcronyms: Record<string, AcronymData> = {
-  // ========== WELDING & INSPECTION ==========
+// @ts-nocheck
+export const ENTITY_SEMANTIC_MAP = {
   
-  "WPS": {
-    full: "Welding Procedure Specification",
-    full_hi: "वेल्डिंग प्रक्रिया विशिष्टता",
-    variations: ["welding procedure", "wps document", "welding spec"],
-    category: "welding",
-    related: ["PQR", "WQT", "WPSR"]
-  },
+  /* ========================================
+     HEAT EXCHANGERS
+     ======================================== */
   
-  "PQR": {
-    full: "Procedure Qualification Record",
-    full_hi: "प्रक्रिया योग्यता रिकॉर्ड",
-    variations: ["procedure qualification", "pqr record", "weld qualification"],
-    category: "welding",
-    related: ["WPS", "WQT"]
-  },
-  
-  "WQT": {
-    full: "Welder Qualification Test",
-    full_hi: "वेल्डर योग्यता परीक्षण",
-    variations: ["welder test", "welder qualification", "wqt test"],
-    category: "welding",
-    related: ["WPS", "PQR"]
-  },
-  
-  "WPSR": {
-    full: "Welding Procedure Specification Review",
-    full_hi: "वेल्डिंग प्रक्रिया विशिष्टता समीक्षा",
-    variations: ["wps review", "welding procedure review"],
-    category: "welding",
-    related: ["WPS"]
-  },
-  
-  "PWHT": {
-    full: "Post Weld Heat Treatment",
-    full_hi: "पोस्ट वेल्ड हीट ट्रीटमेंट",
-    variations: ["post weld heat", "heat treatment", "pwht process"],
-    category: "welding",
-    related: ["WPS", "HT"]
-  },
-  
-  "Weld Map": {
-    full: "Weld Location Map",
-    full_hi: "वेल्ड लोकेशन मैप",
-    variations: ["weld mapping", "weld location", "welding map"],
-    category: "welding",
-    related: ["Spool", "ITP"]
-  },
-  
-  "Fit-up": {
-    full: "Joint Fit-up Inspection",
-    full_hi: "ज्वाइंट फिट-अप निरीक्षण",
-    variations: ["fitup", "joint fit", "fit up inspection"],
-    category: "welding",
-    related: ["VT", "WPS"]
-  },
-  
-  // ========== QUALITY ASSURANCE / CONTROL ==========
-  
-  "QA": {
-    full: "Quality Assurance",
-    full_hi: "गुणवत्ता आश्वासन",
-    variations: ["quality assurance", "qa department", "quality system"],
-    category: "quality",
-    related: ["QC", "QAP", "QCP"]
-  },
-  
-  "QC": {
-    full: "Quality Control",
-    full_hi: "गुणवत्ता नियंत्रण",
-    variations: ["quality control", "qc department", "quality check"],
-    category: "quality",
-    related: ["QA", "QCR", "QCP"]
-  },
-  
-  "QAP": {
-    full: "Quality Assurance Plan",
-    full_hi: "गुणवत्ता आश्वासन योजना",
-    variations: ["qa plan", "quality plan", "assurance plan"],
-    category: "quality",
-    related: ["QCP", "ITP"]
-  },
-  
-  "QCP": {
-    full: "Quality Control Procedure",
-    full_hi: "गुणवत्ता नियंत्रण प्रक्रिया",
-    variations: ["qc procedure", "quality procedure", "control procedure"],
-    category: "quality",
-    related: ["QAP", "SOP"]
-  },
-  
-  "QCR": {
-    full: "Quality Control Report",
-    full_hi: "गुणवत्ता नियंत्रण रिपोर्ट",
-    variations: ["qc report", "quality report", "control report"],
-    category: "quality",
-    related: ["QC", "SIR"]
-  },
-  
-  "QC Dossier": {
-    full: "Quality Compliance Dossier",
-    full_hi: "गुणवत्ता अनुपालन डोजियर",
-    variations: ["qc dossier", "quality dossier", "compliance dossier"],
-    category: "quality",
-    related: ["MDR", "MTC"]
-  },
-  
-  "ITP": {
-    full: "Inspection and Test Plan",
-    full_hi: "निरीक्षण और परीक्षण योजना",
-    variations: ["inspection plan", "test plan", "itp document"],
-    category: "quality",
-    related: ["QAP", "HP", "WP"]
-  },
-  
-  "NCR": {
-    full: "Non-Conformance Report",
-    full_hi: "गैर-अनुरूपता रिपोर्ट",
-    variations: ["non conformance", "ncr report", "non compliance"],
-    category: "quality",
-    related: ["CAR", "PAR"]
-  },
-  
-  "CAR": {
-    full: "Corrective Action Report",
-    full_hi: "सुधारात्मक कार्रवाई रिपोर्ट",
-    variations: ["corrective action", "car report", "correction report"],
-    category: "quality",
-    related: ["NCR", "PAR"]
-  },
-  
-  "PAR": {
-    full: "Preventive Action Report",
-    full_hi: "निवारक कार्रवाई रिपोर्ट",
-    variations: ["preventive action", "par report", "prevention report"],
-    category: "quality",
-    related: ["CAR", "NCR"]
-  },
-  
-  // ========== NON-DESTRUCTIVE TESTING ==========
-  
-  "NDT": {
-    full: "Non-Destructive Testing",
-    full_hi: "नॉन-डिस्ट्रक्टिव टेस्टिंग",
-    variations: ["ndt testing", "non destructive", "nde testing"],
-    category: "testing",
-    related: ["VT", "PT", "MT", "UT", "RT"]
-  },
-  
-  "VT": {
-    full: "Visual Testing",
-    full_hi: "विजुअल टेस्टिंग",
-    variations: ["visual inspection", "visual test", "vt inspection"],
-    category: "testing",
-    related: ["NDT"]
+  "heat_exchanger": {
+    coreTerms: ["heat exchanger", "heat exchange"],
+    partialTerms: ["exchanger"], // ✅ NOT "heat" alone
+    relatedTerms: ["cooler", "heater", "hx unit", "thermal exchanger"],
+    abbreviations: ["hx", "he"],
+    commonTypos: [
+      "heat excanger", "heat exchnger", "heat ex changer",
+      "heat changer", "he at exchanger", "hate exchanger",
+      "hate ex changer", "hit exchanger", "heat exg",
+      "heat extanger", "heat exchangr", "heat exchange unit",
+      "exchager", "exchnager"
+    ]
   },
 
-  "DPT": {
-    full: "Dye Penetrant Test",
-    full_hi: "डाई पेनेट्रेंट टेस्ट",
-    variations: ["dye penetrant", "dpt test", "dye testing", "penetrant testing"],
-    category: "testing",
-    related: ["PT", "LPT", "NDT", "DP"]
-  },
-  
-  "PT": {
-    full: "Penetrant Testing",
-    full_hi: "पेनेट्रेंट टेस्टिंग",
-    variations: ["penetrant test", "dye penetrant", "liquid penetrant"],
-    category: "testing",
-    related: ["LPT", "DP", "NDT", "DPT"]
-  },
-  
-  "LPT": {
-    full: "Liquid Penetrant Testing",
-    full_hi: "लिक्विड पेनेट्रेंट टेस्टिंग",
-    variations: ["liquid penetrant", "lpt test", "penetrant testing"],
-    category: "testing",
-    related: ["PT", "DP", "NDT", "DPT"]
-  },
-  
-  "DP": {
-    full: "Dye Penetrant Test",
-    full_hi: "डाई पेनेट्रेंट टेस्ट",
-    variations: ["dye penetrant", "dp test", "dye testing"],
-    category: "testing",
-    related: ["PT", "LPT", "NDT", "DPT"]
-  },
-  
-  "MT": {
-    full: "Magnetic Particle Testing",
-    full_hi: "मैग्नेटिक पार्टिकल टेस्टिंग",
-    variations: ["magnetic particle", "mt test", "magnetic inspection"],
-    category: "testing",
-    related: ["MPT", "NDT"]
-  },
-  
-  "MPT": {
-    full: "Magnetic Particle Testing",
-    full_hi: "मैग्नेटिक पार्टिकल टेस्टिंग",
-    variations: ["magnetic particle", "mpt test", "magnetic testing"],
-    category: "testing",
-    related: ["MT", "NDT"]
-  },
-  
-  "UT": {
-    full: "Ultrasonic Testing",
-    full_hi: "अल्ट्रासोनिक टेस्टिंग",
-    variations: ["ultrasonic test", "ut inspection", "ultrasonic ndt"],
-    category: "testing",
-    related: ["NDT", "PAUT"]
-  },
-  
-  "PAUT": {
-    full: "Phased Array Ultrasonic Testing",
-    full_hi: "फेज्ड ऐरे अल्ट्रासोनिक टेस्टिंग",
-    variations: ["phased array", "paut test", "pa ut"],
-    category: "testing",
-    related: ["UT", "NDT"]
-  },
-  
-  "RT": {
-    full: "Radiographic Testing",
-    full_hi: "रेडियोग्राफिक टेस्टिंग",
-    variations: ["radiography", "rt test", "x-ray testing"],
-    category: "testing",
-    related: ["RTFI", "NDT"]
-  },
-  
-  "RTFI": {
-    full: "Radiographic Film Interpretation",
-    full_hi: "रेडियोग्राफिक फिल्म इंटरप्रिटेशन",
-    variations: ["film interpretation", "rt interpretation", "rtfi report"],
-    category: "testing",
-    related: ["RT", "NDT"]
-  },
-  
-  "HT": {
-    full: "Hardness Test",
-    full_hi: "हार्डनेस टेस्ट",
-    variations: ["hardness testing", "ht test", "hardness check"],
-    category: "testing",
-    related: ["PMI"]
-  },
-  
-  "PMI": {
-    full: "Positive Material Identification",
-    full_hi: "पॉजिटिव मटेरियल आइडेंटिफिकेशन",
-    variations: ["material identification", "pmi test", "material verification"],
-    category: "testing",
-    related: ["MTC", "HT"]
-  },
-  
-  "NDT CL": {
-    full: "NDT Clearance",
-    full_hi: "एनडीटी क्लीयरेंस",
-    variations: ["ndt clearance", "testing clearance", "ndt approval"],
-    category: "testing",
-    related: ["NDT", "RFI"]
-  },
-  
-  "NDT Map": {
-    full: "Inspection Coverage Map",
-    full_hi: "निरीक्षण कवरेज मैप",
-    variations: ["ndt mapping", "inspection map", "coverage map"],
-    category: "testing",
-    related: ["NDT", "ITP"]
-  },
-  
-  // ========== INSPECTION & DOCUMENTATION ==========
-  
-  "RFI": {
-    full: "Request for Inspection",
-    full_hi: "निरीक्षण के लिए अनुरोध",
-    variations: ["inspection request", "rfi form", "request inspection"],
-    category: "inspection",
-    related: ["TPI", "ITP"]
-  },
-  
-  "TPI": {
-    full: "Third Party Inspection",
-    full_hi: "थर्ड पार्टी इंस्पेक्शन",
-    variations: ["third party", "tpi inspection", "external inspection"],
-    category: "inspection",
-    related: ["TPIA", "RFI"]
-  },
-  
-  "TPIA": {
-    full: "Third Party Inspection Agency",
-    full_hi: "थर्ड पार्टी इंस्पेक्शन एजेंसी",
-    variations: ["inspection agency", "tpi agency", "third party agency"],
-    category: "inspection",
-    related: ["TPI"]
-  },
-  
-  "HP": {
-    full: "Hold Point",
-    full_hi: "होल्ड प्वाइंट",
-    variations: ["hold point", "hp inspection", "mandatory hold"],
-    category: "inspection",
-    related: ["WP", "ITP"]
-  },
-  
-  "WP": {
-    full: "Witness Point",
-    full_hi: "विटनेस प्वाइंट",
-    variations: ["witness point", "wp inspection", "witness check"],
-    category: "inspection",
-    related: ["HP", "ITP"]
-  },
-  
-  "MIR": {
-    full: "Material Inspection Request",
-    full_hi: "सामग्री निरीक्षण अनुरोध",
-    variations: ["material request", "mir form", "inspection request"],
-    category: "inspection",
-    related: ["MTC", "PMI"]
-  },
-  
-  "SIR": {
-    full: "Site Inspection Report",
-    full_hi: "साइट निरीक्षण रिपोर्ट",
-    variations: ["site report", "sir document", "inspection report"],
-    category: "inspection",
-    related: ["RFI", "QCR"]
-  },
-  
-  "DIM Check": {
-    full: "Dimensional Inspection",
-    full_hi: "आयामी निरीक्षण",
-    variations: ["dimensional check", "dimension inspection", "dim inspection"],
-    category: "inspection",
-    related: ["VT", "ITP"]
-  },
-  
-  // ========== MATERIALS & CERTIFICATES ==========
-  
-  "MTC": {
-    full: "Material Test Certificate",
-    full_hi: "मटेरियल टेस्ट सर्टिफिकेट",
-    variations: ["material certificate", "test certificate", "mtc document"],
-    category: "material",
-    related: ["PMI", "MDR"]
-  },
-  
-  "MDR": {
-    full: "Manufacturer Data Record",
-    full_hi: "निर्माता डेटा रिकॉर्ड",
-    variations: ["manufacturer record", "mdr document", "data record"],
-    category: "material",
-    related: ["MTC", "TDC"]
-  },
-  
-  "BOM": {
-    full: "Bill of Materials",
-    full_hi: "बिल ऑफ मैटेरियल्स",
-    variations: ["material bill", "bom list", "materials list"],
-    category: "material",
-    related: ["BOQ", "MTC"]
-  },
-  
-  "BOQ": {
-    full: "Bill of Quantity",
-    full_hi: "बिल ऑफ क्वांटिटी",
-    variations: ["quantity bill", "boq list", "quantities list"],
-    category: "material",
-    related: ["BOM"]
-  },
-  
-  "TDC": {
-    full: "Technical Delivery Condition",
-    full_hi: "तकनीकी डिलीवरी शर्त",
-    variations: ["delivery condition", "tdc document", "technical data sheet"],
-    category: "material",
-    related: ["MDR", "MTC"]
-  },
-  
-  // ========== TESTING & ACCEPTANCE ==========
-  
-  "FAT": {
-    full: "Factory Acceptance Test",
-    full_hi: "फैक्टरी स्वीकृति परीक्षण",
-    variations: ["factory test", "fat test", "factory acceptance"],
-    category: "testing",
-    related: ["SAT"]
-  },
-  
-  "SAT": {
-    full: "Site Acceptance Test",
-    full_hi: "साइट स्वीकृति परीक्षण",
-    variations: ["site test", "sat test", "site acceptance"],
-    category: "testing",
-    related: ["FAT"]
-  },
-  
-  "Hydrotest": {
-    full: "Hydrostatic Pressure Test",
-    full_hi: "हाइड्रोस्टैटिक दबाव परीक्षण",
-    variations: ["hydro test", "hydrostatic test", "pressure test"],
-    category: "testing",
-    related: ["Pneumatic Test"]
-  },
-  
-  "Pneumatic Test": {
-    full: "Pneumatic Test",
-    full_hi: "न्यूमेटिक टेस्ट",
-    variations: ["pneumatic testing", "air test", "pt air"],
-    category: "testing",
-    related: ["Hydrotest"]
-  },
-  
-  // ========== PROCEDURES & STANDARDS ==========
-  
-  "MS": {
-    full: "Method Statement",
-    full_hi: "मेथड स्टेटमेंट",
-    variations: ["method statement", "ms document", "work method"],
-    category: "procedure",
-    related: ["SOP", "QCP"]
-  },
-  
-  "SOP": {
-    full: "Standard Operating Procedure",
-    full_hi: "मानक संचालन प्रक्रिया",
-    variations: ["operating procedure", "sop document", "standard procedure"],
-    category: "procedure",
-    related: ["MS", "QCP"]
-  },
-  
-  "ASME": {
-    full: "American Society of Mechanical Engineers",
-    full_hi: "अमेरिकन सोसाइटी ऑफ मैकेनिकल इंजीनियर्स",
-    variations: ["asme code", "asme standard", "mechanical society"],
-    category: "standard",
-    related: ["API", "AWS"]
-  },
-  
-  "AWS": {
-    full: "American Welding Society",
-    full_hi: "अमेरिकन वेल्डिंग सोसाइटी",
-    variations: ["aws code", "aws standard", "welding society"],
-    category: "standard",
-    related: ["ASME", "WPS"]
-  },
-  
-  "API": {
-    full: "American Petroleum Institute",
-    full_hi: "अमेरिकन पेट्रोलियम इंस्टीट्यूट",
-    variations: ["api standard", "api code", "petroleum institute"],
-    category: "standard",
-    related: ["ASME"]
-  },
-  
-  "IBR": {
-    full: "Indian Boiler Regulation",
-    full_hi: "इंडियन बॉयलर रेगुलेशन",
-    variations: ["ibr code", "boiler regulation", "indian boiler"],
-    category: "standard",
-    related: ["ASME"]
-  },
-  
-  // ========== DRAWINGS & DOCUMENTS ==========
-  
-  "GAD": {
-    full: "General Arrangement Drawing",
-    full_hi: "जनरल अरेंजमेंट ड्रॉइंग",
-    variations: ["ga drawing", "arrangement drawing", "gad drawing"],
-    category: "drawing",
-    related: ["P&ID", "Isometric"]
-  },
-  
-  "P&ID": {
-    full: "Piping and Instrumentation Diagram",
-    full_hi: "पाइपिंग और इंस्ट्रूमेंटेशन डायग्राम",
-    variations: ["p&id drawing", "piping diagram", "instrument diagram"],
-    category: "drawing",
-    related: ["GAD", "Isometric"]
-  },
-  
-  "Isometric": {
-    full: "Isometric Drawing",
-    full_hi: "आइसोमेट्रिक ड्रॉइंग",
-    variations: ["iso drawing", "isometric diagram", "pipe iso"],
-    category: "drawing",
-    related: ["P&ID", "GAD"]
-  },
-  
-  // ========== PIPING & FABRICATION ==========
-  
-  "Spool": {
-    full: "Pre-fabricated Pipe Section",
-    full_hi: "प्री-फैब्रिकेटेड पाइप सेक्शन",
-    variations: ["pipe spool", "spool piece", "fabricated section"],
-    category: "piping",
-    related: ["Weld Map", "Isometric"]
-  },
-  
-  "NPS": {
-    full: "Nominal Pipe Size",
-    full_hi: "नॉमिनल पाइप साइज",
-    variations: ["pipe size", "nps size", "nominal size"],
-    category: "piping",
-    related: ["SCH", "DN"]
-  },
-  
-  "SCH": {
-    full: "Schedule (Pipe Wall Thickness)",
-    full_hi: "शेड्यूल (पाइप की दीवार की मोटाई)",
-    variations: ["schedule", "pipe schedule", "sch thickness", "pipe thickness"],
-    category: "piping",
-    related: ["NPS"]
-  },
-  
-  "DN": {
-    full: "Diameter Nominal",
-    full_hi: "डायमीटर नॉमिनल",
-    variations: ["nominal diameter", "dn size", "diameter nominal"],
-    category: "piping",
-    related: ["NPS"]
-  },
-  
-  // ========== ADDITIONAL TERMS ==========
-  
-  "E&I": {
-    full: "Erection and Installation",
-    full_hi: "इरेक्शन और इंस्टालेशन",
-    variations: ["erection", "installation", "e&i work"],
-    category: "construction",
-    related: ["MS", "ITP"]
-  },
-  
-  "LOI": {
-    full: "Letter of Intent",
-    full_hi: "लेटर ऑफ इंटेंट",
-    variations: ["loi document", "intent letter", "letter intent"],
-    category: "commercial",
-    related: ["PO"]
-  },
-  
-  "PO": {
-    full: "Purchase Order",
-    full_hi: "परचेज ऑर्डर",
-    variations: ["po number", "purchase order", "order document"],
-    category: "commercial",
-    related: ["LOI"]
-  },
-  
-  "WPSQ": {
-    full: "WPS Qualification",
-    full_hi: "डब्ल्यूपीएस क्वालिफिकेशन",
-    variations: ["wps qualification", "welding qualification", "procedure qualification"],
-    category: "welding",
-    related: ["WPS", "PQR"]
-  },
-  
-  // ========== HEAT EXCHANGERS & EQUIPMENT ==========
-  
-  "STHE": {
-    full: "Shell and Tube Heat Exchanger",
-    full_hi: "शेल और ट्यूब हीट एक्सचेंजर",
-    variations: ["shell tube", "sthe exchanger", "shell and tube"],
-    category: "equipment",
-    related: ["PHE", "ACHE"]
-  },
-  
-  "PHE": {
-    full: "Plate Heat Exchanger",
-    full_hi: "प्लेट हीट एक्सचेंजर",
-    variations: ["plate exchanger", "phe type", "plate type"],
-    category: "equipment",
-    related: ["STHE"]
-  },
-  
-  "ACHE": {
-    full: "Air Cooled Heat Exchanger",
-    full_hi: "एयर कूल्ड हीट एक्सचेंजर",
-    variations: ["air cooled", "ache unit", "air exchanger"],
-    category: "equipment",
-    related: ["STHE", "PHE"]
-  },
-  
-  "TEMA": {
-    full: "Tubular Exchanger Manufacturers Association",
-    full_hi: "ट्यूबलर एक्सचेंजर मैन्युफैक्चरर्स एसोसिएशन",
-    variations: ["tema standard", "tema code", "exchanger association"],
-    category: "standard",
-    related: ["ASME", "STHE"]
-  },
-  
-  // ========== VALVES & FITTINGS ==========
-  
-  "PRV": {
-    full: "Pressure Relief Valve",
-    full_hi: "प्रेशर रिलीफ वाल्व",
-    variations: ["relief valve", "prv valve", "pressure valve"],
-    category: "equipment",
-    related: ["PSV", "SV"]
-  },
-  
-  "PSV": {
-    full: "Pressure Safety Valve",
-    full_hi: "प्रेशर सेफ्टी वाल्व",
-    variations: ["safety valve", "psv valve", "pressure safety"],
-    category: "equipment",
-    related: ["PRV"]
-  },
-  
-  "SV": {
-    full: "Safety Valve",
-    full_hi: "सेफ्टी वाल्व",
-    variations: ["safety valve", "sv type", "relief valve"],
-    category: "equipment",
-    related: ["PRV", "PSV"]
-  },
-  
-  "BV": {
-    full: "Ball Valve",
-    full_hi: "बॉल वाल्व",
-    variations: ["ball valve", "bv type", "ball type"],
-    category: "equipment",
-    related: ["GV", "CV"]
-  },
-  
-  "GV": {
-    full: "Gate Valve",
-    full_hi: "गेट वाल्व",
-    variations: ["gate valve", "gv type", "gate type"],
-    category: "equipment",
-    related: ["BV", "CV"]
-  },
-  
-  "CV": {
-    full: "Check Valve",
-    full_hi: "चेक वाल्व",
-    variations: ["check valve", "cv type", "non return valve"],
-    category: "equipment",
-    related: ["BV", "GV", "NRV"]
-  },
-  
-  "NRV": {
-    full: "Non-Return Valve",
-    full_hi: "नॉन-रिटर्न वाल्व",
-    variations: ["non return", "nrv valve", "check valve"],
-    category: "equipment",
-    related: ["CV"]
-  },
-  
-  // ========== PRESSURE & TESTING ==========
-  
-  "MAWP": {
-    full: "Maximum Allowable Working Pressure",
-    full_hi: "मैक्सिमम अलाउएबल वर्किंग प्रेशर",
-    variations: ["max pressure", "mawp value", "allowable pressure"],
-    category: "pressure",
-    related: ["Design Pressure", "Test Pressure"]
-  },
-  
-  "MAOP": {
-    full: "Maximum Allowable Operating Pressure",
-    full_hi: "मैक्सिमम अलाउएबल ऑपरेटिंग प्रेशर",
-    variations: ["max operating", "maop value", "operating pressure"],
-    category: "pressure",
-    related: ["MAWP"]
-  },
-  
-  "Design Pressure": {
-    full: "Design Pressure",
-    full_hi: "डिजाइन प्रेशर",
-    variations: ["design pressure", "dp value", "pressure design"],
-    category: "pressure",
-    related: ["MAWP", "Test Pressure"]
-  },
-  
-  "Test Pressure": {
-    full: "Test Pressure",
-    full_hi: "टेस्ट प्रेशर",
-    variations: ["test pressure", "tp value", "pressure test"],
-    category: "pressure",
-    related: ["Hydrotest", "Design Pressure"]
-  },
-  
-  // ========== CORROSION & COATINGS ==========
-  
-  "CUI": {
-    full: "Corrosion Under Insulation",
-    full_hi: "इन्सुलेशन के नीचे क्षरण",
-    variations: ["cui corrosion", "under insulation", "insulation corrosion"],
-    category: "corrosion",
-    related: ["CRA", "Coating"]
-  },
-  
-  "CRA": {
-    full: "Corrosion Resistant Alloy",
-    full_hi: "जंग प्रतिरोधी मिश्र धातु",
-    variations: ["resistant alloy", "cra material", "corrosion alloy"],
-    category: "material",
-    related: ["CUI", "SS"]
-  },
-  
-  "SS": {
-    full: "Stainless Steel",
-    full_hi: "स्टेनलेस स्टील",
-    variations: ["stainless steel", "ss material", "stainless alloy"],
-    category: "material",
-    related: ["CRA", "CS"]
-  },
-  
-  "CS": {
-    full: "Carbon Steel",
-    full_hi: "कार्बन स्टील",
-    variations: ["carbon steel", "cs material", "carbon alloy"],
-    category: "material",
-    related: ["SS", "AS"]
-  },
-  
-  "AS": {
-    full: "Alloy Steel",
-    full_hi: "मिश्र धातु इस्पात",
-    variations: ["alloy steel", "as material", "steel alloy"],
-    category: "material",
-    related: ["SS", "CS"]
+  "shell_and_tube_heat_exchanger": {
+    coreTerms: ["shell and tube heat exchanger", "shell and tube"],
+    partialTerms: ["shell tube exchanger"],
+    relatedTerms: ["tube bundle", "tube sheet", "sthe"],
+    abbreviations: ["sthe"],
+    commonTypos: [
+      "shell tube exchanger", "shell n tube", "shell & tube",
+      "shall and tube", "shell end tube", "shell tube hx",
+      "cell and tube exchanger", "shell and tub"
+    ]
+  },
+
+  "plate_heat_exchanger": {
+    coreTerms: ["plate heat exchanger", "plate exchanger"],
+    partialTerms: ["plate type"],
+    relatedTerms: ["gasket plate", "gasketed plate", "compact exchanger"],
+    abbreviations: ["phe"],
+    commonTypos: [
+      "plate heat excanger", "plate hx", "pleat heat exchanger",
+      "flate heat exchanger", "plate heat exchange", "plat exchanger"
+    ]
+  },
+
+  "air_cooled_heat_exchanger": {
+    coreTerms: ["air cooled heat exchanger", "air cooler"],
+    partialTerms: ["air cooled", "fin fan"],
+    relatedTerms: ["fin fan cooler", "afc"],
+    abbreviations: ["ache", "afc"],
+    commonTypos: [
+      "air cool heat exchanger", "air cooled hx", "air cooler exchanger",
+      "finfan exchanger", "fan fin exchanger", "air colled exchanger",
+      "fin fan", "air fin cooler"
+    ]
+  },
+
+  "double_pipe_heat_exchanger": {
+    coreTerms: ["double pipe heat exchanger", "double pipe"],
+    partialTerms: ["double pipe"],
+    relatedTerms: ["pipe in pipe", "hairpin exchanger"],
+    abbreviations: [],
+    commonTypos: [
+      "double pipe exchanger", "double pipe hx", "pipe pipe exchanger",
+      "double line exchanger", "double piping exchanger"
+    ]
+  },
+
+  /* ========================================
+     PRESSURE VESSELS & SEPARATORS
+     ======================================== */
+
+  "pressure_vessel": {
+    coreTerms: ["pressure vessel"],
+    partialTerms: ["vessel"], // ✅ "vessel" alone can expand
+    relatedTerms: ["drum", "separator", "reactor"],
+    abbreviations: ["pv"],
+    commonTypos: [
+      "presure vessel", "pressure vesal", "preasure vessel",
+      "pressure vassel", "pressur vessel", "pv vessel",
+      "pressre vessel"
+    ]
+  },
+
+  "horizontal_pressure_vessel": {
+    coreTerms: ["horizontal pressure vessel", "horizontal vessel"],
+    partialTerms: ["horizontal"],
+    relatedTerms: ["saddle support", "saddle mounted"],
+    abbreviations: [],
+    commonTypos: [
+      "horizontal pv", "horizental vessel", "horizontal pressure vesal",
+      "horizental pv"
+    ]
+  },
+
+  "vertical_pressure_vessel": {
+    coreTerms: ["vertical pressure vessel", "vertical vessel"],
+    partialTerms: ["vertical"],
+    relatedTerms: ["skirt support", "skirt mounted"],
+    abbreviations: [],
+    commonTypos: [
+      "vertical pv", "vartical vessel", "vertical pressure vesal",
+      "vartical pv"
+    ]
+  },
+
+  "separator": {
+    coreTerms: ["separator"],
+    partialTerms: ["separate"],
+    relatedTerms: ["knock out drum", "ko drum", "separation vessel"],
+    abbreviations: [],
+    commonTypos: [
+      "seperator", "seprator", "saprator", "separator vessel",
+      "separate drum", "separater"
+    ]
+  },
+
+  "knock_out_drum": {
+    coreTerms: ["knock out drum", "knockout drum"],
+    partialTerms: ["ko drum"],
+    relatedTerms: ["separator", "kod"],
+    abbreviations: ["kod"],
+    commonTypos: [
+      "knok out drum", "noak out drum", "ko dram",
+      "knockout dram", "knock-out drum"
+    ]
+  },
+
+  "flash_drum": {
+    coreTerms: ["flash drum", "flash separator"],
+    partialTerms: ["flash"],
+    relatedTerms: ["flash vessel", "separator"],
+    abbreviations: [],
+    commonTypos: [
+      "flask drum", "flash dram", "flesh drum",
+      "flash drum vessel", "flash seperator"
+    ]
+  },
+
+  "reactor": {
+    coreTerms: ["reactor", "reactor vessel"],
+    partialTerms: ["react"],
+    relatedTerms: ["process vessel", "reaction vessel"],
+    abbreviations: [],
+    commonTypos: [
+      "reacter", "reactar", "reactor vessel",
+      "reaction drum", "reactr"
+    ]
+  },
+
+  /* ========================================
+     COLUMNS & TOWERS
+     ======================================== */
+
+  "column": {
+    coreTerms: ["column", "tower"],
+    partialTerms: ["column", "tower"],
+    relatedTerms: ["tray column", "packed column", "distillation"],
+    abbreviations: [],
+    commonTypos: [
+      "colum", "colmn", "collum", "tower column",
+      "colom", "coloum"
+    ]
+  },
+
+  "distillation_column": {
+    coreTerms: ["distillation column", "distillation tower"],
+    partialTerms: ["distillation", "fractionation"],
+    relatedTerms: ["tray column", "fractionator", "frac column"],
+    abbreviations: ["dc"],
+    commonTypos: [
+      "distilation column", "destillation column",
+      "distilition column", "distill column", "distilation tower"
+    ]
+  },
+
+  "absorption_column": {
+    coreTerms: ["absorption column", "absorber"],
+    partialTerms: ["absorption", "absorber"],
+    relatedTerms: ["gas absorber", "absorption tower"],
+    abbreviations: [],
+    commonTypos: [
+      "absorbtion column", "absortion column", "absorb column",
+      "absober", "absorption tower"
+    ]
+  },
+
+  "stripper_column": {
+    coreTerms: ["stripper column", "stripper"],
+    partialTerms: ["stripper", "stripping"],
+    relatedTerms: ["regeneration column", "stripper tower"],
+    abbreviations: [],
+    commonTypos: [
+      "striper column", "striping column", "stripper tower",
+      "strip column"
+    ]
+  },
+
+  "packed_column": {
+    coreTerms: ["packed column", "packed tower"],
+    partialTerms: ["packing", "packed"],
+    relatedTerms: ["structured packing", "random packing"],
+    abbreviations: [],
+    commonTypos: [
+      "packet column", "pack column", "packed colum",
+      "packing column", "packing tower"
+    ]
+  },
+
+  "tray_column": {
+    coreTerms: ["tray column", "tray tower"],
+    partialTerms: ["tray"],
+    relatedTerms: ["bubble cap", "sieve tray", "valve tray"],
+    abbreviations: [],
+    commonTypos: [
+      "trey column", "tray colum", "tray colmn",
+      "tree column", "tray tower"
+    ]
+  },
+
+  /* ========================================
+     STORAGE TANKS
+     ======================================== */
+
+  "storage_tank": {
+    coreTerms: ["storage tank", "tank"],
+    partialTerms: ["tank", "storage"],
+    relatedTerms: ["oil tank", "product tank"],
+    abbreviations: [],
+    commonTypos: [
+      "store tank", "storage tonk", "storag tank",
+      "tank vessel", "storage tanker"
+    ]
+  },
+
+  "fixed_roof_tank": {
+    coreTerms: ["fixed roof tank", "cone roof tank"],
+    partialTerms: ["fixed roof"],
+    relatedTerms: ["storage tank", "atmospheric tank"],
+    abbreviations: [],
+    commonTypos: [
+      "fix roof tank", "fixed rout tank", "fixed tank roof",
+      "fixed roof storage"
+    ]
+  },
+
+  "floating_roof_tank": {
+    coreTerms: ["floating roof tank"],
+    partialTerms: ["floating roof"],
+    relatedTerms: ["storage tank", "frt", "external floating roof"],
+    abbreviations: ["frt", "efrt"],
+    commonTypos: [
+      "floating rout tank", "float roof tank", "floating tank roof",
+      "floatng roof tank"
+    ]
+  },
+
+  "internal_floating_roof_tank": {
+    coreTerms: ["internal floating roof tank"],
+    partialTerms: ["internal floating roof", "ifr"],
+    relatedTerms: ["ifrt", "storage tank"],
+    abbreviations: ["ifrt", "ifr"],
+    commonTypos: [
+      "internal floating rout", "internal float roof",
+      "ifr tank", "internal floating"
+    ]
+  },
+
+  "spherical_tank": {
+    coreTerms: ["spherical tank", "sphere"],
+    partialTerms: ["sphere tank"],
+    relatedTerms: ["pressure storage", "horton sphere"],
+    abbreviations: [],
+    commonTypos: [
+      "spherecal tank", "spherical tonk", "sphere vessel",
+      "sperical tank"
+    ]
+  },
+
+  "bullet_tank": {
+    coreTerms: ["bullet tank", "bullet"],
+    partialTerms: ["bullet"],
+    relatedTerms: ["lpg tank", "lpg bullet", "pressure storage"],
+    abbreviations: [],
+    commonTypos: [
+      "bulit tank", "bullet tonk", "bullet vessel",
+      "lpg bullet"
+    ]
+  },
+
+  /* ========================================
+     FURNACES & BOILERS
+     ======================================== */
+
+  "furnace": {
+    coreTerms: ["furnace", "process heater"],
+    partialTerms: ["heater"],
+    relatedTerms: ["fired heater", "process furnace"],
+    abbreviations: [],
+    commonTypos: [
+      "furnes", "furnace heater", "farnas", "furnance",
+      "furnas"
+    ]
+  },
+
+  "process_heater": {
+    coreTerms: ["process heater", "fired heater"],
+    partialTerms: ["heater"],
+    relatedTerms: ["furnace", "process furnace"],
+    abbreviations: [],
+    commonTypos: [
+      "process hiter", "proces heater", "process heatr",
+      "fired hiter"
+    ]
+  },
+
+  "boiler": {
+    coreTerms: ["boiler", "steam boiler"],
+    partialTerms: ["steam boiler"],
+    relatedTerms: ["steam generator", "water tube boiler"],
+    abbreviations: [],
+    commonTypos: [
+      "boilar", "boiller", "steam boler", "boyler"
+    ]
+  },
+
+  "waste_heat_boiler": {
+    coreTerms: ["waste heat boiler"],
+    partialTerms: ["whb"],
+    relatedTerms: ["heat recovery", "hrsg"],
+    abbreviations: ["whb"],
+    commonTypos: [
+      "waste heat boler", "waste heater boiler",
+      "west heat boiler", "waste heat recovery boiler"
+    ]
+  },
+
+  "heat_recovery_steam_generator": {
+    coreTerms: ["heat recovery steam generator"],
+    partialTerms: ["hrsg"],
+    relatedTerms: ["waste heat boiler", "steam generator"],
+    abbreviations: ["hrsg"],
+    commonTypos: [
+      "heat recovery steam genrator", "hrsg unit",
+      "heat recovery boiler", "heat recovery generator"
+    ]
+  },
+
+  /* ========================================
+     ROTATING EQUIPMENT
+     ======================================== */
+
+  "centrifugal_pump": {
+    coreTerms: ["centrifugal pump"],
+    partialTerms: ["centrifugal", "pump"],
+    relatedTerms: ["process pump", "water pump"],
+    abbreviations: ["cp"],
+    commonTypos: [
+      "centrifugal pamp", "centrifugal pum", "centrifugel pump",
+      "sentifugal pump", "central pump", "centrifugal pumping",
+      "pump centrifugal", "centrifugul pump"
+    ]
+  },
+
+  "reciprocating_pump": {
+    coreTerms: ["reciprocating pump"],
+    partialTerms: ["reciprocating", "recip"],
+    relatedTerms: ["plunger pump", "piston pump", "recip pump"],
+    abbreviations: ["rp"],
+    commonTypos: [
+      "reciprocate pump", "reciprocating pamp", "resiprocating pump",
+      "recip pump", "piston pamp", "plunger pamp"
+    ]
+  },
+
+  "gear_pump": {
+    coreTerms: ["gear pump"],
+    partialTerms: ["gear"],
+    relatedTerms: ["positive displacement pump", "pd pump"],
+    abbreviations: [],
+    commonTypos: [
+      "gear pamp", "geer pump", "gear pumping",
+      "gear type pump", "geer pamp"
+    ]
+  },
+
+  "screw_pump": {
+    coreTerms: ["screw pump"],
+    partialTerms: ["screw"],
+    relatedTerms: ["pd pump", "positive displacement"],
+    abbreviations: [],
+    commonTypos: [
+      "screew pump", "screw pamp", "skrew pump",
+      "screw type pump"
+    ]
+  },
+
+  "centrifugal_compressor": {
+    coreTerms: ["centrifugal compressor"],
+    partialTerms: ["centrifugal", "compressor"],
+    relatedTerms: ["process compressor", "turbo compressor"],
+    abbreviations: ["cc"],
+    commonTypos: [
+      "centrifugal compresor", "centrifugel compressor",
+      "sentifugal compressor", "compressor centrifugal",
+      "centrifugal comprsr"
+    ]
+  },
+
+  "reciprocating_compressor": {
+    coreTerms: ["reciprocating compressor"],
+    partialTerms: ["reciprocating", "compressor"],
+    relatedTerms: ["piston compressor", "recip compressor"],
+    abbreviations: ["rc"],
+    commonTypos: [
+      "reciprocate compressor", "recip compressor",
+      "resiprocating compressor", "piston compresor"
+    ]
+  },
+
+  "screw_compressor": {
+    coreTerms: ["screw compressor"],
+    partialTerms: ["screw"],
+    relatedTerms: ["air compressor", "rotary screw"],
+    abbreviations: [],
+    commonTypos: [
+      "screw compresor", "skrew compressor", "screw comprsr",
+      "screw air compressor"
+    ]
+  },
+
+  "steam_turbine": {
+    coreTerms: ["steam turbine"],
+    partialTerms: ["steam", "turbine"],
+    relatedTerms: ["driver turbine", "turbine driver"],
+    abbreviations: ["st"],
+    commonTypos: [
+      "steam terbine", "steam turbin", "steam turbine driver",
+      "stem turbine", "steem turbine"
+    ]
+  },
+
+  "gas_turbine": {
+    coreTerms: ["gas turbine"],
+    partialTerms: ["gas", "turbine"],
+    relatedTerms: ["power turbine", "gt"],
+    abbreviations: ["gt"],
+    commonTypos: [
+      "gas terbine", "gas turbin", "gass turbine",
+      "gas turbine engine"
+    ]
+  },
+
+  "electric_motor": {
+    coreTerms: ["electric motor", "motor"],
+    partialTerms: ["motor"],
+    relatedTerms: ["drive motor", "induction motor"],
+    abbreviations: ["em"],
+    commonTypos: [
+      "electrical motor", "electric moter", "electrik motor",
+      "motor electric", "elektric motor"
+    ]
+  },
+
+  /* ========================================
+     NDT TESTING
+     ======================================== */
+
+  "visual_testing": {
+    coreTerms: ["visual testing", "visual inspection"],
+    partialTerms: ["visual", "vt"],
+    relatedTerms: ["eye inspection", "surface check", "vi"],
+    abbreviations: ["vt", "vi"],
+    commonTypos: [
+      "vizual testing", "visual testng", "visual inspaction",
+      "vt testing", "visual chek", "visual cheking"
+    ]
+  },
+
+  "ultrasonic_testing": {
+    coreTerms: ["ultrasonic testing"],
+    partialTerms: ["ultrasonic", "ultra sound"],
+    relatedTerms: ["ut testing", "ut test"],
+    abbreviations: ["ut"],
+    commonTypos: [
+      "ultra sonic testing", "ultrasonik testing",
+      "ultra sound test", "ut test", "ultra sonic test",
+      "ultrasound testing"
+    ]
+  },
+
+  "ultrasonic_thickness_testing": {
+    coreTerms: ["ultrasonic thickness testing", "thickness measurement"],
+    partialTerms: ["thickness", "ut thickness"],
+    relatedTerms: ["wall thickness", "thickness gauging"],
+    abbreviations: ["utt", "utg"],
+    commonTypos: [
+      "ultrasonic thicknes testing", "thikness test ut",
+      "ut thickness test", "ultrasonic thickness"
+    ]
+  },
+
+  "phased_array_ut": {
+    coreTerms: ["phased array ut", "phased array ultrasonic"],
+    partialTerms: ["phased array", "paut"],
+    relatedTerms: ["advanced ut", "pa ut"],
+    abbreviations: ["paut"],
+    commonTypos: [
+      "phase array ut", "phased arrey ut", "pased array ut",
+      "phased ut", "paut testing"
+    ]
+  },
+
+  "time_of_flight_diffraction": {
+    coreTerms: ["time of flight diffraction"],
+    partialTerms: ["tofd"],
+    relatedTerms: ["advanced ut", "tofd testing"],
+    abbreviations: ["tofd"],
+    commonTypos: [
+      "time of flight defraction", "tofd test", "tofd ut",
+      "time flight ut", "time of fligt"
+    ]
+  },
+
+  "magnetic_particle_testing": {
+    coreTerms: ["magnetic particle testing", "magnetic particle inspection"],
+    partialTerms: ["magnetic", "mt"],
+    relatedTerms: ["mpi", "mt test"],
+    abbreviations: ["mt", "mpi"],
+    commonTypos: [
+      "magnetic partical testing", "magnetic test mt",
+      "mpi testing", "magnetic particle test", "magnatic particle"
+    ]
+  },
+
+  "dye_penetrant_testing": {
+    coreTerms: ["dye penetrant test", "liquid penetrant test"],
+    partialTerms: ["penetrant", "pt", "dpt"],
+    relatedTerms: ["liquid penetrant testing", "pt test"],
+    abbreviations: ["pt", "lpt", "dpt"],
+    commonTypos: [
+      "die penetrant test", "penitrant testing", "penetrent test",
+      "pt testing", "dpt testing", "liquid penetrant"
+    ]
+  },
+
+  "radiographic_testing": {
+    coreTerms: ["radiographic testing", "radiography"],
+    partialTerms: ["radiography", "rt", "xray"],
+    relatedTerms: ["x ray test", "rt test"],
+    abbreviations: ["rt"],
+    commonTypos: [
+      "radio graphic testing", "radiography test",
+      "xray testing", "x-ray test", "rt testing"
+    ]
+  },
+
+  "eddy_current_testing": {
+    coreTerms: ["eddy current testing"],
+    partialTerms: ["eddy current", "ect"],
+    relatedTerms: ["ect test"],
+    abbreviations: ["ect"],
+    commonTypos: [
+      "eddy curent testing", "eddy current test",
+      "eddy currant test", "ect testing"
+    ]
+  },
+
+  /* ========================================
+     PRESSURE TESTING
+     ======================================== */
+
+  "hydrostatic_testing": {
+    coreTerms: ["hydrostatic testing", "hydrotest"],
+    partialTerms: ["hydro test", "hydrostatic"],
+    relatedTerms: ["pressure test", "water test"],
+    abbreviations: [],
+    commonTypos: [
+      "hydro statik testing", "hydro pressure test",
+      "hydro testing", "hydrostatic test", "hydrotesting"
+    ]
+  },
+
+  "pneumatic_test": {
+    coreTerms: ["pneumatic test", "pneumatic testing"],
+    partialTerms: ["pneumatic"],
+    relatedTerms: ["air test", "air pressure test"],
+    abbreviations: [],
+    commonTypos: [
+      "pnumatic test", "newmatic test", "pneumetic test",
+      "air pressure test", "pneumatic testing"
+    ]
+  },
+
+  "leak_test": {
+    coreTerms: ["leak test", "leak testing"],
+    partialTerms: ["leak"],
+    relatedTerms: ["soap test", "bubble test"],
+    abbreviations: [],
+    commonTypos: [
+      "leak tast", "leek test", "leakage test",
+      "lick test", "leak testing"
+    ]
+  },
+
+  "vacuum_box_testing": {
+    coreTerms: ["vacuum box testing", "vacuum box test"],
+    partialTerms: ["vacuum test", "vacuum box"],
+    relatedTerms: ["leak test", "weld testing"],
+    abbreviations: [],
+    commonTypos: [
+      "vacum box testing", "vacuum leak test",
+      "vacuum box test", "vacuum testing"
+    ]
+  },
+
+  /* ========================================
+     DEFECTS & DAMAGE
+     ======================================== */
+
+  "corrosion": {
+    coreTerms: ["corrosion"],
+    partialTerms: ["rust", "corrode"],
+    relatedTerms: ["metal loss", "rusting"],
+    abbreviations: [],
+    commonTypos: [
+      "corosion", "corrossion", "corrusion",
+      "corrosion damage", "rusting corrosion"
+    ]
+  },
+
+  "pitting_corrosion": {
+    coreTerms: ["pitting corrosion", "pitting"],
+    partialTerms: ["pitting", "pit"],
+    relatedTerms: ["localized corrosion", "pit corrosion"],
+    abbreviations: [],
+    commonTypos: [
+      "piting corrosion", "petting corrosion",
+      "pit corrosion", "pitting rust"
+    ]
+  },
+
+  "erosion_corrosion": {
+    coreTerms: ["erosion corrosion"],
+    partialTerms: ["erosion", "corrosion"],
+    relatedTerms: ["high velocity damage", "flow damage"],
+    abbreviations: [],
+    commonTypos: [
+      "erosion corosion", "erosion corrosion damage",
+      "flow corrosion", "erosive corrosion"
+    ]
+  },
+
+  "crack": {
+    coreTerms: ["crack", "cracking"],
+    partialTerms: ["crack"],
+    relatedTerms: ["fracture", "crack indication"],
+    abbreviations: [],
+    commonTypos: [
+      "crak", "crackng", "metal crack",
+      "surface crack", "craking"
+    ]
+  },
+
+  "stress_corrosion_cracking": {
+    coreTerms: ["stress corrosion cracking"],
+    partialTerms: ["scc"],
+    relatedTerms: ["chloride cracking", "scc damage"],
+    abbreviations: ["scc"],
+    commonTypos: [
+      "stress corosion cracking", "stress cracking",
+      "s c c", "scc cracking"
+    ]
+  },
+
+  "leakage": {
+    coreTerms: ["leakage", "leak"],
+    partialTerms: ["leak"],
+    relatedTerms: ["through wall", "leak point"],
+    abbreviations: [],
+    commonTypos: [
+      "leakeg", "leekage", "leaking",
+      "leak problem", "leakeage"
+    ]
+  },
+
+  /* ========================================
+     HEAT EXCHANGER INTERNALS
+     ======================================== */
+
+  
+    "tube_bundle": {
+    coreTerms: ["tube bundle"],
+    partialTerms: ["bundle"],
+    relatedTerms: ["tube assembly", "heat exchanger bundle"],
+    abbreviations: [],
+    commonTypos: [
+      "tube bundel", "tube bungle", "tub bundle",
+      "bundle tube", "tube bundal"
+    ]
+  },
+
+  "tube_sheet": {
+    coreTerms: ["tube sheet", "tubesheet"],
+    partialTerms: ["tubesheet"],
+    relatedTerms: ["tube to sheet", "tube plate"],
+    abbreviations: [],
+    commonTypos: [
+      "tube sheat", "tube shhet", "tube sheet plate",
+      "tube sit", "tube sheat"
+    ]
+  },
+
+  "baffle": {
+    coreTerms: ["baffle", "baffle plate"],
+    partialTerms: ["baffle"],
+    relatedTerms: ["support baffle", "segmental baffle"],
+    abbreviations: [],
+    commonTypos: [
+      "baffel", "baffel plates", "baffle plate",
+      "baffal", "baffale"
+    ]
+  },
+
+  "channel_head": {
+    coreTerms: ["channel head"],
+    partialTerms: ["channel"],
+    relatedTerms: ["front head", "channel cover"],
+    abbreviations: [],
+    commonTypos: [
+      "channel hed", "channel haid", "channel cover head",
+      "channal head"
+    ]
+  },
+
+  "floating_head": {
+    coreTerms: ["floating head"],
+    partialTerms: ["floating"],
+    relatedTerms: ["rear head", "back head"],
+    abbreviations: [],
+    commonTypos: [
+      "floating hed", "floating haid", "floating end head",
+      "floatin head"
+    ]
+  },
+
+  /* ========================================
+     FLANGE COMPONENTS
+     ======================================== */
+
+  "flange": {
+    coreTerms: ["flange"],
+    partialTerms: ["flanged"],
+    relatedTerms: ["pipe flange", "flange joint"],
+    abbreviations: [],
+    commonTypos: [
+      "flang", "flenge", "flange joint",
+      "flanj", "flanged"
+    ]
+  },
+
+  "flange_face": {
+    coreTerms: ["flange face"],
+    partialTerms: ["face"],
+    relatedTerms: ["gasket seating", "flange surface"],
+    abbreviations: [],
+    commonTypos: [
+      "flange fes", "flange surface", "flange face area",
+      "flang face"
+    ]
+  },
+
+  "serration_area": {
+    coreTerms: ["serration area", "serration"],
+    partialTerms: ["serration"],
+    relatedTerms: ["grooved joint", "flange finish"],
+    abbreviations: [],
+    commonTypos: [
+      "sarration", "sarration area", "seration area",
+      "serrated zone", "serration groov", "serration"
+    ]
+  },
+
+  "gasket": {
+    coreTerms: ["gasket"],
+    partialTerms: ["sealing"],
+    relatedTerms: ["flange gasket", "spiral wound"],
+    abbreviations: [],
+    commonTypos: [
+      "gaskit", "gas kit", "gasket seal",
+      "gaskat", "gaskket"
+    ]
+  },
+
+  /* ========================================
+     COLUMN INTERNALS
+     ======================================== */
+
+  "tray": {
+    coreTerms: ["tray", "column tray"],
+    partialTerms: ["tray"],
+    relatedTerms: ["internal tray", "distillation tray"],
+    abbreviations: [],
+    commonTypos: [
+      "trey", "tray plate", "tray internal",
+      "tray colum", "tre"
+    ]
+  },
+
+  "bubble_cap_tray": {
+    coreTerms: ["bubble cap tray"],
+    partialTerms: ["bubble cap"],
+    relatedTerms: ["tray type", "bubble tray"],
+    abbreviations: [],
+    commonTypos: [
+      "bubble cap trey", "bubblecap tray", "bubble cup tray",
+      "bubbel cap"
+    ]
+  },
+
+  "sieve_tray": {
+    coreTerms: ["sieve tray"],
+    partialTerms: ["sieve"],
+    relatedTerms: ["perforated tray", "hole tray"],
+    abbreviations: [],
+    commonTypos: [
+      "seive tray", "siv tray", "sieve trey",
+      "sive tray"
+    ]
+  },
+
+  "packing": {
+    coreTerms: ["packing", "column packing"],
+    partialTerms: ["packing"],
+    relatedTerms: ["structured packing", "random packing"],
+    abbreviations: [],
+    commonTypos: [
+      "packng", "packing material", "packing column",
+      "paking"
+    ]
+  },
+
+  "downcomer": {
+    coreTerms: ["downcomer"],
+    partialTerms: ["down comer"],
+    relatedTerms: ["liquid downflow", "tray downcomer"],
+    abbreviations: [],
+    commonTypos: [
+      "down comer", "downcomar", "down camber",
+      "downcomber"
+    ]
+  },
+
+  /* ========================================
+     INSPECTION & QA/QC
+     ======================================== */
+
+  "internal_inspection": {
+    coreTerms: ["internal inspection"],
+    partialTerms: ["internal"],
+    relatedTerms: ["inside inspection", "internal check"],
+    abbreviations: [],
+    commonTypos: [
+      "internel inspection", "internal inspaction",
+      "inside check", "internal inspaction"
+    ]
+  },
+
+  "external_inspection": {
+    coreTerms: ["external inspection"],
+    partialTerms: ["external"],
+    relatedTerms: ["outside inspection", "external check"],
+    abbreviations: [],
+    commonTypos: [
+      "externel inspection", "external inspaction",
+      "outside check"
+    ]
+  },
+
+  "shutdown_inspection": {
+    coreTerms: ["shutdown inspection"],
+    partialTerms: ["shutdown"],
+    relatedTerms: ["plant shutdown", "turnaround"],
+    abbreviations: ["ta"],
+    commonTypos: [
+      "shut down inspection", "shutdown inspaction",
+      "sd inspection", "shutdwn inspection"
+    ]
+  },
+
+  "thickness_measurement": {
+    coreTerms: ["thickness measurement"],
+    partialTerms: ["thickness"],
+    relatedTerms: ["ut thickness", "wall thickness", "thickness check"],
+    abbreviations: ["tmm"],
+    commonTypos: [
+      "thikness measurement", "thickness measurment",
+      "thickness checking", "thicknes measurement"
+    ]
+  },
+
+  "weld_inspection": {
+    coreTerms: ["weld inspection"],
+    partialTerms: ["weld"],
+    relatedTerms: ["welding inspection", "weld check"],
+    abbreviations: [],
+    commonTypos: [
+      "weld inspaction", "welding inspaction",
+      "weld checking", "weild inspection"
+    ]
+  },
+
+  /* ========================================
+     OPERATIONS & MAINTENANCE
+     ======================================== */
+
+  "bundle_extraction": {
+    coreTerms: ["bundle extraction", "bundle pulling"],
+    partialTerms: ["bundle pull"],
+    relatedTerms: ["bundle removal", "tube bundle removal"],
+    abbreviations: [],
+    commonTypos: [
+      "bundle extraction", "bundle pulling",
+      "tube bundle removal", "bundle pull out"
+    ]
+  },
+
+  "retubing": {
+    coreTerms: ["retubing"],
+    partialTerms: ["re tubing"],
+    relatedTerms: ["tube replacement", "tube change"],
+    abbreviations: [],
+    commonTypos: [
+      "re tubbing", "re tubing work",
+      "tube change", "retubing work"
+    ]
+  },
+
+  "tube_plugging": {
+    coreTerms: ["tube plugging"],
+    partialTerms: ["plugging"],
+    relatedTerms: ["tube isolation", "plug tube"],
+    abbreviations: [],
+    commonTypos: [
+      "tube pluging", "tube plug",
+      "plugging tube", "tube blocking"
+    ]
+  },
+
+  "chemical_cleaning": {
+    coreTerms: ["chemical cleaning"],
+    partialTerms: ["chemical clean"],
+    relatedTerms: ["acid cleaning", "chemical wash"],
+    abbreviations: [],
+    commonTypos: [
+      "chemical cleanning", "chemical wash",
+      "acid cleaning", "chemicle cleaning"
+    ]
+  },
+
+  "mechanical_cleaning": {
+    coreTerms: ["mechanical cleaning"],
+    partialTerms: ["mechanical clean"],
+    relatedTerms: ["manual cleaning", "physical cleaning"],
+    abbreviations: [],
+    commonTypos: [
+      "mechanical cleanning", "manual cleaning",
+      "mechanical wash", "mechanic cleaning"
+    ]
+  },
+
+  /* ========================================
+     DOCUMENTS
+     ======================================== */
+
+  "inspection_test_plan": {
+    coreTerms: ["inspection test plan", "inspection and test plan"],
+    partialTerms: ["itp"],
+    relatedTerms: ["quality plan", "test plan"],
+    abbreviations: ["itp"],
+    commonTypos: [
+      "inspection test paln", "inspaction test plan",
+      "i t p", "inspection testing plan"
+    ]
+  },
+
+  "welding_procedure_specification": {
+    coreTerms: ["welding procedure specification"],
+    partialTerms: ["wps"],
+    relatedTerms: ["welding procedure", "weld procedure"],
+    abbreviations: ["wps"],
+    commonTypos: [
+      "welding procedure spec", "w p s",
+      "weld procedure", "welding procedur"
+    ]
+  },
+
+  "procedure_qualification_record": {
+    coreTerms: ["procedure qualification record"],
+    partialTerms: ["pqr"],
+    relatedTerms: ["welding qualification", "procedure record"],
+    abbreviations: ["pqr"],
+    commonTypos: [
+      "procedure qualification recod", "p q r",
+      "welding pqr", "procedur qualification"
+    ]
+  },
+
+  "material_test_certificate": {
+    coreTerms: ["material test certificate"],
+    partialTerms: ["mtc"],
+    relatedTerms: ["mill certificate", "material certificate"],
+    abbreviations: ["mtc"],
+    commonTypos: [
+      "material test certifcate", "m t c",
+      "mill test certificate", "mtc certificate"
+    ]
+  },
+
+  "non_conformance_report": {
+    coreTerms: ["non conformance report"],
+    partialTerms: ["ncr"],
+    relatedTerms: ["quality deviation", "ncr report"],
+    abbreviations: ["ncr"],
+    commonTypos: [
+      "non conformity report", "n c r",
+      "quality ncr", "non conformance"
+    ]
+  },
+
+  /* ========================================
+     RBI & FFS
+     ======================================== */
+
+  "risk_based_inspection": {
+    coreTerms: ["risk based inspection"],
+    partialTerms: ["rbi"],
+    relatedTerms: ["risk assessment", "rbi assessment"],
+    abbreviations: ["rbi"],
+    commonTypos: [
+      "risk base inspection", "risk based inspaction",
+      "r b i", "rbi inspection"
+    ]
+  },
+
+  "fitness_for_service": {
+    coreTerms: ["fitness for service"],
+    partialTerms: ["ffs"],
+    relatedTerms: ["integrity assessment", "ffs assessment"],
+    abbreviations: ["ffs"],
+    commonTypos: [
+      "fitnes for service", "fitness service",
+      "f f s", "ffs assessment"
+    ]
+  },
+
+  "remaining_life_assessment": {
+    coreTerms: ["remaining life assessment"],
+    partialTerms: ["remaining life"],
+    relatedTerms: ["life calculation", "life assessment"],
+    abbreviations: [],
+    commonTypos: [
+      "remaning life", "remaining life calc",
+      "balance life", "remaining life assesment"
+    ]
   }
-};
-
-export interface AcronymData {
-    full: string;
-    full_hi: string;
-    variations: string[];
-    category: string;
-    related: string[];
 }
-export interface AcronymMatch extends AcronymData {
-    acronym: string;
-    matchType: 'exact' | 'fullname' | 'variation';
-}
-
-
-// ============================================
-// ACRONYM SEARCH FUNCTIONS
-// ============================================
-
-export function expandAcronyms(query: string): string {
-    let expandedQuery = query.toLowerCase();
-    
-    // Sort acronyms by length descending to match longer ones first (e.g., "PAUT" before "UT")
-    const sortedAcronyms = Object.keys(OilGasAcronyms).sort((a, b) => b.length - a.length);
-
-    for (const acronym of sortedAcronyms) {
-        const acronymLower = acronym.toLowerCase();
-        // Use a regex to find the acronym as a whole word
-        const regex = new RegExp(`\\b${acronymLower}\\b`, 'gi');
-        
-        if (regex.test(expandedQuery)) {
-            const fullForm = OilGasAcronyms[acronym].full;
-            expandedQuery = expandedQuery.replace(regex, fullForm);
-        }
-    }
-    return expandedQuery;
-}
-
-
-export function searchAcronym(query: string): AcronymMatch | null {
-  const normalized = query.toUpperCase().trim();
-  
-  // Direct match on the acronym itself
-  if (OilGasAcronyms[normalized]) {
-    return {
-      acronym: normalized,
-      ...OilGasAcronyms[normalized],
-      matchType: 'exact'
-    };
-  }
-  
-  const lowerQuery = query.toLowerCase();
-  
-  // Search in full names and variations
-  for (const [acronym, data] of Object.entries(OilGasAcronyms)) {
-    // Check full name (English)
-    if (data.full.toLowerCase().includes(lowerQuery)) {
-      return {
-        acronym,
-        ...data,
-        matchType: 'fullname'
-      };
-    }
-    
-    // Check variations
-    for (const variation of data.variations) {
-      if (variation.toLowerCase() === lowerQuery) {
-        return {
-          acronym,
-          ...data,
-          matchType: 'variation'
-        };
-      }
-    }
-  }
-  
-  return null;
-}
-
-    
