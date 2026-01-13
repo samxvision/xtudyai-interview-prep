@@ -146,8 +146,8 @@ export default function SmartQuestionSearch() {
     setResult(null);
 
     // Acronym search is synchronous and fast
-    const acronymResult = searchAcronym(searchQuery.toUpperCase().trim());
-    if (acronymResult && searchQuery.trim().split(/\s+/).length <= 3) {
+    const acronymResult = searchAcronym(searchQuery);
+    if (acronymResult && acronymResult.matchType === 'exact' && searchQuery.trim().split(/\s+/).length <= 3) {
       setResult({
         type: 'acronym',
         data: { ...acronymResult, acronym: acronymResult.acronym },

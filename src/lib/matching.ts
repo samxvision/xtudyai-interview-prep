@@ -663,7 +663,7 @@ const ENTITY_SEMANTIC_MAP = {
     partialTerms: ["exchanger"], // ✅ NOT "heat" alone
     relatedTerms: ["cooler", "heater", "hx unit", "thermal exchanger"],
     abbreviations: ["hx", "he"],
-    commonTypos: ["heat excanger", "heat exchnger", "heat ex changer", "heat changer", "he at exchanger", "hate exchanger", "hate ex changer", "hit exchanger", "heat exg", "heat extanger", "heat exchangr", "heat exchange unit", "exchager", "exchnager"]
+    commonTypos: ["heat excanger", "heat exchnger", "heat ex changer", "heat changer", "he at exchanger", "hate exchanger", "hate ex changer", "hit exchanger", "heat exg", "heat extanger", "heat exchangr", "heat exchange unit", "exchager", "exchnager", "heat stranger", "he stranger", "hate changer"]
   },
   "shell": {
     coreTerms: ["shell"], partialTerms: ["shell side"], relatedTerms: [], abbreviations: [], commonTypos: ["shel", "shal"]
@@ -997,10 +997,10 @@ const ENTITY_SEMANTIC_MAP = {
     commonTypos: ["magnetic partical testing", "magnetic test mt", "mpi testing", "magnetic particle test", "magnatic particle"]
   },
   "dye_penetrant_testing": {
-    coreTerms: ["dye penetrant test", "liquid penetrant test"],
+    coreTerms: ["dye penetrant test", "liquid penetrant test", "penetrant testing"],
     partialTerms: ["penetrant", "pt", "dpt"],
     relatedTerms: ["liquid penetrant testing", "pt test"],
-    abbreviations: ["pt", "lpt", "dpt"],
+    abbreviations: ["pt", "lpt", "dpt", "dp"],
     commonTypos: ["die penetrant test", "penitrant testing", "penetrent test", "pt testing", "dpt testing", "liquid penetrant"]
   },
   "radiographic_testing": {
@@ -1353,7 +1353,14 @@ const ENTITY_SEMANTIC_MAP = {
     relatedTerms: ["life calculation", "life assessment"],
     abbreviations: [],
     commonTypos: ["remaning life", "remaining life calc", "balance life", "remaining life assesment"]
-  }
+  },
+  "asme": {
+    coreTerms: ["asme"],
+    partialTerms: [],
+    relatedTerms: ["american society of mechanical engineers"],
+    abbreviations: [],
+    commonTypos: ["s mi", "esimi", "a s m e"]
+    },
 }
 
 function resolveEntity(text) {
@@ -2919,16 +2926,38 @@ function contextualBoost(matchResult, userQuery, dbQuestion) {
 }
 
 export async function intelligentQuestionMatch(userQuery, dbQuestions) {
-  console.log('🔍 Starting intelligent search for:', userQuery);
   const startTime = Date.now();
-  const cleanedUserQuery = deepClean(userQuery);
+  let correctedQuery = userQuery;
 
-  // STEP 1: Exact Match First (High Threshold)
+  // Step 1: Acronym and Abbreviation Resolution
+  const acronymResult = searchAcronym(userQuery);
+  if (acronymResult && acronymResult.matchType === 'exact') {
+      correctedQuery = acronymResult.full;
+      console.log(`✅ Acronym corrected: "${userQuery}" -> "${correctedQuery}"`);
+  } else {
+    // Step 2: Semantic Entity Resolution (for typos and mispronunciations)
+    const entityResolution = resolveEntity(userQuery);
+    if (entityResolution.topEntity && entityResolution.topEntity.confidence >= 80) {
+        // Replace the matched term with the correct entity name
+        const incorrectTerm = entityResolution.topEntity.matchedTerm.split('≈')[0].trim();
+        const correctTerm = entityResolution.topEntity.displayName;
+        if (userQuery.toLowerCase().includes(incorrectTerm)) {
+          correctedQuery = userQuery.toLowerCase().replace(incorrectTerm, correctTerm);
+          console.log(`✅ Voice/Typo corrected: "${userQuery}" -> "${correctedQuery}"`);
+        }
+    }
+  }
+
+
+  // Step 3: Deep Cleaning of the (potentially corrected) query
+  const cleanedUserQuery = deepClean(correctedQuery);
+
+  // STEP 4: Exact Match First on the cleaned query (High Threshold)
   const EXACT_MATCH_THRESHOLD = 0.90;
   let exactMatches = [];
   for (const question of dbQuestions) {
-      const simEn = stringSimilarity(cleanedUserQuery, question.question_en);
-      const simHi = stringSimilarity(cleanedUserQuery, question.question_hi);
+      const simEn = stringSimilarity(cleanedUserQuery, question.normalized_en);
+      const simHi = stringSimilarity(cleanedUserQuery, question.normalized_hi);
       const topSim = Math.max(simEn, simHi);
 
       if (topSim >= EXACT_MATCH_THRESHOLD) {
@@ -2952,7 +2981,7 @@ export async function intelligentQuestionMatch(userQuery, dbQuestions) {
           totalMatched: exactMatches.length,
           threshold: EXACT_MATCH_THRESHOLD * 100,
           processingTime: `${Date.now() - startTime}ms`,
-          queryAnalysis: { cleaned: cleanedUserQuery },
+          queryAnalysis: { cleaned: cleanedUserQuery, correctedQuery: correctedQuery },
           debugInfo: { topScores: exactMatches.slice(0, 5) }
       };
   }
@@ -2960,13 +2989,13 @@ export async function intelligentQuestionMatch(userQuery, dbQuestions) {
   console.log('... No exact match found. Proceeding to 7-layer semantic search.');
   
   // ==========================================
-  // STEP 2: Fallback to 7-Layer Semantic Search
+  // STEP 5: Fallback to 7-Layer Semantic Search on the corrected query
   // ==========================================
   const allScores = []
   
   for (const question of dbQuestions) {
-    let matchResult = calculateSemanticSimilarity(userQuery, question)
-    matchResult = contextualBoost(matchResult, userQuery, question)
+    let matchResult = calculateSemanticSimilarity(correctedQuery, question)
+    matchResult = contextualBoost(matchResult, correctedQuery, question)
     
     allScores.push({
       question,
@@ -2996,7 +3025,7 @@ export async function intelligentQuestionMatch(userQuery, dbQuestions) {
     processingTime: `${processingTime}ms`,
     
     // User query processing details
-    queryAnalysis: qualifiedMatches[0]?.userProcessing || null,
+    queryAnalysis: qualifiedMatches[0]?.userProcessing || { cleaned: cleanedUserQuery, correctedQuery: correctedQuery },
     
     // Top 5 scores for debugging
     debugInfo: {
