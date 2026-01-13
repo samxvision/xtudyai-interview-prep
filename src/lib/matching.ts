@@ -1,7 +1,7 @@
 // @ts-nocheck
-
 import { stringSimilarity } from './string-similarity';
 import { expandAcronyms } from './acronyms';
+import type { Question } from '@/types';
 
 // ===============================================
 // LAYER 1: ADVANCED NOISE CANCELLATION
@@ -60,7 +60,7 @@ function levenshteinDistance(str1, str2) {
 
 
 // ===============================================
-// MAIN 7-LAYER SCORING & MATCHING LOGIC
+// LAYER 5: SEMANTIC SIMILARITY SCORING
 // ===============================================
 function calculateSemanticSimilarity(userQuery, dbQuestion) {
   const cleanedQuery = deepClean(userQuery);
@@ -127,11 +127,11 @@ function calculateSemanticSimilarity(userQuery, dbQuestion) {
 // ===============================================
 // FINAL INTELLIGENT MATCHING ENGINE
 // ===============================================
-export async function intelligentQuestionMatch(userQuery, dbQuestions) {
+export async function intelligentQuestionMatch(userQuery: string, dbQuestions: Question[]) {
   const startTime = Date.now();
 
   // --- STEP 1: High-Confidence Direct Match (with Acronym Expansion) ---
-  const DIRECT_MATCH_THRESHOLD = 0.90; // 90%
+  const DIRECT_MATCH_THRESHOLD = 0.90;
   const expandedUserQuery = expandAcronyms(userQuery.toLowerCase().trim());
 
   const directMatchScores = dbQuestions.map(question => {
@@ -167,12 +167,12 @@ export async function intelligentQuestionMatch(userQuery, dbQuestions) {
   
   // Adaptive Threshold
   const topScore = allScores[0]?.totalScore || 0;
-  const secondScore = allScores[1]?.totalScore || 0;
-  const gap = topScore - secondScore;
-  let threshold = 90;
-  if (gap > 30) threshold = 65;
-  else if (gap > 20) threshold = 75;
-  else if (gap > 10) threshold = 85;
+  let threshold = 80; // Stricter default
+  if (topScore > 95) threshold = 85;
+  else if (topScore > 90) threshold = 80;
+  else if (topScore > 80) threshold = 75;
+  else threshold = 65;
+
 
   const qualifiedMatches = allScores.filter(s => s.totalScore >= threshold);
   const processingTime = Date.now() - startTime;

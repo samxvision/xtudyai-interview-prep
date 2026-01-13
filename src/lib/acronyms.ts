@@ -405,7 +405,7 @@ export const OilGasAcronyms: Record<string, AcronymData> = {
     full_hi: "हाइड्रोस्टैटिक दबाव परीक्षण",
     variations: ["hydro test", "hydrostatic test", "pressure test"],
     category: "testing",
-    related: ["PT Pneumatic"]
+    related: ["Pneumatic Test"]
   },
   
   "Pneumatic Test": {
