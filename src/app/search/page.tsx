@@ -153,26 +153,21 @@ export default function SmartQuestionSearch() {
       setQuery(finalQuery); // Update the input box with the corrected query
     }
 
-    // Now, `finalQuery` is either the original typed query or the corrected voice query.
-    // This `finalQuery` goes into the unified search pipeline.
-
-    // Acronym search is synchronous and fast - it's a good first check.
-    const acronymResult = searchAcronym(finalQuery);
-    if (acronymResult && acronymResult.matchType === 'exact' && finalQuery.trim().split(/\s+/).length <= 3) {
-      setResult({
-        type: 'acronym',
-        data: { ...acronymResult, acronym: acronymResult.acronym },
-      });
-      setLoading(false);
-      return;
-    }
-
     startTransition(async () => {
+        // Acronym search is synchronous and fast - it's a good first check.
+        const acronymResult = searchAcronym(finalQuery);
+        if (acronymResult && acronymResult.matchType === 'exact' && finalQuery.trim().split(/\s+/).length <= 3) {
+          setResult({
+            type: 'acronym',
+            data: { ...acronymResult, acronym: acronymResult.acronym },
+          });
+          setLoading(false);
+          return;
+        }
+
         if (searchMode === 'ai') {
             await handleAiSearch(finalQuery);
         } else {
-            // The intelligentQuestionMatch function contains the full pipeline:
-            // acronym check, typo correction, direct match, and semantic search.
             const matchResult = await intelligentQuestionMatch(finalQuery, questions);
             
             // Hybrid mode logic: if DB match is weak, fallback to AI
