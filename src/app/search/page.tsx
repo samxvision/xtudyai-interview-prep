@@ -142,18 +142,21 @@ export default function SmartQuestionSearch() {
   const handleSearch = async (searchQuery: string, isVoiceSearch: boolean = false) => {
     if (!searchQuery.trim() || areQuestionsLoading) return;
 
+    setLoading(true);
+    setResult(null);
+
     let finalQuery = searchQuery;
     if (isVoiceSearch) {
+      // Correct the query ONLY if it comes from voice input
       finalQuery = correctVoiceQuery(searchQuery);
       console.log(`🎤 Voice Corrected Query: "${searchQuery}" -> "${finalQuery}"`);
       setQuery(finalQuery); // Update the input box with the corrected query
     }
 
+    // Now, `finalQuery` is either the original typed query or the corrected voice query.
+    // This `finalQuery` goes into the unified search pipeline.
 
-    setLoading(true);
-    setResult(null);
-
-    // Acronym search is synchronous and fast
+    // Acronym search is synchronous and fast - it's a good first check.
     const acronymResult = searchAcronym(finalQuery);
     if (acronymResult && acronymResult.matchType === 'exact' && finalQuery.trim().split(/\s+/).length <= 3) {
       setResult({
@@ -168,9 +171,11 @@ export default function SmartQuestionSearch() {
         if (searchMode === 'ai') {
             await handleAiSearch(finalQuery);
         } else {
+            // The intelligentQuestionMatch function contains the full pipeline:
+            // acronym check, typo correction, direct match, and semantic search.
             const matchResult = await intelligentQuestionMatch(finalQuery, questions);
             
-            // Hybrid mode logic
+            // Hybrid mode logic: if DB match is weak, fallback to AI
             if (searchMode === 'hybrid' && (!matchResult.success || !matchResult.topMatch || matchResult.topMatch.totalScore < 75)) {
                 await handleAiSearch(finalQuery);
             } else if (matchResult.success && matchResult.topMatch) {
@@ -188,6 +193,7 @@ export default function SmartQuestionSearch() {
         setLoading(false);
     });
   };
+
 
   const getCategoryBadgeColor = (category?: string) => {
     const colors: { [key: string]: string } = {
@@ -227,6 +233,7 @@ export default function SmartQuestionSearch() {
     stopListening();
     // A slight delay to ensure the final transcript is processed
     setTimeout(() => {
+        // Important: Set isVoiceSearch to true here
         handleSearch(transcript || query, true);
     }, 300);
   };

@@ -1,5 +1,4 @@
 
-
 // @ts-nocheck
 
 import { stringSimilarity } from './string-similarity';
@@ -2928,11 +2927,11 @@ function contextualBoost(matchResult, userQuery, dbQuestion) {
 
 export async function intelligentQuestionMatch(userQuery, dbQuestions) {
   const startTime = Date.now();
-  let correctedQuery = userQuery;
-
+  
   // Step 1: Acronym and Abbreviation Resolution
   const acronymResult = searchAcronym(userQuery);
-  if (acronymResult && acronymResult.matchType === 'exact') {
+  let correctedQuery;
+  if (acronymResult && acronymResult.matchType === 'exact' && userQuery.trim().split(' ').length < 4) {
       correctedQuery = acronymResult.full;
       console.log(`✅ Acronym corrected: "${userQuery}" -> "${correctedQuery}"`);
   } else {
@@ -2945,7 +2944,11 @@ export async function intelligentQuestionMatch(userQuery, dbQuestions) {
         if (userQuery.toLowerCase().includes(incorrectTerm)) {
           correctedQuery = userQuery.toLowerCase().replace(incorrectTerm, correctTerm);
           console.log(`✅ Voice/Typo corrected: "${userQuery}" -> "${correctedQuery}"`);
+        } else {
+          correctedQuery = userQuery;
         }
+    } else {
+      correctedQuery = userQuery;
     }
   }
 
@@ -2957,8 +2960,8 @@ export async function intelligentQuestionMatch(userQuery, dbQuestions) {
   const EXACT_MATCH_THRESHOLD = 0.90;
   let exactMatches = [];
   for (const question of dbQuestions) {
-      const simEn = stringSimilarity(cleanedUserQuery, question.normalized_en);
-      const simHi = stringSimilarity(cleanedUserQuery, question.normalized_hi);
+      const simEn = stringSimilarity(cleanedUserQuery, question.normalized_en || "");
+      const simHi = stringSimilarity(cleanedUserQuery, question.normalized_hi || "");
       const topSim = Math.max(simEn, simHi);
 
       if (topSim >= EXACT_MATCH_THRESHOLD) {
