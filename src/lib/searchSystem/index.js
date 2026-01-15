@@ -1,9 +1,7 @@
 
 import { findDirectMatches } from './stage1-direct-match';
 import { deepClean, intelligentExpansion } from './layer1-noise-removal';
-import { calculateSemanticSimilarity } from './layer5-semantic-scoring';
-import { adaptiveThreshold, contextualBoost } from './layer6-adaptive-threshold';
-import { intelligentQuestionMatch as semanticMatch } from './layer7-intelligent-matching';
+import { intelligentQuestionMatch } from './layer7-intelligent-matching';
 
 /**
  * ===========================================
@@ -30,7 +28,7 @@ export async function searchQuestions(userQuery, dbQuestions) {
   
   const directMatchResult = findDirectMatches(userQuery, dbQuestions);
   
-  // If a high-confidence direct match is found, return it immediately.
+  // Only return if a HIGH-CONFIDENCE direct match is found.
   if (directMatchResult.success && directMatchResult.matches[0].confidence >= 90) {
     console.log('\n✅ HIGH-CONFIDENCE DIRECT MATCH FOUND!');
     console.log(`   Top Match: "${directMatchResult.matches[0].question.question_en}"`);
@@ -39,11 +37,15 @@ export async function searchQuestions(userQuery, dbQuestions) {
     
     const totalTime = Date.now() - overallStartTime;
     
+    const topMatch = {
+        question: directMatchResult.matches[0].question,
+        totalScore: directMatchResult.matches[0].confidence,
+    }
+
     return {
       success: true,
-      topMatch: directMatchResult.matches[0].question,
-      alternativeMatches: directMatchResult.matches.slice(1, 3).map(m => m.question),
-      matchType: 'DIRECT_MATCH',
+      topMatch: topMatch,
+      alternativeMatches: directMatchResult.matches.slice(1, 3).map(m => ({question: m.question, totalScore: m.confidence})),
     };
   }
   
@@ -59,10 +61,11 @@ export async function searchQuestions(userQuery, dbQuestions) {
   
   const stage2StartTime = Date.now();
   
+  // Layer 1: Clean query
   const cleaned = deepClean(userQuery);
-  const semanticResult = await semanticMatch(userQuery, dbQuestions, cleaned);
   
-  const stage2Time = Date.now() - stage2StartTime;
+  // Layers 2-7: Intelligent matching
+  const semanticResult = await intelligentQuestionMatch(userQuery, dbQuestions, cleaned);
   
   if (semanticResult.success) {
     console.log('\n✅ SEMANTIC MATCH FOUND!');
@@ -72,9 +75,8 @@ export async function searchQuestions(userQuery, dbQuestions) {
     
     return {
       success: true,
-      topMatch: semanticResult.matches[0].question,
-      alternativeMatches: semanticResult.matches.slice(1, 3).map(m => m.question),
-      matchType: 'SEMANTIC_MATCH',
+      topMatch: semanticResult.matches[0],
+      alternativeMatches: semanticResult.matches.slice(1, 3),
     };
   }
   

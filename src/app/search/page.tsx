@@ -18,26 +18,17 @@ import { sendQuestionToAutomation } from '@/lib/googleSheet';
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { correctVoiceQuery } from '@/lib/voice-corrector';
 
-type AcronymResult = {
-  type: 'acronym';
-  data: {
-    acronym: string;
-    full: string;
-    full_hi: string;
-    category: string;
-  };
-};
+type Match = {
+  question: Question;
+  totalScore: number;
+}
 
-type QuestionResult = {
-  type: 'question';
-  source: 'db' | 'ai';
-  topMatch: Question;
-  alternativeMatch: Question | null;
-};
+type SearchResult = {
+  success: boolean;
+  topMatch: Match | null;
+  alternativeMatches: Match[];
+} | null;
 
-type NotFoundResult = { type: 'not-found' };
-
-type SearchResult = AcronymResult | QuestionResult | NotFoundResult | null;
 type SearchMode = 'hybrid' | 'db' | 'ai';
 
 // Helper function to parse the AI's JSON response
@@ -126,10 +117,9 @@ export default function SmartQuestionSearch() {
       }
 
       setResult({
-        type: 'question',
-        source: 'ai',
-        topMatch: questionData,
-        alternativeMatch: null,
+        success: true,
+        topMatch: { question: questionData, totalScore: 100 },
+        alternativeMatches: [],
       });
 
     } catch (error: any) {
@@ -139,7 +129,7 @@ export default function SmartQuestionSearch() {
             description: error.message || "Sorry, the AI is unable to answer this question right now.",
             variant: "destructive",
         });
-        setResult({ type: 'not-found' });
+        setResult({ success: false, topMatch: null, alternativeMatches: [] });
     }
   };
 
@@ -166,19 +156,12 @@ export default function SmartQuestionSearch() {
 
         const matchResult = await searchQuestions(finalQuery, questions);
         
-        if (searchMode === 'hybrid' && (!matchResult.success || (matchResult.topMatch && matchResult.topMatch.totalScore < 70))) {
+        if (searchMode === 'hybrid' && (!matchResult || !matchResult.success)) {
             await handleAiSearch(finalQuery);
-        } else if (matchResult.success && matchResult.topMatch) {
-            setResult({ 
-                type: 'question', 
-                source: 'db',
-                topMatch: matchResult.topMatch, 
-                alternativeMatch: matchResult.alternativeMatches.length > 0 ? matchResult.alternativeMatches[0] : null
-            });
         } else {
-            setResult({ type: 'not-found' });
-            if (searchMode === 'db') { // Only send to automation if we are in DB only mode and fail
-               sendQuestionToAutomation(finalQuery);
+            setResult(matchResult);
+            if (!matchResult.success && searchMode === 'db') {
+                 sendQuestionToAutomation(finalQuery);
             }
         }
         
@@ -266,52 +249,29 @@ export default function SmartQuestionSearch() {
 
       <main className="flex-grow overflow-y-auto bg-slate-50">
         <div className="container mx-auto p-4 space-y-6">
-          {/* Result - Acronym */}
-          {result && result.type === 'acronym' && (
-            <Card className="w-full max-w-4xl mx-auto shadow-lg border-slate-200">
-                <CardHeader>
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-primary/10 rounded-lg">
-                           <Tag className="w-6 h-6 text-primary" />
-                        </div>
-                        <div>
-                           <CardTitle className="text-primary">{result.data.acronym}</CardTitle>
-                           <p className="text-sm text-muted-foreground">Industry Acronym</p>
-                        </div>
-                    </div>
-                </CardHeader>
-                <CardContent>
-                    <h2 className="text-2xl font-bold text-foreground mb-2">
-                        {uiLanguage === 'hi' ? result.data.full_hi : result.data.full}
-                    </h2>
-                </CardContent>
-                <CardFooter>
-                    <Badge variant="outline" className={getCategoryBadgeColor(result.data.category)}>
-                        {result.data.category}
-                    </Badge>
-                </CardFooter>
-            </Card>
-          )}
-
 
           {/* Result - Question(s) */}
-          {result && result.type === 'question' && (
+          {result && result.success && result.topMatch && (
             <div className="space-y-6">
-              <AnswerCard question={result.topMatch} initialLang={uiLanguage} isAiGenerated={result.source === 'ai'} />
+              <AnswerCard 
+                question={result.topMatch.question} 
+                initialLang={uiLanguage} 
+                isAiGenerated={searchMode === 'ai'} 
+              />
               
-              {result.alternativeMatch && (
-                <div>
+              {result.alternativeMatches.map((match, index) => (
+                 <div key={index}>
                   <div className="flex items-center justify-center gap-2 text-sm text-slate-500 font-medium mb-4">
                     Related Result
                   </div>
-                  <AnswerCard question={result.alternativeMatch} initialLang={uiLanguage} />
+                  <AnswerCard question={match.question} initialLang={uiLanguage} />
                 </div>
-              )}
+              ))}
             </div>
           )}
 
           {/* Not Found */}
-          {result && result.type === 'not-found' && (
+          {result && !result.success && (
             <div className="bg-white rounded-xl border border-slate-200 p-8 text-center mt-4">
               <AlertCircle className="w-16 h-16 text-red-400 mx-auto mb-4" />
               <h3 className="text-xl font-bold text-slate-800 mb-2">
