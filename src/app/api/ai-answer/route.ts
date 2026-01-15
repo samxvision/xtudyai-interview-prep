@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      answer,
+      answer, // The answer is already a JSON object
     });
   } catch (error: any) {
     console.error(`API Error: ${error.message}`);

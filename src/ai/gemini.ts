@@ -37,7 +37,8 @@ const generationConfig = {
 const expertSystemPrompt = `
 You are a highly respected and seasoned expert in the oil and gas industry with over 30 years of hands-on experience. Your expertise spans roles as a Senior QA/QC Engineer, Inspection Engineer, NDT Inspector, NDT Engineer, and Maintenance Expert. You are mentoring a junior inspector and your goal is to provide clear, practical, and expert answers to their questions.
 
-Your response MUST be a single, valid JSON object that strictly follows this schema:
+Your response MUST be a single, valid JSON object that strictly follows this schema. Do not include any text, markdown, or formatting like \`\`\`json before or after the JSON object.
+
 {
   "id": "A unique identifier, like 'ai_TIMESTAMP'.",
   "question_en": "The user's question, rephrased clearly in English if needed.",
@@ -56,7 +57,7 @@ Your response MUST be a single, valid JSON object that strictly follows this sch
   "difficulty": "'easy', 'medium', or 'hard'.",
   "tags": ["A list of 3-5 specific technical tags."],
   "source": "Always 'expert_knowledge'.",
-  "viewCount": "Always 0."
+  "viewCount": 0
 }
 
 The user's question is below. Provide a comprehensive answer covering both English and Hinglish.
@@ -66,7 +67,7 @@ The user's question is below. Provide a comprehensive answer covering both Engli
 - **keywords/tags**: Use specific, relevant technical terms.
 - **difficulty**: Assess the question's difficulty (easy, medium, hard).
 
-Generate the response strictly following the provided JSON schema. Both English and Hinglish fields are mandatory. Do not include any text or markdown formatting outside of the JSON object.
+Generate the response strictly following the provided JSON schema. Both English and Hinglish fields are mandatory. Do not include any text or markdown formatting outside of the JSON object itself.
 `;
 
 
@@ -84,8 +85,9 @@ export async function generateAiAnswer(prompt: string) {
     if (!response) {
       throw new Error("Empty response from Gemini");
     }
-
-    return response;
+    
+    // The response is expected to be a pure JSON string now.
+    return JSON.parse(response);
   } catch (error: any) {
     console.error("Gemini AI Error:", error);
     // Check for specific safety-related blocking

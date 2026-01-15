@@ -32,12 +32,11 @@ type SearchResult = {
 type SearchMode = 'hybrid' | 'db' | 'ai';
 
 // Helper function to parse the AI's JSON response
-function parseAiResponse(responseText: string): Question | null {
+function parseAiResponse(aiData: any): Question | null {
   try {
-    // Clean the response text to remove markdown and get the pure JSON
-    const jsonString = responseText.replace(/```json\n/g, '').replace(/```/g, '');
-    const aiData = JSON.parse(jsonString);
-
+    if (!aiData || typeof aiData !== 'object') {
+       throw new Error("Invalid AI data format");
+    }
     // Adapt the AI data to the Question type
     const questionData: Question = {
       ...aiData,
@@ -156,10 +155,18 @@ export default function SmartQuestionSearch() {
 
         const matchResult = await searchQuestions(finalQuery, questions);
         
+        const topMatch = matchResult.topMatch ? { question: matchResult.topMatch.question, totalScore: matchResult.topMatch.confidence || 0 } : null;
+        
+        const alternativeMatches = (matchResult.alternativeMatches || []).map((match: any) => ({
+             question: match.question,
+             totalScore: match.confidence || 0
+        }));
+
         if (searchMode === 'hybrid' && (!matchResult || !matchResult.success)) {
             await handleAiSearch(finalQuery);
         } else {
-            setResult(matchResult);
+            setResult({ success: matchResult.success, topMatch, alternativeMatches });
+
             if (!matchResult.success && searchMode === 'db') {
                  sendQuestionToAutomation(finalQuery);
             }
