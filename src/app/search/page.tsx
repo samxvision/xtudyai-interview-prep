@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect, useTransition, useCallback } from 'react';
 import { Search, Loader2, AlertCircle, Tag, ArrowLeft, Database, Mic, Sparkles } from 'lucide-react';
-import { intelligentQuestionMatch } from '@/lib/matching';
+import { searchQuestions } from '@/lib/searchSystem';
 import { useAppContext } from '@/context/AppContext';
 import type { Question } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -164,7 +164,7 @@ export default function SmartQuestionSearch() {
             return;
         }
 
-        const matchResult = await intelligentQuestionMatch(finalQuery, questions);
+        const matchResult = await searchQuestions(finalQuery, questions);
         
         if (searchMode === 'hybrid' && (!matchResult.success || (matchResult.topMatch && matchResult.topMatch.totalScore < 70))) {
             await handleAiSearch(finalQuery);
@@ -172,8 +172,8 @@ export default function SmartQuestionSearch() {
             setResult({ 
                 type: 'question', 
                 source: 'db',
-                topMatch: matchResult.topMatch.question, 
-                alternativeMatch: matchResult.alternativeMatches.length > 0 ? matchResult.alternativeMatches[0].question : null
+                topMatch: matchResult.topMatch, 
+                alternativeMatch: matchResult.alternativeMatches.length > 0 ? matchResult.alternativeMatches[0] : null
             });
         } else {
             setResult({ type: 'not-found' });
