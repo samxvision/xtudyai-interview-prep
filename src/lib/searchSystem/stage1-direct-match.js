@@ -89,6 +89,7 @@ const REVERSE_LOOKUP = buildReverseLookup();
  * - Keep only alphanumeric and spaces
  */
 function normalizeForDirectMatch(text) {
+  if (typeof text !== 'string') return '';
   return text
     .toLowerCase()
     .trim()
@@ -136,25 +137,28 @@ function isDirectMatch(userText, dbText) {
   let matchedWords = 0;
   const totalWords = Math.max(userWords.length, dbWords.length);
   
-  for (const userWord of userWords) {
-    const userEquivalents = getEquivalentForms(userWord);
-    
-    for (const dbWord of dbWords) {
+  // Create an array of equivalent word lists for the user query
+  const userEquivalentsList = userWords.map(getEquivalentForms);
+
+  for (const dbWord of dbWords) {
       const dbEquivalents = getEquivalentForms(dbWord);
       
-      // Check if any equivalent forms match
-      const hasCommonEquivalent = userEquivalents.some(ue => 
-        dbEquivalents.includes(ue)
-      );
-      
-      if (hasCommonEquivalent) {
-        matchedWords++;
-        break;
+      // Check if any of the dbWord's equivalents can be found in the user's equivalents list
+      let foundMatch = false;
+      for (let i = 0; i < userEquivalentsList.length; i++) {
+          const userEquivalents = userEquivalentsList[i];
+          if (userEquivalents.some(ue => dbEquivalents.includes(ue))) {
+              matchedWords++;
+              // Remove this list so it can't be matched again
+              userEquivalentsList.splice(i, 1);
+              foundMatch = true;
+              break;
+          }
       }
-    }
+      if (foundMatch) continue;
   }
   
-  const matchPercentage = (matchedWords / totalWords) * 100;
+  const matchPercentage = totalWords > 0 ? (matchedWords / totalWords) * 100 : 0;
   
   if (matchPercentage >= 80) {
     return { 
