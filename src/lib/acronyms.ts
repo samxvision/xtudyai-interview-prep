@@ -4,7 +4,7 @@
 // Value: The correct phrase
 // This allows for easy updates and maintenance of voice correction logic.
 
-export const correctionMap = new Map<string, string>([
+export const correctionMap = new Map([
   // Heat Exchanger
   ["heat stranger", "heat exchanger"],
   ["he stranger", "heat exchanger"],
@@ -1117,3 +1117,5 @@ export const ENTITY_SEMANTIC_MAP = {
     ]
   }
 }
+
+    
