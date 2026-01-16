@@ -25,7 +25,7 @@ const safetySettings = [
 
 const generationConfig = {
     temperature: 0.3,
-    response_mime_type: "application/json",
+    responseMimeType: "application/json",
 };
 
 const expertSystemPrompt = `
