@@ -67,7 +67,7 @@ export async function generateAiAnswer(prompt: string) {
 
     const API_KEY = process.env.GEMINI_API_KEY;
     const MODEL = "gemini-1.5-flash";
-    const URL = `https://generativelanguage.googleapis.com/v1/models/${MODEL}:generateContent?key=${API_KEY}`;
+    const URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${API_KEY}`;
 
     const apiResponse = await fetch(URL, {
         method: "POST",
@@ -85,7 +85,7 @@ export async function generateAiAnswer(prompt: string) {
 
     if (!apiResponse.ok) {
         const errorData = await apiResponse.json();
-        console.error("API Detailed Error:", errorData);
+        console.error("Google API Error Details:", errorData);
         throw new Error(errorData.error?.message || `AI API request failed with status ${apiResponse.status}`);
     }
 
