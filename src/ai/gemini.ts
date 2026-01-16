@@ -1,3 +1,4 @@
+
 'use server';
 
 const safetySettings = [
@@ -65,7 +66,7 @@ export async function generateAiAnswer(prompt: string) {
     const fullPrompt = `${expertSystemPrompt}\n\nUser Question: "${prompt}"`;
 
     const API_KEY = process.env.GEMINI_API_KEY;
-    const MODEL = "gemini-2.0-flash";
+    const MODEL = "gemini-2.0-flash-lite";
     const URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${API_KEY}`;
 
     const apiResponse = await fetch(URL, {
