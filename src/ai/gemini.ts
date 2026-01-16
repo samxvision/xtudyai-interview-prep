@@ -1,8 +1,10 @@
 
 'use server';
 
-const API_KEY = process.env.GEMINI_API_KEY as string;
-const URL = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
+import { GoogleGenerativeAI } from "@google/generative-ai";
+
+// 1. Initialize with API Key
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY as string);
 
 const safetySettings = [
     {
@@ -66,37 +68,25 @@ Generate the response strictly following the provided JSON schema. Both English 
 
 export async function generateAiAnswer(prompt: string) {
   try {
+    // 2. Model select karein (SDK handles versioning)
+    const model = genAI.getGenerativeModel({
+        model: "gemini-1.5-flash",
+        generationConfig,
+        safetySettings,
+    });
+    
     const fullPrompt = `${expertSystemPrompt}\n\nUser Question: "${prompt}"`;
 
-    const requestBody = {
-      contents: [{ role: "user", parts: [{ text: fullPrompt }] }],
-      generationConfig,
-      safetySettings,
-    };
-    
-    const apiResponse = await fetch(URL, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody),
-    });
-
-    if (!apiResponse.ok) {
-        const errorData = await apiResponse.json();
-        const errorMessage = errorData.error?.message || `Error fetching from Google AI: ${apiResponse.status} ${apiResponse.statusText}`;
-        throw new Error(errorMessage);
-    }
-    
-    const data = await apiResponse.json();
-    
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    // 3. Content generate karein
+    const result = await model.generateContent(fullPrompt);
+    const response = await result.response;
+    const text = response.text();
 
     if (!text) {
-      if (data.candidates?.[0]?.finishReason === 'SAFETY') {
-          throw new Error('The response was blocked due to safety settings. Please rephrase your question.');
+      if (response.promptFeedback?.blockReason) {
+          throw new Error(`The response was blocked due to safety settings. Please rephrase your question.`);
       }
-      throw new Error("Empty response from Gemini. The response might be blocked or the model returned no content.");
+      throw new Error("Empty response from Gemini. The model returned no content.");
     }
     
     // Find the start and end of the JSON object to handle cases where the model returns extra text.
@@ -114,7 +104,7 @@ export async function generateAiAnswer(prompt: string) {
 
   } catch (error: any) {
     console.error("Gemini AI Error:", error);
-    // Rethrow the error to be handled by the API route
+    // Rethrow a user-friendly error to be handled by the API route
     throw new Error(
       `AI model failed to respond: ${error?.message || "Unknown error"}`
     );
