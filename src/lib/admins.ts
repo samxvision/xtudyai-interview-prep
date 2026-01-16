@@ -3,6 +3,6 @@
 // For a production app, you would typically manage roles in your database (e.g., Firestore).
 
 export const ADMIN_EMAILS: string[] = [
-  'admin@example.com', // Replace with your primary admin email
+  'shortsfest9@gmail.com','versusxtar@gmail.com' // Replace with your primary admin email
   // You can add more admin emails here
 ];

@@ -105,7 +105,7 @@ export default function SmartQuestionSearch() {
 
       if (!apiResponse.ok) {
         const errorData = await apiResponse.json();
-        throw new Error(errorData.error || "AI API request failed");
+        throw new Error(errorData.error?.message || `AI API request failed`);
       }
 
       const { answer } = await apiResponse.json();
@@ -147,32 +147,39 @@ export default function SmartQuestionSearch() {
     }
 
     startTransition(async () => {
+      try {
         if (searchMode === 'ai') {
-            await handleAiSearch(finalQuery);
-            setLoading(false);
-            return;
-        }
+          await handleAiSearch(finalQuery);
+        } else { // 'db' or 'hybrid'
+          const matchResult = await searchQuestions(finalQuery, questions);
 
-        const matchResult = await searchQuestions(finalQuery, questions);
-        
-        const topMatch = matchResult.topMatch ? { question: matchResult.topMatch.question, totalScore: matchResult.topMatch.confidence || 0 } : null;
-        
-        const alternativeMatches = (matchResult.alternativeMatches || []).map((match: any) => ({
-             question: match.question,
-             totalScore: match.confidence || 0
-        }));
-
-        if (searchMode === 'hybrid' && (!matchResult || !matchResult.success)) {
+          if (searchMode === 'hybrid' && !matchResult.success) {
             await handleAiSearch(finalQuery);
-        } else {
+          } else {
+            const topMatch = matchResult.topMatch ? { question: matchResult.topMatch.question, totalScore: matchResult.topMatch.confidence || 0 } : null;
+            const alternativeMatches = (matchResult.alternativeMatches || []).map((match: any) => ({
+              question: match.question,
+              totalScore: match.confidence || 0
+            }));
+            
             setResult({ success: matchResult.success, topMatch, alternativeMatches });
 
             if (!matchResult.success && searchMode === 'db') {
-                 sendQuestionToAutomation(finalQuery);
+              sendQuestionToAutomation(finalQuery);
             }
+          }
         }
-        
+      } catch (error: any) {
+        console.error("Search failed:", error);
+        toast({
+          title: "Search Error",
+          description: "An unexpected error occurred. Please try again.",
+          variant: "destructive",
+        });
+        setResult({ success: false, topMatch: null, alternativeMatches: [] });
+      } finally {
         setLoading(false);
+      }
     });
   };
 
@@ -368,5 +375,7 @@ export default function SmartQuestionSearch() {
     </div>
   );
 }
+
+    
 
     
