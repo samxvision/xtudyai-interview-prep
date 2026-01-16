@@ -65,7 +65,7 @@ export async function generateAiAnswer(prompt: string) {
     const fullPrompt = `${expertSystemPrompt}\n\nUser Question: "${prompt}"`;
 
     const API_KEY = process.env.GEMINI_API_KEY;
-    const MODEL = "gemini-1.5-pro";
+    const MODEL = "gemini-1.5-flash";
     const URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${API_KEY}`;
 
     const apiResponse = await fetch(URL, {
