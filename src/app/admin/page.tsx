@@ -1,38 +1,13 @@
 'use client';
 
 import React from 'react';
-import {
-  Users,
-  HelpCircle,
-  BarChart2,
-  Settings,
-  Shield,
-  Users as AdminUsers,
-  MessageSquare,
-  BookOpen,
-  BrainCircuit,
-  Database,
-  FileText,
-  Bell,
-  FlaskConical,
-  Lock,
-  MessageCircle,
-  Server,
-  ChevronsUpDown,
-  Home,
-  LogOut,
-  User,
-  SlidersHorizontal,
-  FileUp,
-  FileDown,
-  Trash2,
-  PlusCircle,
-  Search,
-  ChevronDown
-} from 'lucide-react';
+import { useUser } from '@/firebase/provider';
+import { ADMIN_EMAILS } from '@/lib/admins';
+import { Button } from '@/components/ui/button';
+import { Loader2, ShieldAlert, Home, Lock, Users as AdminUsers, HelpCircle, MessageSquare, BookOpen, BrainCircuit, FileText, Database, ChevronsUpDown, Settings, Bell, FlaskConical, Shield, MessageCircle, Server, User, SlidersHorizontal, LogOut, FileUp, PlusCircle, Search, BarChart2, Users } from 'lucide-react';
+import Link from 'next/link';
 import { Sidebar, SidebarProvider, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarContent, SidebarHeader, SidebarFooter, SidebarTrigger, SidebarInset } from '@/components/ui/sidebar';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -89,8 +64,9 @@ const mockLogs = [
     { admin: "Super Admin", action: "Blocked user 'rahul.kumar@example.com'", timestamp: "2024-05-20 03:45 PM" },
 ];
 
-export default function AdminPanelPage() {
-  return (
+
+function AdminPanel() {
+    return (
     <SidebarProvider>
       <div className="flex min-h-screen bg-slate-50">
         <Sidebar collapsible="icon" className="group-data-[variant=floating]:border-r-0">
@@ -402,5 +378,41 @@ export default function AdminPanelPage() {
         </SidebarInset>
       </div>
     </SidebarProvider>
-  );
+    );
+}
+
+export default function AdminPanelPage() {
+  const { user, isUserLoading } = useUser();
+
+  if (isUserLoading) {
+    return (
+      <div className="flex flex-col min-h-screen bg-background text-foreground font-body items-center justify-center">
+        <div className="flex flex-col items-center gap-4 text-center">
+          <Loader2 className="h-12 w-12 animate-spin text-primary" />
+          <h2 className="text-xl font-semibold">Verifying Access...</h2>
+          <p className="text-muted-foreground">Please wait a moment.</p>
+        </div>
+      </div>
+    );
+  }
+
+  const isAdmin = user && user.email && ADMIN_EMAILS.includes(user.email);
+
+  if (!isAdmin) {
+    return (
+       <div className="flex flex-col items-center justify-center min-h-screen text-center px-4 bg-slate-50">
+          <ShieldAlert className="w-24 h-24 text-red-500 mb-4" />
+          <h1 className="text-4xl font-bold font-headline text-slate-800">Access Denied</h1>
+          <p className="mt-2 text-lg text-slate-600 max-w-md">
+            You do not have permission to view this page. Please contact an administrator if you believe this is an error.
+          </p>
+          <Button asChild className="mt-8">
+            <Link href="/">Go back to Home</Link>
+          </Button>
+        </div>
+    );
+  }
+
+  // If user is an admin, show the panel
+  return <AdminPanel />;
 }
