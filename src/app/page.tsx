@@ -4,12 +4,13 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { BookOpen, TrendingUp, ChevronRight, Crown, Sparkles, Menu, User, MessageSquare, Loader2, BrainCircuit, Voicemail, Briefcase, SquareRadical } from 'lucide-react';
+import { BookOpen, TrendingUp, ChevronRight, Crown, Sparkles, Menu, User, MessageSquare, Loader2, BrainCircuit, Voicemail, Briefcase, SquareRadical, Lock } from 'lucide-react';
 import { Logo } from '@/components/logo';
 import { useAppContext } from '@/context/AppContext';
 import type { Question } from '@/types';
 import React, { useState, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/hooks/use-toast';
 
 const categoryConfig = [
   {
@@ -91,6 +92,7 @@ type TrendingQuestion = { rank: number; text: string };
 export default function Home() {
   const { questions, areQuestionsLoading } = useAppContext();
   const [trendingQuestions, setTrendingQuestions] = useState<TrendingQuestion[]>([]);
+  const { toast } = useToast();
 
   useEffect(() => {
     if (!areQuestionsLoading && questions.length > 0) {
@@ -184,9 +186,18 @@ export default function Home() {
                     </div>
                     <h3 className="text-xl font-bold mb-1">Unlock Interview Simulator</h3>
                     <p className="text-slate-400 mb-4 text-sm">Practice with real-time AI voice interviews, get performance scoring, and access offline mode.</p>
-                    <Button className="bg-white text-slate-900 hover:bg-slate-200 font-bold w-full sm:w-auto">
-                        <Sparkles className="h-4 w-4 mr-2" />
-                        Upgrade Now
+                    <Button
+                      className="bg-white text-slate-900 hover:bg-slate-200 font-bold w-full sm:w-auto"
+                      onClick={() => {
+                        toast({
+                          title: 'Pro features not available',
+                          description:
+                            'Our team is working on it and it will be available in future.',
+                        });
+                      }}
+                    >
+                      <Lock className="h-4 w-4 mr-2" />
+                      Upgrade Now
                     </Button>
                 </div>
             </Card>
