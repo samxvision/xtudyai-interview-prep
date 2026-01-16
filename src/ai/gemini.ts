@@ -25,7 +25,6 @@ const safetySettings = [
 
 const generationConfig = {
     temperature: 0.3,
-    responseMimeType: "application/json",
 };
 
 const expertSystemPrompt = `
@@ -100,8 +99,18 @@ export async function generateAiAnswer(prompt: string) {
       throw new Error("Empty response from Gemini. The response might be blocked or the model returned no content.");
     }
     
-    // The response is expected to be a pure JSON string now.
-    return JSON.parse(text);
+    // Find the start and end of the JSON object to handle cases where the model returns extra text.
+    const jsonStart = text.indexOf('{');
+    const jsonEnd = text.lastIndexOf('}') + 1;
+
+    if (jsonStart === -1 || jsonEnd === 0) {
+      console.error("Invalid response from AI, did not contain JSON:", text);
+      throw new Error("AI response did not contain a valid JSON object.");
+    }
+    
+    const jsonString = text.substring(jsonStart, jsonEnd);
+    
+    return JSON.parse(jsonString);
 
   } catch (error: any) {
     console.error("Gemini AI Error:", error);
