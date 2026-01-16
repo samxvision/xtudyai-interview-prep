@@ -3,6 +3,8 @@ import './globals.css';
 import { AppProvider } from '@/context/AppContext';
 import { Toaster } from '@/components/ui/toaster';
 import { FirebaseClientProvider } from '@/firebase/client-provider';
+import { AuthProvider } from '@/context/AuthContext';
+import { AuthDialog } from '@/components/auth-dialog';
 
 export const metadata: Metadata = {
   title: 'XtudyAI Interview Prep',
@@ -24,8 +26,11 @@ export default function RootLayout({
       <body className="font-body antialiased">
         <FirebaseClientProvider>
           <AppProvider>
-            {children}
-            <Toaster />
+            <AuthProvider>
+              {children}
+              <AuthDialog />
+              <Toaster />
+            </AuthProvider>
           </AppProvider>
         </FirebaseClientProvider>
       </body>

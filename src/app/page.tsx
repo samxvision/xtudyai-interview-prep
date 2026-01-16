@@ -11,6 +11,19 @@ import type { Question } from '@/types';
 import React, { useState, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
+import { useUser, useFirebase } from '@/firebase/provider';
+import { useAuthContext } from '@/context/AuthContext';
+import { useRouter } from 'next/navigation';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+
 
 const categoryConfig = [
   {
@@ -93,6 +106,11 @@ export default function Home() {
   const { questions, areQuestionsLoading } = useAppContext();
   const [trendingQuestions, setTrendingQuestions] = useState<TrendingQuestion[]>([]);
   const { toast } = useToast();
+  const { user, isUserLoading } = useUser();
+  const { auth } = useFirebase();
+  const { openAuthDialog } = useAuthContext();
+  const router = useRouter();
+
 
   useEffect(() => {
     if (!areQuestionsLoading && questions.length > 0) {
@@ -126,6 +144,17 @@ export default function Home() {
     }).length;
   };
 
+  const handleProtectedClick = (href: string) => (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (isUserLoading) return; // Do nothing if auth state is loading
+
+    if (user) {
+      router.push(href);
+    } else {
+      openAuthDialog(href);
+    }
+  };
+
   if (areQuestionsLoading) {
     return (
       <div className="flex flex-col min-h-screen bg-background text-foreground font-body items-center justify-center">
@@ -138,17 +167,43 @@ export default function Home() {
     );
   }
 
+  const userInitial = user?.email ? user.email.charAt(0).toUpperCase() : <User className="h-5 w-5" />;
+  const userAvatar = user?.photoURL;
+
   return (
     <div className="min-h-screen bg-background text-foreground font-body">
       <header className="container mx-auto px-4 py-4 flex justify-between items-center">
         <Logo />
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
             <Button variant="ghost" size="icon" className="text-slate-600">
                 <Menu className="h-6 w-6" />
             </Button>
-            <Button variant="ghost" size="icon" className="text-slate-600">
-                <User className="h-6 w-6" />
-            </Button>
+             { user ? (
+                 <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                         <Button variant="ghost" size="icon" className="rounded-full">
+                             <Avatar className="h-9 w-9">
+                                <AvatarImage src={userAvatar || ''} alt={user.displayName || ''} />
+                                <AvatarFallback>{userInitial}</AvatarFallback>
+                            </Avatar>
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-56">
+                        <DropdownMenuLabel>{user.isAnonymous ? 'Guest User' : user.email}</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem disabled>Profile</DropdownMenuItem>
+                        <DropdownMenuItem disabled>Settings</DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => auth.signOut()}>
+                            Log out
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            ) : (
+                <Button variant="ghost" size="icon" className="text-slate-600" onClick={handleProtectedClick('/')}>
+                    <User className="h-6 w-6" />
+                </Button>
+            )}
         </div>
       </header>
 
@@ -158,8 +213,8 @@ export default function Home() {
             <p className="text-muted-foreground text-lg max-w-2xl mx-auto">The ultimate companion for Oil & Gas inspection professionals.</p>
         </section>
 
-        <section className="mb-6">
-             <Link href="/search">
+        <section className="mb-6" onClick={handleProtectedClick('/search')}>
+             <div className="cursor-pointer">
                 <Card className="hover:border-primary/40 transition-all shadow-sm hover:shadow-md border-border">
                     <CardContent className="p-4 flex items-center gap-4">
                         <div className="h-10 w-10 flex-shrink-0 flex items-center justify-center rounded-lg bg-blue-100 text-primary">
@@ -172,7 +227,7 @@ export default function Home() {
                         <ChevronRight className="h-5 w-5 text-slate-400 ml-auto" />
                     </CardContent>
                 </Card>
-            </Link>
+            </div>
         </section>
         
         <section className="mb-10">
@@ -232,15 +287,15 @@ export default function Home() {
                 <BookOpen className="h-5 w-5 text-muted-foreground" />
                 Browse Categories
                 </h2>
-                <Link href="/search" className="text-sm font-semibold text-primary hover:underline">
-                View All
-                </Link>
+                <div onClick={handleProtectedClick('/search')} className="text-sm font-semibold text-primary hover:underline cursor-pointer">
+                    View All
+                </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {categoryConfig.map((category) => {
                   const count = getCategoryCount(category.name);
                   return (
-                    <Link href={category.href} key={category.name} className="group">
+                    <div onClick={handleProtectedClick(category.href)} key={category.name} className="group cursor-pointer">
                         <Card className="hover:border-primary/40 transition-all shadow-sm hover:shadow-md border-border h-full relative overflow-hidden bg-card">
                             <div className={`absolute -top-8 -right-8 h-24 w-24 rounded-full ${category.glowColor} blur-2xl opacity-50 group-hover:opacity-80 transition-opacity`}></div>
                             <CardContent className="p-6 flex items-start gap-4">
@@ -252,7 +307,7 @@ export default function Home() {
                                 </div>
                             </CardContent>
                         </Card>
-                    </Link>
+                    </div>
                   );
                 })}
             </div>
