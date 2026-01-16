@@ -17,6 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { sendQuestionToAutomation } from '@/lib/googleSheet';
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { correctVoiceQuery } from '@/lib/voice-corrector';
+import { addLog } from '@/lib/logger';
 
 type Match = {
   question: Question;
@@ -171,9 +172,14 @@ export default function SmartQuestionSearch() {
         }
       } catch (error: any) {
         console.error("Search failed:", error);
+        addLog({
+          type: 'error',
+          message: 'Search operation failed.',
+          details: error.message || 'An unknown error occurred during search.',
+        });
         toast({
           title: "Search Error",
-          description: "An unexpected error occurred. Please try again.",
+          description: "An unexpected error occurred. The issue has been logged for review.",
           variant: "destructive",
         });
         setResult({ success: false, topMatch: null, alternativeMatches: [] });

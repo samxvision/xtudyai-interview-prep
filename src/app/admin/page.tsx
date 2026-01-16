@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useUser } from '@/firebase/provider';
 import { ADMIN_EMAILS } from '@/lib/admins';
 import { Button } from '@/components/ui/button';
@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Separator } from '@/components/ui/separator';
 import { Logo } from '@/components/logo';
+import { getLogs, clearLogs, type LogEntry } from '@/lib/logger';
 
 const adminSections = [
     { name: 'Dashboard', icon: Home, section: 'dashboard' },
@@ -58,14 +59,19 @@ const mockQuestions = [
     { text: "What are the acceptance criteria for undercut as per AWS D1.1?", category: "Piping", difficulty: "Hard", views: 753 },
 ];
 
-const mockLogs = [
-    { admin: "Super Admin", action: "Deleted question #1024", timestamp: "2024-05-21 10:30 AM" },
-    { admin: "Content Admin", action: "Approved content for 'UT Technique'", timestamp: "2024-05-21 09:15 AM" },
-    { admin: "Super Admin", action: "Blocked user 'rahul.kumar@example.com'", timestamp: "2024-05-20 03:45 PM" },
-];
-
-
 function AdminPanel() {
+    const [logs, setLogs] = useState<LogEntry[]>([]);
+
+    useEffect(() => {
+        // Logs are fetched on the client side from localStorage
+        setLogs(getLogs());
+    }, []);
+
+    const handleClearLogs = () => {
+        clearLogs();
+        setLogs([]); // Clear the state to update the UI immediately
+    };
+    
     return (
     <SidebarProvider>
       <div className="flex min-h-screen bg-slate-50">
@@ -331,28 +337,44 @@ function AdminPanel() {
                  <h2 className="text-2xl font-bold tracking-tight mb-4">Logs & Activity Tracking</h2>
                 <Card>
                     <CardHeader>
-                         <CardTitle>Admin Activity Log</CardTitle>
-                         <CardDescription>Track all major actions performed by administrators.</CardDescription>
+                         <CardTitle>System & Error Logs</CardTitle>
+                         <CardDescription>Track all major actions and errors within the application.</CardDescription>
                     </CardHeader>
                     <CardContent>
                          <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead>Admin</TableHead>
-                                    <TableHead>Action</TableHead>
+                                    <TableHead>Type</TableHead>
+                                    <TableHead>Message</TableHead>
+                                    <TableHead>Details</TableHead>
                                     <TableHead>Timestamp</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {mockLogs.map((log, i) => (
-                                    <TableRow key={i}>
-                                        <TableCell>
-                                            <Badge variant={log.admin === 'Super Admin' ? 'default' : 'secondary'}>{log.admin}</Badge>
+                                {logs.length === 0 ? (
+                                    <TableRow>
+                                        <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                                            No logs found.
                                         </TableCell>
-                                        <TableCell className="font-mono text-xs">{log.action}</TableCell>
-                                        <TableCell>{log.timestamp}</TableCell>
                                     </TableRow>
-                                ))}
+                                ) : (
+                                    logs.map((log) => (
+                                        <TableRow key={log.id} className={log.type === 'error' ? 'bg-red-50 dark:bg-red-900/20' : ''}>
+                                            <TableCell>
+                                                <Badge variant={log.type === 'error' ? 'destructive' : 'secondary'}>
+                                                    {log.type.toUpperCase()}
+                                                </Badge>
+                                            </TableCell>
+                                            <TableCell className="font-medium">{log.message}</TableCell>
+                                            <TableCell className="font-mono text-xs max-w-sm truncate" title={log.details}>
+                                                {log.details}
+                                            </TableCell>
+                                            <TableCell className="text-sm text-muted-foreground">
+                                                {new Date(log.timestamp).toLocaleString()}
+                                            </TableCell>
+                                        </TableRow>
+                                    ))
+                                )}
                             </TableBody>
                         </Table>
                     </CardContent>
@@ -370,7 +392,7 @@ function AdminPanel() {
                     <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <Button variant="outline">Restart Services</Button>
                         <Button variant="outline">Clear Cache</Button>
-                        <Button variant="destructive">Clear All Logs</Button>
+                        <Button variant="destructive" onClick={handleClearLogs}>Clear All Logs</Button>
                     </CardContent>
                 </Card>
             </section>
