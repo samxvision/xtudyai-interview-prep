@@ -1,3 +1,4 @@
+
 'use server';
 
 const API_KEY = process.env.GEMINI_API_KEY as string;
@@ -24,7 +25,7 @@ const safetySettings = [
 
 const generationConfig = {
     temperature: 0.3,
-    responseMimeType: "application/json",
+    response_mime_type: "application/json",
 };
 
 const expertSystemPrompt = `
