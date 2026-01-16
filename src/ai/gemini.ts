@@ -1,31 +1,24 @@
 'use server';
 
-import { GoogleGenerativeAI, HarmBlockThreshold, HarmCategory } from "@google/generative-ai";
-
-const genAI = new GoogleGenerativeAI(
-  process.env.GEMINI_API_KEY as string
-);
-
-const model = genAI.getGenerativeModel({
-  model: "gemini-1.5-flash",
-});
+const API_KEY = process.env.GEMINI_API_KEY as string;
+const URL = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
 
 const safetySettings = [
     {
-      category: HarmCategory.HARM_CATEGORY_HARASSMENT,
-      threshold: HarmBlockThreshold.BLOCK_NONE,
+      category: "HARM_CATEGORY_HARASSMENT",
+      threshold: "BLOCK_NONE",
     },
     {
-      category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-      threshold: HarmBlockThreshold.BLOCK_NONE,
+      category: "HARM_CATEGORY_HATE_SPEECH",
+      threshold: "BLOCK_NONE",
     },
     {
-      category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-      threshold: HarmBlockThreshold.BLOCK_NONE,
+      category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+      threshold: "BLOCK_NONE",
     },
     {
-      category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-      threshold: HarmBlockThreshold.BLOCK_NONE,
+      category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+      threshold: "BLOCK_NONE",
     },
 ];
 
@@ -74,26 +67,44 @@ Generate the response strictly following the provided JSON schema. Both English 
 export async function generateAiAnswer(prompt: string) {
   try {
     const fullPrompt = `${expertSystemPrompt}\n\nUser Question: "${prompt}"`;
-    const result = await model.generateContent({
-        contents: [{ role: "user", parts: [{ text: fullPrompt }] }],
-        generationConfig,
-        safetySettings,
+
+    const requestBody = {
+      contents: [{ role: "user", parts: [{ text: fullPrompt }] }],
+      generationConfig,
+      safetySettings,
+    };
+    
+    const apiResponse = await fetch(URL, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
     });
 
-    const response = result.response.text();
+    if (!apiResponse.ok) {
+        const errorData = await apiResponse.json();
+        const errorMessage = errorData.error?.message || `Error fetching from Google AI: ${apiResponse.status} ${apiResponse.statusText}`;
+        throw new Error(errorMessage);
+    }
+    
+    const data = await apiResponse.json();
+    
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
-    if (!response) {
-      throw new Error("Empty response from Gemini");
+    if (!text) {
+      if (data.candidates?.[0]?.finishReason === 'SAFETY') {
+          throw new Error('The response was blocked due to safety settings. Please rephrase your question.');
+      }
+      throw new Error("Empty response from Gemini. The response might be blocked or the model returned no content.");
     }
     
     // The response is expected to be a pure JSON string now.
-    return JSON.parse(response);
+    return JSON.parse(text);
+
   } catch (error: any) {
     console.error("Gemini AI Error:", error);
-    // Check for specific safety-related blocking
-    if (error.message.includes('SAFETY')) {
-        throw new Error('The response was blocked due to safety settings. Please rephrase your question.');
-    }
+    // Rethrow the error to be handled by the API route
     throw new Error(
       `AI model failed to respond: ${error?.message || "Unknown error"}`
     );
