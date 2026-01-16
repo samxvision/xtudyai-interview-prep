@@ -1,11 +1,6 @@
 
 'use server';
 
-import { GoogleGenerativeAI } from "@google/generative-ai";
-
-// 1. Initialize with API Key
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY as string);
-
 const safetySettings = [
     {
       category: "HARM_CATEGORY_HARASSMENT",
@@ -68,25 +63,41 @@ Generate the response strictly following the provided JSON schema. Both English 
 
 export async function generateAiAnswer(prompt: string) {
   try {
-    // 2. Model select karein (SDK handles versioning)
-    const model = genAI.getGenerativeModel({
-        model: "gemini-1.5-flash",
-        generationConfig,
-        safetySettings,
-    });
-    
     const fullPrompt = `${expertSystemPrompt}\n\nUser Question: "${prompt}"`;
 
-    // 3. Content generate karein
-    const result = await model.generateContent(fullPrompt);
-    const response = await result.response;
-    const text = response.text();
+    const API_KEY = process.env.GEMINI_API_KEY;
+    const MODEL = "gemini-1.5-flash";
+    const URL = `https://generativelanguage.googleapis.com/v1/models/${MODEL}:generateContent?key=${API_KEY}`;
 
+    const apiResponse = await fetch(URL, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+            contents: [{
+                parts: [{ text: fullPrompt }]
+            }],
+            generationConfig: generationConfig,
+            safetySettings: safetySettings,
+        }),
+    });
+
+    if (!apiResponse.ok) {
+        const errorData = await apiResponse.json();
+        console.error("API Detailed Error:", errorData);
+        throw new Error(errorData.error?.message || `AI API request failed with status ${apiResponse.status}`);
+    }
+
+    const data = await apiResponse.json();
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    
     if (!text) {
-      if (response.promptFeedback?.blockReason) {
-          throw new Error(`The response was blocked due to safety settings. Please rephrase your question.`);
-      }
-      throw new Error("Empty response from Gemini. The model returned no content.");
+        const promptFeedback = data.promptFeedback;
+        if (promptFeedback?.blockReason) {
+            throw new Error(`The response was blocked due to safety settings: ${promptFeedback.blockReason}. Please rephrase your question.`);
+        }
+        throw new Error("Empty response from Gemini. The model returned no content.");
     }
     
     // Find the start and end of the JSON object to handle cases where the model returns extra text.
