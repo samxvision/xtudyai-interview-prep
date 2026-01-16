@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useEffect, useTransition, useCallback } from 'react';
-import { Search, Loader2, AlertCircle, Tag, ArrowLeft, Database, Mic, Sparkles } from 'lucide-react';
+import { Search, Loader2, AlertCircle, Tag, ArrowLeft, Database, Mic, Sparkles, Lock } from 'lucide-react';
 import { searchQuestions } from '@/lib/searchSystem';
 import { useAppContext } from '@/context/AppContext';
 import type { Question } from '@/types';
@@ -55,7 +55,7 @@ export default function SmartQuestionSearch() {
   const [loading, setLoading] = useState(false);
   const [uiLanguage, setUiLanguage] = useState<'en' | 'hi'>('hi');
   const [exampleQuestions, setExampleQuestions] = useState<string[]>([]);
-  const [searchMode, setSearchMode] = useState<SearchMode>('hybrid');
+  const [searchMode, setSearchMode] = useState<SearchMode>('db');
 
 
   const { areQuestionsLoading, questions } = useAppContext();
@@ -246,9 +246,13 @@ export default function SmartQuestionSearch() {
           </div>
           <Tabs value={searchMode} onValueChange={(value) => setSearchMode(value as SearchMode)} className="w-auto">
             <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="hybrid">Hybrid</TabsTrigger>
+                <TabsTrigger value="hybrid" disabled className="flex items-center gap-2">
+                    Hybrid <Lock className="h-3 w-3" />
+                </TabsTrigger>
                 <TabsTrigger value="db">Database</TabsTrigger>
-                <TabsTrigger value="ai">AI</TabsTrigger>
+                <TabsTrigger value="ai" disabled className="flex items-center gap-2">
+                    AI <Lock className="h-3 w-3" />
+                </TabsTrigger>
             </TabsList>
           </Tabs>
         </div>
@@ -364,3 +368,5 @@ export default function SmartQuestionSearch() {
     </div>
   );
 }
+
+    
