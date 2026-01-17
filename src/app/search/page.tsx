@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import React, { useState, useEffect, useTransition, useCallback } from 'react';
@@ -19,6 +18,7 @@ import { sendQuestionToAutomation } from '@/lib/googleSheet';
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { correctVoiceQuery } from '@/lib/voice-corrector';
 import { addLog } from '@/lib/logger';
+import { Input } from '@/components/ui/input';
 
 type Match = {
   question: Question;
@@ -390,3 +390,5 @@ export default function SmartQuestionSearch() {
     </div>
   );
 }
+
+    
