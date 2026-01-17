@@ -7,7 +7,6 @@ import { useAppContext } from '@/context/AppContext';
 import { AnswerCard } from '@/components/answer-card';
 import { Loader2, ArrowLeft, AlertCircle, ChevronRight, Folder, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Logo } from '@/components/logo';
 import Link from 'next/link';
 import type { Question } from '@/types';
 import { Card } from '@/components/ui/card';
@@ -310,13 +309,13 @@ export default function CategoryHierarchyPage() {
 
   return (
     <div className="flex flex-col h-screen bg-white">
-      <header className="sticky top-0 z-20 bg-white shadow-sm h-14 flex items-center">
+      <header className="sticky top-0 z-20 bg-white shadow-sm h-12 md:h-14 flex items-center">
         <div className="container mx-auto px-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="icon" onClick={() => router.back()}>
               <ArrowLeft className="h-5 w-5 text-slate-700" />
             </Button>
-            <Logo />
+            <h1 className="text-base md:text-lg font-bold text-slate-800">{pageTitle}</h1>
           </div>
           <div className="flex items-center gap-1 text-xs md:text-sm font-medium text-slate-500 self-start sm:self-center ml-10 sm:ml-0 overflow-x-auto whitespace-nowrap py-1">
             {breadcrumbs.map((crumb, index) => (
@@ -358,5 +357,7 @@ export default function CategoryHierarchyPage() {
     </div>
   );
 }
+
+    
 
     
