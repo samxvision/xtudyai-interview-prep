@@ -306,25 +306,26 @@ export default function CategoryHierarchyPage() {
 
   return (
     <div className="flex flex-col h-screen bg-white">
-      <header className="sticky top-0 z-20 bg-white shadow-sm h-12 md:h-14 flex items-center">
-        <div className="container mx-auto px-4 flex justify-between items-center gap-4">
-          <div className="flex items-center gap-2 min-w-0">
-            <Button variant="ghost" size="icon" onClick={() => router.back()} className="shrink-0">
-              <ArrowLeft className="h-5 w-5 text-slate-700" />
-            </Button>
-            <Icon className="h-5 w-5 md:h-6 md:w-6 text-primary shrink-0" />
-            <h1 className="text-base md:text-lg font-bold text-slate-800 truncate">{pageTitle}</h1>
-          </div>
-          <div className="flex items-center gap-1 text-xs md:text-sm font-medium text-slate-500 overflow-x-auto whitespace-nowrap">
-            {breadcrumbs.map((crumb, index) => (
-              <React.Fragment key={crumb.name}>
-                <Link href={crumb.href} className="hover:text-primary transition-colors">
-                  {crumb.name}
-                </Link>
-                {index < breadcrumbs.length - 1 && <ChevronRight className="h-4 w-4 shrink-0" />}
-              </React.Fragment>
-            ))}
-          </div>
+      <header className="sticky top-0 z-20 bg-white shadow-sm">
+        <div className="container mx-auto px-4 flex flex-col md:flex-row md:items-center md:justify-between py-2 md:h-14">
+            <div className="flex items-center gap-2 min-w-0">
+                <Button variant="ghost" size="icon" onClick={() => router.back()} className="shrink-0 h-8 w-8">
+                    <ArrowLeft className="h-5 w-5 text-slate-700" />
+                </Button>
+                <Icon className="h-5 w-5 md:h-6 md:w-6 text-primary shrink-0" />
+                <h1 className="text-base md:text-lg font-bold text-slate-800 truncate">{pageTitle}</h1>
+            </div>
+            
+            <div className="flex items-center gap-1 text-[11px] md:text-xs font-medium text-slate-500 overflow-x-auto whitespace-nowrap mt-1 md:mt-0 pl-10 md:pl-0">
+                {breadcrumbs.map((crumb, index) => (
+                <React.Fragment key={crumb.name}>
+                    <Link href={crumb.href} className="hover:text-primary transition-colors">
+                    {crumb.name}
+                    </Link>
+                    {index < breadcrumbs.length - 1 && <ChevronRight className="h-3 w-3 shrink-0" />}
+                </React.Fragment>
+                ))}
+            </div>
         </div>
       </header>
 
