@@ -283,14 +283,11 @@ export default function CategoryHierarchyPage() {
     );
   }
 
-  const renderList = (title: string, listItems: {name: string}[]) => {
-    const Icon = HIERARCHY_KEYS[currentLevelIndex] ? Folder : FileText;
+  const Icon = HIERARCHY_KEYS[currentLevelIndex] ? Folder : FileText;
+
+  const renderList = (listItems: {name: string}[]) => {
     return (
         <>
-            <h2 className="text-lg md:text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
-                <Icon className="h-5 w-5 md:h-6 md:w-6 text-primary" />
-                {title}
-            </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
                 {listItems.map(item => (
                     <Link key={item.name} href={`/category/${currentPathParts.join('/')}/${encodeURIComponent(item.name)}`} className="group">
@@ -315,6 +312,7 @@ export default function CategoryHierarchyPage() {
             <Button variant="ghost" size="icon" onClick={() => router.back()}>
               <ArrowLeft className="h-5 w-5 text-slate-700" />
             </Button>
+            <Icon className="h-5 w-5 md:h-6 md:w-6 text-primary" />
             <h1 className="text-base md:text-lg font-bold text-slate-800">{pageTitle}</h1>
           </div>
           <div className="flex items-center gap-1 text-xs md:text-sm font-medium text-slate-500 self-start sm:self-center ml-10 sm:ml-0 overflow-x-auto whitespace-nowrap py-1">
@@ -332,11 +330,10 @@ export default function CategoryHierarchyPage() {
 
       <main className="flex-grow overflow-y-auto bg-slate-50">
         <div className="container mx-auto p-4 space-y-6">
-          {items.length > 0 && renderList(pageTitle, items)}
+          {items.length > 0 && renderList(items)}
           
           {filteredQuestions.length > 0 && (
             <>
-              <h2 className="text-lg md:text-xl font-bold text-slate-800 mb-4">{pageTitle}</h2>
               {filteredQuestions.map(question => (
                 <AnswerCard key={question.id} question={question} initialLang={'hi'} />
               ))}
@@ -357,7 +354,3 @@ export default function CategoryHierarchyPage() {
     </div>
   );
 }
-
-    
-
-    
