@@ -3,8 +3,8 @@ import { Bot } from 'lucide-react';
 
 export function Logo() {
   return (
-    <Link href="/" className="flex items-center gap-2 text-lg font-bold font-headline text-foreground">
-      <div className="p-2 bg-primary text-primary-foreground rounded-lg">
+    <Link href="/" className="flex items-center gap-2 text-base md:text-lg font-bold font-headline text-foreground">
+      <div className="p-1.5 md:p-2 bg-primary text-primary-foreground rounded-md md:rounded-lg">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             width="20"
@@ -15,6 +15,7 @@ export function Logo() {
             strokeWidth="2"
             strokeLinecap="round"
             strokeLinejoin="round"
+            className="h-4 w-4 md:h-5 md:w-5"
           >
            <path d="M14.5 16.5_5.5-5.5" />
            <path d="M8.5 5.5 18.5 15.5" />

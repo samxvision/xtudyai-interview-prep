@@ -107,7 +107,7 @@ export default function SmartQuestionSearch() {
 
       if (!apiResponse.ok) {
         const errorData = await apiResponse.json();
-        throw new Error(errorData.error?.message || `AI API request failed`);
+        throw new Error(errorData.error || `AI API request failed`);
       }
 
       const { answer } = await apiResponse.json();
@@ -249,7 +249,7 @@ export default function SmartQuestionSearch() {
   return (
     <div className="flex flex-col h-screen bg-white">
       <header className="sticky top-0 z-20 bg-white shadow-sm flex-shrink-0">
-        <div className="container mx-auto px-4 h-14 flex justify-between items-center">
+        <div className="container mx-auto px-4 h-12 md:h-14 flex justify-between items-center">
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="icon" asChild>
                 <Link href="/">
@@ -259,7 +259,7 @@ export default function SmartQuestionSearch() {
              <Logo />
           </div>
           <Tabs value={searchMode} onValueChange={(value) => setSearchMode(value as SearchMode)} className="w-auto">
-            <TabsList className="grid w-full grid-cols-3 text-xs md:text-sm">
+            <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="hybrid" disabled className="flex items-center gap-1.5">
                     Hybrid <Lock className="h-3 w-3" />
                 </TabsTrigger>
@@ -319,7 +319,7 @@ export default function SmartQuestionSearch() {
                         <Button
                             key={i}
                             variant="outline"
-                            className="justify-start h-auto py-2.5 text-left font-normal bg-white"
+                            className="justify-start h-10 text-left font-normal bg-white py-2"
                             onClick={() => handleSearch(q)}
                         >
                            <p className="text-xs text-slate-700 whitespace-normal">"{q}"</p>
@@ -341,55 +341,52 @@ export default function SmartQuestionSearch() {
       </main>
 
        {/* Search Box Footer */}
-       <footer className={`p-4 bg-white border-t border-slate-200 sticky bottom-0 transition-all duration-200 ${isInputFocused ? 'space-y-2' : 'space-y-3'}`}>
-          {!isInputFocused && (
-            <div className="flex justify-center">
-                <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className={`
-                        h-12 w-12 md:h-14 md:w-14 rounded-full shadow-lg transition-all duration-200 ease-in-out
-                        ${isListening ? 'bg-red-500 scale-110 text-white' : ''}
-                        ${!isListening && result ? 'bg-transparent border-2 border-primary text-primary hover:bg-primary/10' : ''}
-                        ${!isListening && !result ? 'bg-green-500 hover:bg-green-600 text-white' : ''}
-                    `}
-                    onMouseDown={handleMicPress}
-                    onMouseUp={handleMicRelease}
-                    onTouchStart={handleMicPress}
-                    onTouchEnd={handleMicRelease}
+       <footer className={`p-2 md:p-4 bg-white border-t border-slate-200 sticky bottom-0 transition-all duration-200 ${isInputFocused ? 'space-y-2' : ''}`}>
+          <div className="flex items-center gap-2">
+            <div className="relative flex-grow">
+              <Input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleSearch(query)}
+                onFocus={() => setIsInputFocused(true)}
+                onBlur={() => setIsInputFocused(false)}
+                placeholder={isListening ? 'Listening...' : (uiLanguage === 'hi' ? 'सवाल या Acronym सर्च करें...' : 'Search questions or acronyms...')}
+                className="w-full bg-slate-100 border-slate-200 border rounded-lg placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary text-sm pr-12 h-12"
+              />
+              <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center">
+                <Button
+                  onClick={() => handleSearch(query)}
+                  disabled={loading || isPending || !query.trim()}
+                  size="icon"
+                  className="h-9 w-9 bg-slate-800 hover:bg-slate-900 disabled:bg-slate-400 rounded-lg transition"
                 >
-                    <Mic className="h-6 w-6 md:h-7 md:h-7" />
+                  {loading || isPending ? (
+                    <Loader2 className="w-5 h-5 text-white animate-spin" />
+                  ) : (
+                    <Search className="w-5 h-5 text-white" />
+                  )}
                 </Button>
+              </div>
             </div>
-          )}
-          <div className="relative">
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleSearch(query)}
-              onFocus={() => setIsInputFocused(true)}
-              onBlur={() => setIsInputFocused(false)}
-              placeholder={isListening ? 'Listening...' : (uiLanguage === 'hi' ? 'सवाल या Acronym सर्च करें...' : 'Search questions or acronyms...')}
-              className="w-full bg-slate-100 border-slate-200 border rounded-lg placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary text-sm pr-12 h-12 md:h-12 md:text-base"
-            />
-            <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center">
-              <Button
-                onClick={() => handleSearch(query)}
-                disabled={loading || isPending || !query.trim()}
-                className="p-2 h-9 w-9 md:h-10 md:w-10 bg-slate-800 hover:bg-slate-900 disabled:bg-slate-400 rounded-lg transition"
-              >
-                {loading || isPending ? (
-                  <Loader2 className="w-5 h-5 text-white animate-spin" />
-                ) : (
-                  <Search className="w-5 h-5 text-white" />
-                )}
-              </Button>
-            </div>
+            <Button 
+                variant="ghost" 
+                size="icon" 
+                className={`
+                    h-12 w-12 rounded-full shadow-lg transition-all duration-200 ease-in-out shrink-0
+                    ${isListening ? 'bg-red-500 scale-110 text-white' : ''}
+                    ${!isListening && result ? 'bg-transparent border-2 border-primary text-primary hover:bg-primary/10' : ''}
+                    ${!isListening && !result ? 'bg-green-500 hover:bg-green-600 text-white' : ''}
+                `}
+                onMouseDown={handleMicPress}
+                onMouseUp={handleMicRelease}
+                onTouchStart={handleMicPress}
+                onTouchEnd={handleMicRelease}
+            >
+                <Mic className="h-6 w-6" />
+            </Button>
           </div>
        </footer>
     </div>
   );
 }
-
-    
