@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useMemo } from 'react';
@@ -56,8 +57,7 @@ const NDT_SECTION_ORDER: Record<string, string[]> = {
     'Image Quality Indicators (IQI)', 'Equipment & Tools', 'Consumables', 'Process / Procedure', 'Process Parameters',
     'Detectable Defects', 'Non-Detectable / Limited Detection', 'Indication Type', 'Acceptance Criteria',
     'Codes & Standards', 'Safety & Caution', 'Common Field Mistakes', 'Advantages', 'Limitations',
-    'Application', 'Inspector Level Responsibility', 'Reporting & Documentation', 'Training & Certification',
-    'Interview Question Mapping'
+    'Application', 'Inspector Level Responsibility', 'Reporting & Documentation', 'Training & Certification', 'Interview Question Mapping'
   ],
   'ect': [
     'Method Identity', 'Introduction', 'Principle', 'Scientific / Physical Basis', 'Material Compatibility',
@@ -288,16 +288,16 @@ export default function CategoryHierarchyPage() {
     const Icon = HIERARCHY_KEYS[currentLevelIndex] ? Folder : FileText;
     return (
         <>
-            <h2 className="text-2xl font-bold text-slate-800 mb-4 flex items-center gap-2">
-                <Icon className="h-6 w-6 text-primary" />
+            <h2 className="text-lg md:text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
+                <Icon className="h-5 w-5 md:h-6 md:w-6 text-primary" />
                 {title}
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
                 {listItems.map(item => (
                     <Link key={item.name} href={`/category/${currentPathParts.join('/')}/${encodeURIComponent(item.name)}`} className="group">
                         <Card className="hover:border-primary/40 transition-all shadow-sm hover:shadow-md border-border h-full bg-card">
-                            <div className="p-4 flex items-center justify-between">
-                                <span className="font-semibold text-slate-700">{item.name}</span>
+                            <div className="p-3 md:p-4 flex items-center justify-between">
+                                <span className="font-medium text-sm md:text-base text-slate-700">{item.name}</span>
                                 <ChevronRight className="h-5 w-5 text-slate-400 group-hover:translate-x-1 transition-transform" />
                             </div>
                         </Card>
@@ -310,15 +310,15 @@ export default function CategoryHierarchyPage() {
 
   return (
     <div className="flex flex-col h-screen bg-white">
-      <header className="sticky top-0 z-20 bg-white shadow-sm">
-        <div className="container mx-auto px-4 py-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+      <header className="sticky top-0 z-20 bg-white shadow-sm h-14 flex items-center">
+        <div className="container mx-auto px-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="icon" onClick={() => router.back()}>
               <ArrowLeft className="h-5 w-5 text-slate-700" />
             </Button>
             <Logo />
           </div>
-          <div className="flex items-center gap-1 text-sm font-medium text-slate-500 self-start sm:self-center ml-10 sm:ml-0 overflow-x-auto whitespace-nowrap py-1">
+          <div className="flex items-center gap-1 text-xs md:text-sm font-medium text-slate-500 self-start sm:self-center ml-10 sm:ml-0 overflow-x-auto whitespace-nowrap py-1">
             {breadcrumbs.map((crumb, index) => (
               <React.Fragment key={crumb.name}>
                 <Link href={crumb.href} className="hover:text-primary transition-colors">
@@ -337,7 +337,7 @@ export default function CategoryHierarchyPage() {
           
           {filteredQuestions.length > 0 && (
             <>
-              <h2 className="text-2xl font-bold text-slate-800 mb-4">{pageTitle}</h2>
+              <h2 className="text-lg md:text-xl font-bold text-slate-800 mb-4">{pageTitle}</h2>
               {filteredQuestions.map(question => (
                 <AnswerCard key={question.id} question={question} initialLang={'hi'} />
               ))}
@@ -358,3 +358,5 @@ export default function CategoryHierarchyPage() {
     </div>
   );
 }
+
+    

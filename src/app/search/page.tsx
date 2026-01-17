@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useState, useEffect, useTransition, useCallback } from 'react';
@@ -57,7 +58,7 @@ export default function SmartQuestionSearch() {
   const [uiLanguage, setUiLanguage] = useState<'en' | 'hi'>('hi');
   const [exampleQuestions, setExampleQuestions] = useState<string[]>([]);
   const [searchMode, setSearchMode] = useState<SearchMode>('db');
-
+  const [isInputFocused, setIsInputFocused] = useState(false);
 
   const { areQuestionsLoading, questions } = useAppContext();
   const [isPending, startTransition] = useTransition();
@@ -247,8 +248,8 @@ export default function SmartQuestionSearch() {
 
   return (
     <div className="flex flex-col h-screen bg-white">
-      <header className="sticky top-0 z-20 bg-white shadow-sm">
-        <div className="container mx-auto px-4 py-3 flex justify-between items-center">
+      <header className="sticky top-0 z-20 bg-white shadow-sm flex-shrink-0">
+        <div className="container mx-auto px-4 h-14 flex justify-between items-center">
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="icon" asChild>
                 <Link href="/">
@@ -258,12 +259,12 @@ export default function SmartQuestionSearch() {
              <Logo />
           </div>
           <Tabs value={searchMode} onValueChange={(value) => setSearchMode(value as SearchMode)} className="w-auto">
-            <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="hybrid" disabled className="flex items-center gap-2">
+            <TabsList className="grid w-full grid-cols-3 text-xs md:text-sm">
+                <TabsTrigger value="hybrid" disabled className="flex items-center gap-1.5">
                     Hybrid <Lock className="h-3 w-3" />
                 </TabsTrigger>
                 <TabsTrigger value="db">Database</TabsTrigger>
-                <TabsTrigger value="ai" disabled className="flex items-center gap-2">
+                <TabsTrigger value="ai" disabled className="flex items-center gap-1.5">
                     AI <Lock className="h-3 w-3" />
                 </TabsTrigger>
             </TabsList>
@@ -285,7 +286,7 @@ export default function SmartQuestionSearch() {
               
               {result.alternativeMatches.map((match, index) => (
                  <div key={index}>
-                  <div className="flex items-center justify-center gap-2 text-sm text-slate-500 font-medium mb-4">
+                  <div className="flex items-center justify-center gap-2 text-sm text-slate-500 font-medium my-4">
                     Related Result
                   </div>
                   <AnswerCard question={match.question} initialLang={uiLanguage} />
@@ -301,7 +302,7 @@ export default function SmartQuestionSearch() {
               <h3 className="text-xl font-bold text-slate-800 mb-2">
                 {uiLanguage === 'hi' ? 'डेटा नहीं मिला' : 'Data not found'}
               </h3>
-              <p className="text-slate-500 mb-4">
+              <p className="text-slate-500 mb-4 text-sm">
                 {uiLanguage === 'hi' 
                   ? 'यह प्रश्न हमारे डेटाबेस में नहीं मिला। हम इसे भविष्य के लिए जोड़ देंगे।'
                   : 'This question was not found in our database. We will add it for the future.'}
@@ -312,16 +313,16 @@ export default function SmartQuestionSearch() {
           {/* Examples */}
           {!result && !loading && (
             <div className="pt-8 text-center">
-                <h2 className="text-lg font-semibold text-slate-600 mb-4">Try asking</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-lg mx-auto">
+                <h2 className="text-base font-semibold text-slate-600 mb-4">Try asking</h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-w-lg mx-auto">
                     {exampleQuestions.map((q, i) => (
                         <Button
                             key={i}
                             variant="outline"
-                            className="justify-start h-auto py-3 text-left font-normal bg-white"
+                            className="justify-start h-auto py-2.5 text-left font-normal bg-white"
                             onClick={() => handleSearch(q)}
                         >
-                           <p className="text-xs md:text-sm text-slate-700 whitespace-normal">"{q}"</p>
+                           <p className="text-xs text-slate-700 whitespace-normal">"{q}"</p>
                         </Button>
                     ))}
                 </div>
@@ -340,34 +341,43 @@ export default function SmartQuestionSearch() {
       </main>
 
        {/* Search Box Footer */}
-       <footer className="p-4 bg-white border-t border-slate-200 space-y-4 sticky bottom-0">
-          <div className="flex justify-center">
-            <Button 
-                variant="ghost" 
-                size="icon" 
-                className={`text-white h-14 w-14 rounded-full shadow-lg transition-transform duration-200 ease-in-out ${isListening ? 'bg-red-500 scale-110' : 'bg-green-500 hover:bg-green-600'}`}
-                onMouseDown={handleMicPress}
-                onMouseUp={handleMicRelease}
-                onTouchStart={handleMicPress}
-                onTouchEnd={handleMicRelease}
-            >
-                <Mic className="h-7 w-7" />
-            </Button>
-          </div>
+       <footer className={`p-4 bg-white border-t border-slate-200 sticky bottom-0 transition-all duration-200 ${isInputFocused ? 'space-y-2' : 'space-y-3'}`}>
+          {!isInputFocused && (
+            <div className="flex justify-center">
+                <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className={`
+                        h-12 w-12 md:h-14 md:w-14 rounded-full shadow-lg transition-all duration-200 ease-in-out
+                        ${isListening ? 'bg-red-500 scale-110 text-white' : ''}
+                        ${!isListening && result ? 'bg-transparent border-2 border-primary text-primary hover:bg-primary/10' : ''}
+                        ${!isListening && !result ? 'bg-green-500 hover:bg-green-600 text-white' : ''}
+                    `}
+                    onMouseDown={handleMicPress}
+                    onMouseUp={handleMicRelease}
+                    onTouchStart={handleMicPress}
+                    onTouchEnd={handleMicRelease}
+                >
+                    <Mic className="h-6 w-6 md:h-7 md:h-7" />
+                </Button>
+            </div>
+          )}
           <div className="relative">
             <input
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && handleSearch(query)}
+              onFocus={() => setIsInputFocused(true)}
+              onBlur={() => setIsInputFocused(false)}
               placeholder={isListening ? 'Listening...' : (uiLanguage === 'hi' ? 'सवाल या Acronym सर्च करें...' : 'Search questions or acronyms...')}
-              className="w-full h-12 px-4 pr-14 bg-slate-100 border-slate-200 border rounded-lg text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm"
+              className="w-full bg-slate-100 border-slate-200 border rounded-lg placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary text-sm pr-12 h-12 md:h-12 md:text-base"
             />
-            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center">
+            <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center">
               <Button
                 onClick={() => handleSearch(query)}
                 disabled={loading || isPending || !query.trim()}
-                className="p-2 h-10 w-10 bg-slate-800 hover:bg-slate-900 disabled:bg-slate-400 rounded-lg transition"
+                className="p-2 h-9 w-9 md:h-10 md:w-10 bg-slate-800 hover:bg-slate-900 disabled:bg-slate-400 rounded-lg transition"
               >
                 {loading || isPending ? (
                   <Loader2 className="w-5 h-5 text-white animate-spin" />
@@ -381,9 +391,5 @@ export default function SmartQuestionSearch() {
     </div>
   );
 }
-
-    
-
-    
 
     
