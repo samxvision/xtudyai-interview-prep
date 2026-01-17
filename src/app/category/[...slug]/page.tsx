@@ -316,7 +316,7 @@ export default function CategoryHierarchyPage() {
                 <h1 className="text-base md:text-lg font-bold text-slate-800 truncate">{pageTitle}</h1>
             </div>
             
-            <div className="flex items-center gap-1 text-[11px] md:text-xs font-medium text-slate-500 overflow-x-auto whitespace-nowrap mt-1 md:mt-0 pl-10 md:pl-0">
+            <div className="flex items-center gap-1 text-[10px] md:text-[11px] font-medium text-slate-500 overflow-x-auto whitespace-nowrap mt-1 md:mt-0 pl-10 md:pl-0">
                 {breadcrumbs.map((crumb, index) => (
                 <React.Fragment key={crumb.name}>
                     <Link href={crumb.href} className="hover:text-primary transition-colors">
