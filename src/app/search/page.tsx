@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useTransition, useCallback } from 'react';
@@ -260,11 +259,11 @@ export default function SmartQuestionSearch() {
           </div>
           <Tabs value={searchMode} onValueChange={(value) => setSearchMode(value as SearchMode)} className="w-auto">
             <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="hybrid" disabled className="flex items-center gap-1.5">
+                <TabsTrigger value="hybrid" disabled className="flex items-center gap-1">
                     Hybrid <Lock className="h-3 w-3" />
                 </TabsTrigger>
                 <TabsTrigger value="db">Database</TabsTrigger>
-                <TabsTrigger value="ai" disabled className="flex items-center gap-1.5">
+                <TabsTrigger value="ai" disabled className="flex items-center gap-1">
                     AI <Lock className="h-3 w-3" />
                 </TabsTrigger>
             </TabsList>
@@ -390,5 +389,3 @@ export default function SmartQuestionSearch() {
     </div>
   );
 }
-
-    
