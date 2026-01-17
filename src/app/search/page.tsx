@@ -321,7 +321,7 @@ export default function SmartQuestionSearch() {
                             className="justify-start h-auto py-3 text-left font-normal bg-white"
                             onClick={() => handleSearch(q)}
                         >
-                           <p className="text-slate-700 whitespace-normal">"{q}"</p>
+                           <p className="text-xs md:text-sm text-slate-700 whitespace-normal">"{q}"</p>
                         </Button>
                     ))}
                 </div>
@@ -345,13 +345,13 @@ export default function SmartQuestionSearch() {
             <Button 
                 variant="ghost" 
                 size="icon" 
-                className={`text-white h-20 w-20 rounded-full shadow-lg transition-transform duration-200 ease-in-out ${isListening ? 'bg-red-500 scale-110' : 'bg-green-500 hover:bg-green-600'}`}
+                className={`text-white h-14 w-14 rounded-full shadow-lg transition-transform duration-200 ease-in-out ${isListening ? 'bg-red-500 scale-110' : 'bg-green-500 hover:bg-green-600'}`}
                 onMouseDown={handleMicPress}
                 onMouseUp={handleMicRelease}
                 onTouchStart={handleMicPress}
                 onTouchEnd={handleMicRelease}
             >
-                <Mic className="h-10 w-10" />
+                <Mic className="h-7 w-7" />
             </Button>
           </div>
           <div className="relative">
@@ -361,7 +361,7 @@ export default function SmartQuestionSearch() {
               onChange={(e) => setQuery(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && handleSearch(query)}
               placeholder={isListening ? 'Listening...' : (uiLanguage === 'hi' ? 'सवाल या Acronym सर्च करें...' : 'Search questions or acronyms...')}
-              className="w-full h-14 px-4 pr-16 bg-slate-100 border-slate-200 border rounded-lg text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500 text-base"
+              className="w-full h-12 px-4 pr-14 bg-slate-100 border-slate-200 border rounded-lg text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm"
             />
             <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center">
               <Button
@@ -381,6 +381,8 @@ export default function SmartQuestionSearch() {
     </div>
   );
 }
+
+    
 
     
 

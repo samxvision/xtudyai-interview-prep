@@ -74,7 +74,7 @@ export function AnswerCard({ question, initialLang, isAiGenerated = false }: Ans
   };
 
   return (
-    <Card className="w-full max-w-4xl mx-auto shadow-lg border-slate-200 mb-6">
+    <Card className="w-full max-w-4xl mx-auto shadow-lg border-slate-200 mb-6 max-h-[85vh] flex flex-col">
       <CardHeader className="pb-4">
         <div className="flex flex-wrap items-center gap-2 mb-4">
           <Badge
@@ -96,7 +96,7 @@ export function AnswerCard({ question, initialLang, isAiGenerated = false }: Ans
             </Badge>
            )}
         </div>
-        <CardTitle className="font-bold text-2xl text-slate-800 mb-2">
+        <CardTitle className="font-bold text-xl md:text-2xl text-slate-800 mb-2">
           {question[`question_${lang}`]}
         </CardTitle>
         <div className="flex justify-between items-center">
@@ -113,12 +113,12 @@ export function AnswerCard({ question, initialLang, isAiGenerated = false }: Ans
           </div>
         </div>
       </CardHeader>
-      <CardContent className="space-y-6 pt-0">
+      <CardContent className="space-y-6 pt-0 overflow-y-auto">
         <div>
           <h3 className="text-xs font-bold uppercase text-slate-500 mb-2">
             Quick Answer
           </h3>
-          <p className="text-base leading-relaxed text-slate-700">
+          <p className="text-sm md:text-base leading-relaxed text-slate-700">
             {question[`shortAnswer_${lang}`]}
           </p>
         </div>
@@ -131,7 +131,7 @@ export function AnswerCard({ question, initialLang, isAiGenerated = false }: Ans
             {question[`summaryPoints_${lang}`] && question[`summaryPoints_${lang}`].map((point, index) => (
               <li key={index} className="flex items-start gap-3">
                 <CheckCircle className="w-5 h-5 text-green-500 mt-0.5 shrink-0" />
-                <span className="text-base text-slate-800">{point}</span>
+                <span className="text-sm md:text-base text-slate-800">{point}</span>
               </li>
             ))}
           </ul>
@@ -142,7 +142,7 @@ export function AnswerCard({ question, initialLang, isAiGenerated = false }: Ans
             <AccordionTrigger className="text-xs font-bold uppercase text-slate-500 hover:no-underline py-2">
               Detailed Explanation
             </AccordionTrigger>
-            <AccordionContent className="pt-2 text-slate-700 text-base leading-relaxed">
+            <AccordionContent className="pt-2 text-slate-700 text-sm md:text-base leading-relaxed">
                 {renderMarkdown(question[`longAnswer_${lang}`])}
             </AccordionContent>
           </AccordionItem>
@@ -158,5 +158,7 @@ export function AnswerCard({ question, initialLang, isAiGenerated = false }: Ans
     </Card>
   );
 }
+
+    
 
     
