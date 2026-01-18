@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -108,9 +109,5 @@ export const useSpeaker = () => {
     }
   }, [audioUrl]);
 
-  const AudioPlayer = useCallback(() => (
-    audioUrl ? <audio ref={audioRef} src={audioUrl} autoPlay hidden /> : null
-  ), [audioUrl]);
-
-  return { isLoading, isPlaying, isMuted, toggleMute, speak, stop, AudioPlayer };
+  return { isLoading, isPlaying, isMuted, toggleMute, speak, stop, audioRef, audioUrl };
 };
