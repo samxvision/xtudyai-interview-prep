@@ -70,8 +70,7 @@ export function AnswerCard({ question, initialLang, isAiGenerated = false }: Ans
     } else {
         stop(); // Ensure speech stops if muted or question disappears
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [question, lang]);
+  }, [question, lang, isMuted, speak, stop]);
 
   // Stop speech when the card is unmounted
   useEffect(() => {

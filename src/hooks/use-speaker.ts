@@ -29,10 +29,10 @@ export const useSpeaker = () => {
           audioRef.current.pause();
           audioRef.current.currentTime = 0;
       }
-      if (isPlaying) setIsPlaying(false);
-      if (audioUrl) setAudioUrl(null);
-      if (isLoading) setIsLoading(false);
-  }, [isPlaying, audioUrl, isLoading]);
+      setIsPlaying(false);
+      setAudioUrl(null);
+      setIsLoading(false);
+  }, []);
 
   // Persist mute state to localStorage
   const toggleMute = useCallback(() => {
