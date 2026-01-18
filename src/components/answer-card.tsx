@@ -18,8 +18,9 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
-import { Bookmark, Share, ThumbsUp, ThumbsDown, CheckCircle, Sparkles } from 'lucide-react';
+import { Bookmark, Share, ThumbsUp, ThumbsDown, CheckCircle, Sparkles, Volume2, VolumeX, Loader2 } from 'lucide-react';
 import React from 'react';
+import { useSpeaker } from '@/hooks/use-speaker';
 
 interface AnswerCardProps {
   question: Question;
@@ -44,11 +45,48 @@ const renderMarkdown = (text: string) => {
 
 export function AnswerCard({ question, initialLang, isAiGenerated = false }: AnswerCardProps) {
   const [lang, setLang] = useState<'en' | 'hi'>(initialLang);
+  const { isLoading: isSpeakerLoading, isPlaying, isMuted, toggleMute, speak, stop, AudioPlayer } = useSpeaker();
 
   useEffect(() => {
     setLang(initialLang);
   }, [initialLang, question]);
 
+  // Effect to handle auto-playing speech when content changes
+  useEffect(() => {
+    if (question && !isMuted) {
+      const textToSpeak = [
+        question[`question_${lang}`],
+        'Short Answer.',
+        question[`shortAnswer_${lang}`],
+        'Key Takeaways.',
+        ...(question[`summaryPoints_${lang}`] || []),
+        'Detailed Explanation.',
+        question[`longAnswer_${lang}`].replace(/\*\*(.*?)\*\*/g, '$1') // Remove markdown for cleaner speech
+      ].join('. ').trim();
+      
+      const languageCode = lang === 'en' ? 'en-US' : 'hi-IN';
+      
+      speak(textToSpeak, languageCode);
+    } else {
+        stop(); // Ensure speech stops if muted or question disappears
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [question, lang]);
+
+  // Stop speech when the card is unmounted
+  useEffect(() => {
+    return () => {
+      stop();
+    };
+  }, [stop]);
+
+  const handleToggleMute = () => {
+    // If it's playing and we're about to mute, stop it.
+    if (isPlaying && !isMuted) {
+      stop();
+    }
+    toggleMute();
+  };
 
   const toggleLanguage = () => {
     setLang((prevLang) => (prevLang === 'en' ? 'hi' : 'en'));
@@ -75,6 +113,7 @@ export function AnswerCard({ question, initialLang, isAiGenerated = false }: Ans
 
   return (
     <Card className="w-full max-w-4xl mx-auto shadow-lg border-slate-200 mb-6 max-h-[80vh] flex flex-col">
+      <AudioPlayer />
       <CardHeader className="p-4 pb-3">
         <div className="flex flex-wrap items-center gap-2 mb-3">
           <Badge
@@ -104,6 +143,15 @@ export function AnswerCard({ question, initialLang, isAiGenerated = false }: Ans
             {lang === 'en' ? 'Switch to Hinglish' : 'Switch to English'}
           </Button>
           <div className="flex items-center gap-0.5 text-slate-500">
+             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleToggleMute}>
+                {isSpeakerLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                ) : isMuted ? (
+                    <VolumeX className="w-4 h-4" />
+                ) : (
+                    <Volume2 className="w-4 h-4 text-primary" />
+                )}
+            </Button>
             <Button variant="ghost" size="icon" className="h-8 w-8">
               <Bookmark className="w-4 h-4" />
             </Button>
@@ -158,5 +206,3 @@ export function AnswerCard({ question, initialLang, isAiGenerated = false }: Ans
     </Card>
   );
 }
-
-    
