@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 const SPEAKER_MUTE_KEY = 'xtudyai-speaker-muted';
 
@@ -9,8 +9,6 @@ export const useSpeaker = () => {
   const [isMuted, setIsMuted] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [audioUrl, setAudioUrl] = useState<string | null>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // Load mute state from localStorage on initial render
   useEffect(() => {
@@ -25,13 +23,11 @@ export const useSpeaker = () => {
   }, []);
 
   const stop = useCallback(() => {
-      if (audioRef.current) {
-          audioRef.current.pause();
-          audioRef.current.currentTime = 0;
-      }
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
       setIsPlaying(false);
-      setAudioUrl(null);
       setIsLoading(false);
+      window.speechSynthesis.cancel();
+    }
   }, []);
 
   // Persist mute state to localStorage
@@ -51,63 +47,68 @@ export const useSpeaker = () => {
     });
   }, [stop]);
 
-  const speak = useCallback(async (text: string, lang: 'en-US' | 'hi-IN') => {
+  const speak = useCallback((text: string, lang: 'en-US' | 'hi-IN') => {
     // Stop any previous speech before starting a new one
     stop();
 
-    if (!text.trim() || isMuted) {
+    if (typeof window === 'undefined' || !window.speechSynthesis || !text.trim() || isMuted) {
       return;
     }
     
     setIsLoading(true);
-    
-    try {
-      const response = await fetch('/api/text-to-speech', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, lang }),
-      });
 
-      if (!response.ok) {
-        const errorBody = await response.json();
-        throw new Error(errorBody.error || 'Failed to fetch speech data.');
-      }
-      const data = await response.json();
-      setAudioUrl(data.audioDataUri);
-    } catch (error) {
-      console.error("TTS Error:", error);
-      setAudioUrl(null);
-    } finally {
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = lang;
+
+    utterance.onstart = () => {
       setIsLoading(false);
+      setIsPlaying(true);
+    };
+
+    utterance.onend = () => {
+      setIsPlaying(false);
+    };
+
+    utterance.onerror = (event) => {
+      console.error('Web Speech API Error:', event);
+      setIsLoading(false);
+      setIsPlaying(false);
+    };
+    
+    // The onvoiceschanged event is the only reliable way to get voices on many browsers.
+    const loadVoicesAndSpeak = () => {
+      const voices = window.speechSynthesis.getVoices();
+      let selectedVoice = voices.find(voice => voice.lang === lang);
+
+      // Fallback for browsers that use underscores or just the language code (e.g., 'en' for 'en-US')
+      if (!selectedVoice) {
+        selectedVoice = voices.find(voice => voice.lang.replace('_', '-') === lang);
+      }
+      if (!selectedVoice) {
+        selectedVoice = voices.find(voice => voice.lang.startsWith(lang.split('-')[0]));
+      }
+
+      if (selectedVoice) {
+        utterance.voice = selectedVoice;
+      }
+      
+      window.speechSynthesis.speak(utterance);
+    };
+
+    if (window.speechSynthesis.getVoices().length === 0) {
+      window.speechSynthesis.onvoiceschanged = loadVoicesAndSpeak;
+    } else {
+      loadVoicesAndSpeak();
     }
+
   }, [isMuted, stop]);
 
-
+  // Stop speech when the component unmounts
   useEffect(() => {
-    const audioElement = audioRef.current;
-    if (audioElement) {
-        const handlePlay = () => setIsPlaying(true);
-        const handlePause = () => setIsPlaying(false);
-        const handleEnded = () => {
-            setIsPlaying(false);
-            setAudioUrl(null); // Clear URL after finishing
-        };
-        
-        audioElement.addEventListener('play', handlePlay);
-        audioElement.addEventListener('playing', handlePlay);
-        audioElement.addEventListener('pause', handlePause);
-        audioElement.addEventListener('ended', handleEnded);
+    return () => {
+      stop();
+    };
+  }, [stop]);
 
-        return () => {
-            if (audioElement){
-                audioElement.removeEventListener('play', handlePlay);
-                audioElement.removeEventListener('playing', handlePlay);
-                audioElement.removeEventListener('pause', handlePause);
-                audioElement.removeEventListener('ended', handleEnded);
-            }
-        }
-    }
-  }, [audioUrl]);
-
-  return { isLoading, isPlaying, isMuted, toggleMute, speak, stop, audioRef, audioUrl };
+  return { isLoading, isPlaying, isMuted, toggleMute, speak, stop };
 };

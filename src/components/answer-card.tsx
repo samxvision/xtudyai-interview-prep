@@ -45,7 +45,7 @@ const renderMarkdown = (text: string) => {
 
 export function AnswerCard({ question, initialLang, isAiGenerated = false }: AnswerCardProps) {
   const [lang, setLang] = useState<'en' | 'hi'>(initialLang);
-  const { isLoading: isSpeakerLoading, isPlaying, isMuted, toggleMute, speak, stop, audioRef, audioUrl } = useSpeaker();
+  const { isLoading: isSpeakerLoading, isPlaying, isMuted, toggleMute, speak, stop } = useSpeaker();
 
   useEffect(() => {
     setLang(initialLang);
@@ -80,10 +80,6 @@ export function AnswerCard({ question, initialLang, isAiGenerated = false }: Ans
   }, [stop]);
 
   const handleToggleMute = () => {
-    // If it's playing and we're about to mute, stop it.
-    if (isPlaying && !isMuted) {
-      stop();
-    }
     toggleMute();
   };
 
@@ -112,7 +108,6 @@ export function AnswerCard({ question, initialLang, isAiGenerated = false }: Ans
 
   return (
     <Card className="w-full max-w-4xl mx-auto shadow-lg border-slate-200 mb-6 max-h-[80vh] flex flex-col">
-      {audioUrl && <audio ref={audioRef} src={audioUrl} autoPlay hidden />}
       <CardHeader className="p-4 pb-3">
         <div className="flex flex-wrap items-center gap-2 mb-3">
           <Badge
@@ -147,6 +142,8 @@ export function AnswerCard({ question, initialLang, isAiGenerated = false }: Ans
                     <Loader2 className="w-4 h-4 animate-spin" />
                 ) : isMuted ? (
                     <VolumeX className="w-4 h-4" />
+                ) : isPlaying ? (
+                    <Volume2 className="w-4 h-4 text-primary animate-pulse" />
                 ) : (
                     <Volume2 className="w-4 h-4 text-primary" />
                 )}
