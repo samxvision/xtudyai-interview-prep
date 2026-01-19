@@ -2,8 +2,19 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { speechCorrectionMap } from '@/lib/speech-synthesis-corrections';
 
 const SPEAKER_MUTE_KEY = 'xtudyai-speaker-muted';
+
+const applySpeechCorrections = (text: string): string => {
+  let correctedText = ` ${text} `; // Add padding for whole-word matching
+  for (const [incorrect, correct] of speechCorrectionMap.entries()) {
+    // Use a regex to replace all instances of the incorrect phrase as a whole word
+    const regex = new RegExp(`\\b${incorrect}\\b`, 'gi');
+    correctedText = correctedText.replace(regex, correct);
+  }
+  return correctedText.trim();
+};
 
 export const useSpeaker = () => {
   const [isMuted, setIsMuted] = useState(true);
@@ -14,11 +25,11 @@ export const useSpeaker = () => {
   useEffect(() => {
     try {
       const storedMuteState = localStorage.getItem(SPEAKER_MUTE_KEY);
-      // Default to un-muted for first-time users so they discover the feature.
-      setIsMuted(storedMuteState ? JSON.parse(storedMuteState) : false);
+      // Default to muted for all users. Speech will only happen on user action.
+      setIsMuted(storedMuteState ? JSON.parse(storedMuteState) : true);
     } catch (error) {
       console.error("Failed to load speaker state from localStorage", error);
-      setIsMuted(false);
+      setIsMuted(true);
     }
   }, []);
 
@@ -59,7 +70,8 @@ export const useSpeaker = () => {
     
     setIsLoading(true);
 
-    const utterance = new SpeechSynthesisUtterance(text);
+    const correctedText = applySpeechCorrections(text);
+    const utterance = new SpeechSynthesisUtterance(correctedText);
     utterance.lang = lang;
 
     utterance.onstart = () => {
