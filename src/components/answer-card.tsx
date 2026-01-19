@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import type { Question } from '@/types';
 import {
   Card,
@@ -47,6 +47,10 @@ export function AnswerCard({ question, initialLang, isAiGenerated = false }: Ans
   const [lang, setLang] = useState<'en' | 'hi'>(initialLang);
   const [speechRequested, setSpeechRequested] = useState(false);
 
+  const handleSpeechEnd = useCallback(() => {
+    setSpeechRequested(false);
+  }, []);
+
   const { 
     isLoading: isSpeakerLoading, 
     isPlaying, 
@@ -55,13 +59,14 @@ export function AnswerCard({ question, initialLang, isAiGenerated = false }: Ans
     speak, 
     stop 
   } = useSpeaker({
-    onEnd: () => setSpeechRequested(false) // Deactivate request when speech finishes naturally
+    onEnd: handleSpeechEnd
   });
 
   useEffect(() => {
     setLang(initialLang);
     setSpeechRequested(false); // Reset speech request when question changes
-  }, [initialLang, question]);
+    stop(); // Stop any speech from previous card
+  }, [initialLang, question, stop]);
 
   const textToSpeak = useMemo(() => {
     if (!question) return '';
