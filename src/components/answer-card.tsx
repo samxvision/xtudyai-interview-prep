@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import type { Question } from '@/types';
 import {
   Card,
@@ -46,42 +46,87 @@ const renderMarkdown = (text: string) => {
 export function AnswerCard({ question, initialLang, isAiGenerated = false }: AnswerCardProps) {
   const [lang, setLang] = useState<'en' | 'hi'>(initialLang);
   const { isLoading: isSpeakerLoading, isPlaying, isMuted, toggleMute, speak, stop } = useSpeaker();
+  
+  // This ref tracks if the content has been spoken automatically once per content change
+  const autoPlayedRef = useRef(false);
+
 
   useEffect(() => {
     setLang(initialLang);
   }, [initialLang, question]);
 
-  // Effect to handle auto-playing speech when content changes
-  useEffect(() => {
-    if (question && !isMuted) {
-      const textToSpeak = [
-        question[`question_${lang}`],
-        'Short Answer.',
-        question[`shortAnswer_${lang}`],
-        'Key Takeaways.',
-        ...(question[`summaryPoints_${lang}`] || []),
-        'Detailed Explanation.',
-        question[`longAnswer_${lang}`].replace(/\*\*(.*?)\*\*/g, '$1') // Remove markdown for cleaner speech
-      ].join('. ').trim();
-      
-      const languageCode = lang === 'en' ? 'en-US' : 'hi-IN';
-      
-      speak(textToSpeak, languageCode);
-    } else {
-        stop(); // Ensure speech stops if muted or question disappears
-    }
-  }, [question, lang, isMuted, speak, stop]);
+  const textToSpeak = useMemo(() => {
+    if (!question) return '';
+    return [
+      question[`question_${lang}`],
+      'Short Answer.',
+      question[`shortAnswer_${lang}`],
+      'Key Takeaways.',
+      ...(question[`summaryPoints_${lang}`] || []),
+      'Detailed Explanation.',
+      question[`longAnswer_${lang}`].replace(/\*\*(.*?)\*\*/g, '$1'),
+    ]
+      .join('. ')
+      .trim();
+  }, [question, lang]);
 
-  // Stop speech when the card is unmounted
+  const languageCode = lang === 'en' ? 'en-US' : 'hi-IN';
+
+  // --- Speech Logic ---
+
+  // 1. Autoplay ONCE when content (question/lang) changes, if not muted.
+  useEffect(() => {
+    autoPlayedRef.current = false; // Reset autoplay status for new content
+    stop(); // Stop any previous speech from other cards
+
+    if (!isMuted && textToSpeak && !autoPlayedRef.current) {
+      speak(textToSpeak, languageCode);
+      autoPlayedRef.current = true;
+    }
+    // This effect should ONLY run when the content itself changes.
+    // `speak` is a stable callback from its hook.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [textToSpeak, languageCode, speak, stop]);
+
+
+  const prevIsMuted = useRef(isMuted);
+  useEffect(() => {
+    // This effect handles playing audio when the user un-mutes.
+    if (prevIsMuted.current && !isMuted && !isPlaying) {
+      // If the state changed from muted to un-muted, and it's not already playing, play it.
+      speak(textToSpeak, languageCode);
+    }
+    prevIsMuted.current = isMuted;
+  }, [isMuted, isPlaying, speak, textToSpeak, languageCode]);
+
+  const handleSpeakerClick = () => {
+    if (isPlaying) {
+      // "speaker bol raha hai... dabaya toh speaker band mute ho jayega"
+      // => Stop speaking AND mute for the future.
+      stop();
+      if (!isMuted) {
+        toggleMute();
+      }
+    } else {
+      // Not playing.
+      // "user dobara speaker button dabayega tab bolega"
+      // => This means "Play again".
+      if (isMuted) {
+        // If muted, this click means "unmute and play".
+        toggleMute(); // This will trigger the useEffect above to play.
+      } else {
+        // If already unmuted, this click means "play again".
+        speak(textToSpeak, languageCode);
+      }
+    }
+  };
+
+  // Stop speech when the component unmounts
   useEffect(() => {
     return () => {
       stop();
     };
   }, [stop]);
-
-  const handleToggleMute = () => {
-    toggleMute();
-  };
 
   const toggleLanguage = () => {
     setLang((prevLang) => (prevLang === 'en' ? 'hi' : 'en'));
@@ -137,7 +182,7 @@ export function AnswerCard({ question, initialLang, isAiGenerated = false }: Ans
             {lang === 'en' ? 'Switch to Hinglish' : 'Switch to English'}
           </Button>
           <div className="flex items-center gap-0.5 text-slate-500">
-             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleToggleMute}>
+             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleSpeakerClick}>
                 {isSpeakerLoading ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
                 ) : isMuted ? (
