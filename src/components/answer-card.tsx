@@ -77,7 +77,7 @@ export function AnswerCard({ question, initialLang, isAiGenerated = false }: Ans
   // 1. Autoplay ONCE when content (question/lang) changes, if not muted.
   useEffect(() => {
     autoPlayedRef.current = false; // Reset autoplay status for new content
-    stop(); // Stop any previous speech from other cards
+    // stop(); // REMOVED: speak() already calls stop() internally, preventing race conditions.
 
     if (!isMuted && textToSpeak && !autoPlayedRef.current) {
       speak(textToSpeak, languageCode);
@@ -86,7 +86,7 @@ export function AnswerCard({ question, initialLang, isAiGenerated = false }: Ans
     // This effect should ONLY run when the content itself changes.
     // `speak` is a stable callback from its hook.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [textToSpeak, languageCode, speak, stop]);
+  }, [textToSpeak, languageCode, speak]);
 
 
   const prevIsMuted = useRef(isMuted);

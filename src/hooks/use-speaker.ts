@@ -72,7 +72,13 @@ export const useSpeaker = () => {
     };
 
     utterance.onerror = (event) => {
-      console.error('Web Speech API Error:', event);
+      // Some browsers fire a 'canceled' error when speech is stopped. We can safely ignore it.
+      if (event.error === 'canceled') {
+        setIsPlaying(false);
+        setIsLoading(false);
+        return;
+      }
+      console.error('Web Speech API Error:', event.error);
       setIsLoading(false);
       setIsPlaying(false);
     };
