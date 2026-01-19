@@ -86,8 +86,8 @@ export const useSpeaker = ({ onEnd }: { onEnd?: () => void } = {}) => {
     };
 
     utterance.onerror = (event) => {
-      // Some browsers fire a 'canceled' error when speech is stopped. We can safely ignore it.
-      if (event.error === 'canceled') {
+      // Some browsers fire a 'canceled' or 'interrupted' error when speech is stopped. We can safely ignore it.
+      if (event.error === 'canceled' || event.error === 'interrupted') {
         setIsPlaying(false);
         setIsLoading(false);
         return;
