@@ -16,7 +16,7 @@ const applySpeechCorrections = (text: string): string => {
   return correctedText.trim();
 };
 
-export const useSpeaker = () => {
+export const useSpeaker = ({ onEnd }: { onEnd?: () => void } = {}) => {
   const [isMuted, setIsMuted] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -36,10 +36,11 @@ export const useSpeaker = () => {
   const stop = useCallback(() => {
     if (typeof window !== 'undefined' && window.speechSynthesis) {
       if (window.speechSynthesis.speaking) {
-        setIsPlaying(false);
-        setIsLoading(false);
         window.speechSynthesis.cancel();
       }
+      // Explicitly set playing to false as 'onend' might not fire immediately after cancel.
+      setIsPlaying(false);
+      setIsLoading(false);
     }
   }, []);
 
@@ -81,6 +82,7 @@ export const useSpeaker = () => {
 
     utterance.onend = () => {
       setIsPlaying(false);
+      onEnd?.();
     };
 
     utterance.onerror = (event) => {
@@ -135,7 +137,7 @@ export const useSpeaker = () => {
       loadVoicesAndSpeak();
     }
 
-  }, [stop]);
+  }, [stop, onEnd]);
 
   // Stop speech when the component unmounts
   useEffect(() => {

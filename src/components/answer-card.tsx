@@ -45,11 +45,22 @@ const renderMarkdown = (text: string) => {
 
 export function AnswerCard({ question, initialLang, isAiGenerated = false }: AnswerCardProps) {
   const [lang, setLang] = useState<'en' | 'hi'>(initialLang);
-  const { isLoading: isSpeakerLoading, isPlaying, isMuted, toggleMute, speak, stop } = useSpeaker();
-  const [playOnUnmute, setPlayOnUnmute] = useState(false);
+  const [speechRequested, setSpeechRequested] = useState(false);
+
+  const { 
+    isLoading: isSpeakerLoading, 
+    isPlaying, 
+    isMuted, 
+    toggleMute, 
+    speak, 
+    stop 
+  } = useSpeaker({
+    onEnd: () => setSpeechRequested(false) // Deactivate request when speech finishes naturally
+  });
 
   useEffect(() => {
     setLang(initialLang);
+    setSpeechRequested(false); // Reset speech request when question changes
   }, [initialLang, question]);
 
   const textToSpeak = useMemo(() => {
@@ -69,43 +80,37 @@ export function AnswerCard({ question, initialLang, isAiGenerated = false }: Ans
 
   const languageCode = lang === 'en' ? 'en-US' : 'hi-IN';
 
-  // --- Speech Logic ---
-
-  // This effect triggers playback *after* the state has been updated to un-muted.
+  // Effect to control speech based on user request and language changes
   useEffect(() => {
-    if (playOnUnmute && !isMuted) {
-        speak(textToSpeak, languageCode);
-        setPlayOnUnmute(false); // Reset the trigger
+    if (speechRequested && !isMuted) {
+      speak(textToSpeak, languageCode);
+    } else {
+      stop();
     }
-  }, [playOnUnmute, isMuted, speak, textToSpeak, languageCode]);
+  }, [speechRequested, isMuted, textToSpeak, languageCode, speak, stop]);
 
   const handleSpeakerClick = () => {
-    // If it's currently speaking, just stop it.
+    // If it's currently playing, the user wants to stop it.
     if (isPlaying) {
-        stop();
-        return;
+      setSpeechRequested(false); // This will trigger the useEffect to call stop()
+    } else {
+      // If it's not playing, the user wants to start it.
+      if (isMuted) {
+        toggleMute(); // Unmute if necessary
+      }
+      setSpeechRequested(true); // This will trigger the useEffect to call speak()
     }
-
-    // If it's muted, unmute it and set a trigger to play on the next render.
-    if (isMuted) {
-        toggleMute();
-        setPlayOnUnmute(true);
-        return;
-    }
-    
-    // If not playing and not muted, then play.
-    speak(textToSpeak, languageCode);
   };
 
-  // Stop speech when the component unmounts or question changes
+  // Stop speech when the component unmounts
   useEffect(() => {
     return () => {
       stop();
     };
-  }, [stop, question]);
-
+  }, [stop]);
 
   const toggleLanguage = () => {
+    // Simply toggle the language. The `useEffect` will handle restarting speech if it was active.
     setLang((prevLang) => (prevLang === 'en' ? 'hi' : 'en'));
   };
 
