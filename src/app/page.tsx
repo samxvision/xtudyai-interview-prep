@@ -337,10 +337,15 @@ export default function Home() {
             <Card className="shadow-sm border-border bg-card">
                 <ul className="divide-y divide-border">
                     {trendingQuestions.map((q) => (
-                        <li key={q.rank} className="p-3 flex items-center gap-3 hover:bg-secondary/50 cursor-pointer">
-                            <div className="flex items-center justify-center h-6 w-6 rounded-full bg-secondary text-secondary-foreground text-xs font-bold flex-shrink-0">{q.rank}</div>
-                            <span className="text-sm font-medium text-foreground flex-grow">{q.text}</span>
-                            <Sparkles className="h-5 w-5 text-primary/50 flex-shrink-0" />
+                        <li key={q.rank}>
+                            <Link 
+                                href={`/search?query=${encodeURIComponent(q.text)}`}
+                                className="p-3 flex items-center gap-3 hover:bg-secondary/50"
+                            >
+                                <div className="flex items-center justify-center h-6 w-6 rounded-full bg-secondary text-secondary-foreground text-xs font-bold flex-shrink-0">{q.rank}</div>
+                                <span className="text-sm font-medium text-foreground flex-grow">{q.text}</span>
+                                <Sparkles className="h-5 w-5 text-primary/50 flex-shrink-0" />
+                            </Link>
                         </li>
                     ))}
                 </ul>

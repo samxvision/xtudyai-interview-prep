@@ -1,6 +1,8 @@
+
 "use client";
 
-import React, { useState, useEffect, useTransition, useCallback } from 'react';
+import React, { useState, useEffect, useTransition, useCallback, useRef } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Search, Loader2, AlertCircle, Tag, ArrowLeft, Database, Mic, Sparkles, Lock } from 'lucide-react';
 import { searchQuestions } from '@/lib/searchSystem';
 import { useAppContext } from '@/context/AppContext';
@@ -62,6 +64,8 @@ export default function SmartQuestionSearch() {
   const { areQuestionsLoading, questions } = useAppContext();
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
+  const searchParams = useSearchParams();
+  const initialSearchRan = useRef(false);
 
   const {
     transcript,
@@ -96,7 +100,7 @@ export default function SmartQuestionSearch() {
     }
   }, [speechError, toast]);
 
-  const handleAiSearch = async (searchQuery: string) => {
+  const handleAiSearch = useCallback(async (searchQuery: string) => {
     try {
       const apiResponse = await fetch('/api/ai-answer', {
         method: 'POST',
@@ -131,9 +135,9 @@ export default function SmartQuestionSearch() {
         });
         setResult({ success: false, topMatch: null, alternativeMatches: [] });
     }
-  };
+  }, [toast]);
 
-  const handleSearch = async (searchQuery: string, isVoiceSearch: boolean = false) => {
+  const handleSearch = useCallback(async (searchQuery: string, isVoiceSearch: boolean = false) => {
     if (!searchQuery.trim() || areQuestionsLoading) return;
 
     setLoading(true);
@@ -187,7 +191,20 @@ export default function SmartQuestionSearch() {
         setLoading(false);
       }
     });
-  };
+  }, [areQuestionsLoading, questions, searchMode, toast, handleAiSearch, startTransition]);
+
+  useEffect(() => {
+    if (areQuestionsLoading || initialSearchRan.current) {
+      return;
+    }
+
+    const queryFromUrl = searchParams.get('query');
+    if (queryFromUrl) {
+      setQuery(queryFromUrl);
+      handleSearch(queryFromUrl);
+      initialSearchRan.current = true;
+    }
+  }, [searchParams, areQuestionsLoading, handleSearch]);
 
 
   const getCategoryBadgeColor = (category?: string) => {
