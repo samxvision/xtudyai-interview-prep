@@ -167,8 +167,22 @@ export default function Home() {
     );
   }
 
-  const userInitial = user?.email ? user.email.charAt(0).toUpperCase() : <User className="h-5 w-5" />;
+  const getInitials = (name: string | null | undefined): string => {
+    if (!name) return '';
+    const parts = name.split(' ');
+    if (parts.length > 1) {
+      return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase();
+  }
+
+  const userInitial = user?.displayName 
+    ? getInitials(user.displayName) 
+    : user?.email 
+    ? user.email.charAt(0).toUpperCase() 
+    : <User className="h-5 w-5" />;
   const userAvatar = user?.photoURL;
+  const userDisplayName = user?.displayName;
 
   return (
     <div className="min-h-screen bg-background text-foreground font-body">
@@ -189,7 +203,7 @@ export default function Home() {
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-56">
-                        <DropdownMenuLabel>{user.isAnonymous ? 'Guest User' : user.email}</DropdownMenuLabel>
+                        <DropdownMenuLabel>{user.isAnonymous ? 'Guest User' : (userDisplayName || user.email)}</DropdownMenuLabel>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem disabled>Profile</DropdownMenuItem>
                         <DropdownMenuItem disabled>Settings</DropdownMenuItem>

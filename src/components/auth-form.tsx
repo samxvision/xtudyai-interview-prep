@@ -3,7 +3,7 @@
 import { Button } from '@/components/ui/button';
 import { GoogleIcon } from '@/components/google-icon';
 import { useFirebase } from '@/firebase/provider';
-import { GoogleAuthProvider, signInWithPopup, signInAnonymously } from 'firebase/auth';
+import { GoogleAuthProvider, signInWithPopup, signInAnonymously, getAdditionalUserInfo } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { Loader2, User } from 'lucide-react';
@@ -17,7 +17,7 @@ interface AuthFormProps {
 export function AuthForm({ onAuthSuccess }: AuthFormProps) {
   const { auth } = useFirebase();
   const router = useRouter();
-  const { redirectUrl } = useAuthContext();
+  const { redirectUrl, openUpdateProfileDialog } = useAuthContext();
   const { toast } = useToast();
   const [isGoogleLoading, setIsGoogleLoading] = React.useState(false);
   const [isGuestLoading, setIsGuestLoading] = React.useState(false);
@@ -26,13 +26,24 @@ export function AuthForm({ onAuthSuccess }: AuthFormProps) {
     setIsGoogleLoading(true);
     const provider = new GoogleAuthProvider();
     try {
-      await signInWithPopup(auth, provider);
-      toast({
-        title: 'Signed In',
-        description: "You have successfully signed in with Google.",
-      });
-      onAuthSuccess?.();
-      router.push(redirectUrl);
+      const result = await signInWithPopup(auth, provider);
+      const additionalInfo = getAdditionalUserInfo(result);
+      
+      onAuthSuccess?.(); // Close the auth dialog
+
+      if (additionalInfo?.isNewUser || !result.user.displayName) {
+        toast({
+          title: 'Welcome!',
+          description: "One last step - please enter your name.",
+        });
+        openUpdateProfileDialog();
+      } else {
+        toast({
+          title: 'Signed In',
+          description: `Welcome back, ${result.user.displayName}!`,
+        });
+        router.push(redirectUrl);
+      }
     } catch (error: any) {
       toast({
         title: 'Authentication Failed',

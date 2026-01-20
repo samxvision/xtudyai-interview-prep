@@ -5,6 +5,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { FirebaseClientProvider } from '@/firebase/client-provider';
 import { AuthProvider } from '@/context/AuthContext';
 import { AuthDialog } from '@/components/auth-dialog';
+import { UpdateProfileDialog } from '@/components/update-profile-dialog';
 
 export const metadata: Metadata = {
   title: 'XtudyAI Interview Prep',
@@ -29,6 +30,7 @@ export default function RootLayout({
             <AuthProvider>
               {children}
               <AuthDialog />
+              <UpdateProfileDialog />
               <Toaster />
             </AuthProvider>
           </AppProvider>

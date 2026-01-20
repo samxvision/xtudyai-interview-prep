@@ -6,6 +6,9 @@ interface AuthContextType {
   isAuthDialogOpen: boolean;
   openAuthDialog: (redirectUrl?: string) => void;
   closeAuthDialog: () => void;
+  isUpdateProfileDialogOpen: boolean;
+  openUpdateProfileDialog: () => void;
+  closeUpdateProfileDialog: () => void;
   redirectUrl: string;
 }
 
@@ -13,6 +16,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
+  const [isUpdateProfileDialogOpen, setIsUpdateProfileDialogOpen] = useState(false);
   const [redirectUrl, setRedirectUrl] = useState('/');
 
   const openAuthDialog = useCallback((url: string = '/') => {
@@ -24,10 +28,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsAuthDialogOpen(false);
   }, []);
 
+  const openUpdateProfileDialog = useCallback(() => {
+    setIsUpdateProfileDialogOpen(true);
+  }, []);
+
+  const closeUpdateProfileDialog = useCallback(() => {
+    setIsUpdateProfileDialogOpen(false);
+  }, []);
+
   const value = {
     isAuthDialogOpen,
     openAuthDialog,
     closeAuthDialog,
+    isUpdateProfileDialogOpen,
+    openUpdateProfileDialog,
+    closeUpdateProfileDialog,
     redirectUrl,
   };
 
